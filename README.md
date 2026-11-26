@@ -92,7 +92,7 @@ mp publish -m "Hero retopo"
 ```
 
 `mp --help` lists everything: `get-latest`, `claim`, `release`, `checkpoint`, `rewind`,
-`discard`, `draft save|list|restore`, `branch new|switch|list`, `update`, `merge`, `ignore`,
+`discard`, `versions`, `draft save|list|restore`, `branch new|switch|list`, `update`, `merge`, `ignore`,
 `folders`, `tag`, `admin`, `daemon`. Add `--json` to any command for scripts.
 
 ## Develop

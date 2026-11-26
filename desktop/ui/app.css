@@ -199,6 +199,15 @@ dialog .pathrow input { flex: 1; border: var(--bw) solid var(--btn-line); paddin
 .pick label { display: grid; grid-template-columns: 18px 1fr auto; gap: 10px; align-items: center; padding: 7px 10px; border-top: 1px solid var(--line2); font-size: 13.5px; cursor: pointer; }
 .pick li:first-child label { border-top: 0; }
 .pick span { word-break: break-all; } .pick small { color: var(--mute); }
+.versions { max-height: 380px; overflow: auto; border: var(--lw) solid var(--line); border-radius: var(--r-small); }
+.versions li { display: grid; grid-template-columns: 110px 1fr auto; gap: 12px; align-items: center; padding: 9px 12px; border-top: 1px solid var(--line2); }
+.versions li:first-child { border-top: 0; }
+.versions li.cur { background: color-mix(in srgb, var(--acc) 8%, transparent); }
+.versions strong { display: block; font-weight: 600; font-size: 13.5px; }
+.versions small { color: var(--mute); font-size: 12px; }
+.versions .what strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.versions .what { min-width: 0; }
+.versions .acts { display: flex; gap: 6px; }
 .choices label { display: grid; grid-template-columns: 18px 1fr auto; gap: 10px; align-items: center; padding: 9px 4px; border-top: 1px solid var(--line); cursor: pointer; }
 .choices input { appearance: none; width: 18px; height: 18px; border: var(--bw) solid var(--ink); border-radius: var(--r-ck); background: var(--card); display: grid; place-items: center; }
 .choices input:checked::after { content: ""; width: 8px; height: 8px; background: var(--ink); }

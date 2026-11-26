@@ -94,6 +94,25 @@ pub struct Change {
     pub size: i64,
 }
 
+/// One published version of a file: the change that added, edited or deleted it.
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(default)]
+pub struct FileVersion {
+    pub change: i64,
+    /// add, edit or delete
+    pub op: String,
+    pub size: i64,
+    pub file_hash: Option<String>,
+    pub manifest_hash: Option<String>,
+    pub message: String,
+    pub created_at: String,
+    pub branch_id: String,
+    pub branch_name: String,
+    pub author: Option<UserRef>,
+    /// The version the branch has now.
+    pub current: bool,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(default)]
 pub struct Claim {

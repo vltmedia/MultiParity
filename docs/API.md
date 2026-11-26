@@ -75,7 +75,9 @@ type MergeReport = { up_to_date: boolean, only_here: number, only_parent: number
 | GET | `/api/projects/{p}/changes` | `branch?`, `before?`, `limit?` | `Change[]` newest first |
 | GET | `/api/projects/{p}/changes/{n}` | | `Change & {files: ChangeFile[]}` |
 | GET | `/api/projects/{p}/history` | `branch`, `prefix?`, `limit?` (changes) | `History` |
-| GET | `/api/projects/{p}/download` | `path`, `branch` | file bytes |
+| GET | `/api/projects/{p}/download` | `path`, `branch`, `change?` (an older version) | file bytes |
+| GET | `/api/projects/{p}/versions` | `path`, `branch` | `{path, versions: FileVersion[]}` newest first, all branches |
+| POST | `/api/projects/{p}/branches/{b}/restore-version` | body `{path, change, message?}` | `{change: Change}`: the old version made the latest as a new change |
 
 ```ts
 type FileEntry = { path, size, file_hash, change: number, kind: string,
@@ -85,7 +87,14 @@ type Change = { number, branch_id, message, author: UserRef, created_at,
 type ChangeFile = { path, op: 'add'|'edit'|'delete', size }
 type History = { changes: number[], files: Array<{ path, changes: number[] }> }
 type TagRef = { id, name, color }
+type FileVersion = { change: number, op: 'add'|'edit'|'delete', size, file_hash?, manifest_hash?,
+  message, created_at, kind, branch_id, branch_name, author?: UserRef, current: boolean }
 ```
+
+`restore-version` needs write access (admin on a protected branch), refuses a file someone else
+has claimed (409 with `details.claimed`), a version that deleted the file, and the version the
+branch already has. The daemon offers the folder side at
+`GET|POST /local/workspaces/{id}/versions` (`{path, change, to: 'folder'|'copy'|'latest'}`).
 
 `kind` is derived from the extension: `model`, `texture`, `image`, `audio`, `video`, `level`,
 `scene`, `code`, `text`, `cache`, `other`.

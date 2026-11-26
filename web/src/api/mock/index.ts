@@ -561,7 +561,41 @@ on('GET', '/api/projects/:p/history', ({ headers, m, q }) => {
 });
 on('GET', '/api/projects/:p/download', ({ headers, m, q }) => {
   getProject(who(headers), m[1]);
-  return new Response(new Blob([`Mock contents of ${q.get('path')}\n`], { type: 'application/octet-stream' }), { status: 200 });
+  const at = q.get('change');
+  return new Response(new Blob([`Mock contents of ${q.get('path')}${at ? ` as of change ${at}` : ''}\n`], { type: 'application/octet-stream' }), { status: 200 });
+});
+on('GET', '/api/projects/:p/versions', ({ headers, m, q }) => {
+  const p = getProject(who(headers), m[1]);
+  const b = getBranch(p, q.get('branch'));
+  const path = q.get('path') || '';
+  const f = filesOf(p, b.id).find((x) => x.path === path);
+  if (!f) return { path, versions: [] };
+  const nums = [...f.changes].sort((a, b2) => b2 - a);
+  return {
+    path,
+    versions: nums.map((n, i) => {
+      const c = p.changes.find((x) => x.number === n);
+      const touched = c?.files.find((x) => x.path === path);
+      return {
+        change: n, op: i === nums.length - 1 ? 'add' : 'edit', size: touched?.size ?? f.size, file_hash: i === 0 ? f.file_hash : hash(), manifest_hash: hash(),
+        message: c?.message || 'Earlier work', created_at: c?.created_at || new Date(Date.now() - (n % 50) * 86_400_000).toISOString(), kind: c?.kind || 'publish',
+        branch_id: b.id, branch_name: b.name, author: c?.author || null, current: i === 0,
+      };
+    }),
+  };
+});
+on('POST', '/api/projects/:p/branches/:b/restore-version', ({ headers, m, body }) => {
+  const u = who(headers);
+  const p = getProject(u, m[1]);
+  const b = getBranch(p, m[2]);
+  const f = filesOf(p, b.id).find((x) => x.path === body?.path);
+  if (!f || !f.changes.includes(Number(body?.change))) throw new Fail(404, 'not_found', `There is no version of that file in change ${body?.change}.`);
+  if (f.changes[f.changes.length - 1] === Number(body.change)) throw new Fail(422, 'invalid', `The version from change ${body.change} is already the latest on ${b.name}.`);
+  const holder = claims.find((c) => c.path === f.path && c.user.id !== u.id);
+  if (holder) throw new Fail(409, 'conflict', `${f.path} is claimed by ${holder.user.name}. Ask them to release it first.`);
+  const name = f.path.split('/').pop();
+  const change = publishChange(p, b, u, body.message || `Brought back ${name} as of change ${body.change}`, [{ path: f.path, size: f.size, op: 'edit' }]);
+  return { change };
 });
 
 // claims
@@ -1175,6 +1209,20 @@ don('POST', '/local/workspaces/:id/get-latest', async ({ m }) => {
   w.synced_change = p.head;
   w.status.behind = 0;
   return { downloaded: behind.length, bytes: behind.reduce((a, f) => a + f.size, 0) };
+});
+don('POST', '/local/workspaces/:id/versions', async ({ m, body }) => {
+  const w = getWs(m[1]);
+  const p = projectById(w.project_id)!;
+  const f = filesOf(p, w.branch_id).find((x) => x.path === body?.path);
+  if (!f) throw new Fail(404, 'not_found', 'That file has not been published.');
+  await wait(600);
+  if (body?.to === 'folder') {
+    if (!w.status.edited.some((x) => x.path === f.path)) w.status.edited.push({ path: f.path, size: f.size } as (typeof w.status.edited)[number]);
+    return { done: 'folder', undo: null };
+  }
+  const name = f.path.split('/').pop() || 'file';
+  const dot = name.lastIndexOf('.');
+  return { done: 'copy', saved_to: `${w.root}/${f.path.split('/').slice(0, -1).join('/')}/${dot > 0 ? `${name.slice(0, dot)} (change ${body?.change})${name.slice(dot)}` : name}` };
 });
 don('POST', '/local/workspaces/:id/publish', async ({ m, body }) => {
   const w = getWs(m[1]);

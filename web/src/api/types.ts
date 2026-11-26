@@ -141,6 +141,23 @@ export type ChangeDetail = Change & { files: ChangeFile[] };
 
 export type History = { changes: number[]; files: Array<{ path: string; changes: number[] }> };
 
+/** One published version of a file: the change that added, edited or deleted it. */
+export type FileVersion = {
+  change: number;
+  op: 'add' | 'edit' | 'delete';
+  size: number;
+  file_hash: string | null;
+  manifest_hash: string | null;
+  message: string;
+  created_at: Time;
+  kind: string;
+  branch_id: Id;
+  branch_name: string;
+  author: UserRef | null;
+  /** The version the branch has now. */
+  current: boolean;
+};
+
 // ---------- Claims ----------
 
 export type Claim = {

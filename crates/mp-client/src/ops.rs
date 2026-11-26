@@ -175,6 +175,11 @@ pub async fn fetch_file(api: &Api, ws: &Workspace, rel: &str, manifest_hash: &st
 }
 
 pub async fn write_from_manifest(api: &Api, ws: &Workspace, rel: &str, m: &Manifest) -> Result<std::fs::Metadata> {
+    write_manifest_to(api, ws, rel, &ws.abs(rel), m).await
+}
+
+/// Like `write_from_manifest`, to any path (`rel` names the file in messages).
+pub async fn write_manifest_to(api: &Api, ws: &Workspace, rel: &str, dest: &Path, m: &Manifest) -> Result<std::fs::Metadata> {
     let tmp = ws.tmp_dir()?.join(format!("dl-{}", uuid::Uuid::new_v4()));
     let mut f = std::io::BufWriter::new(std::fs::File::create(&tmp)?);
     let mut hasher = blake3::Hasher::new();
@@ -206,10 +211,85 @@ pub async fn write_from_manifest(api: &Api, ws: &Workspace, rel: &str, m: &Manif
         let _ = std::fs::remove_file(&tmp);
         anyhow::bail!("{rel} did not match its expected content after downloading. Try again; if it keeps happening, ask an admin to run a storage check.");
     }
-    let dest = ws.abs(rel);
-    std::fs::create_dir_all(dest.parent().unwrap())?;
-    std::fs::rename(&tmp, &dest).with_context(|| format!("writing {} (is it open in another app?)", dest.display()))?;
-    Ok(std::fs::metadata(&dest)?)
+    if let Some(dir) = dest.parent() {
+        std::fs::create_dir_all(dir)?;
+    }
+    let moved = std::fs::rename(&tmp, dest).or_else(|e| {
+        // Another drive: copy instead.
+        if crosses_devices(&e) {
+            std::fs::copy(&tmp, dest).map(|_| ()).and_then(|_| std::fs::remove_file(&tmp))
+        } else {
+            Err(e)
+        }
+    });
+    if let Err(e) = moved {
+        let _ = std::fs::remove_file(&tmp);
+        return Err(e).with_context(|| format!("writing {} (is it open in another app?)", dest.display()));
+    }
+    Ok(std::fs::metadata(dest)?)
+}
+
+// ---------------------------------------------------------------------------------------------
+// Older versions
+
+pub async fn versions(api: &Api, ws: &Workspace, rel: &str) -> Result<Vec<FileVersion>> {
+    api.versions(&ws.config.project_id, &ws.config.branch_id, rel).await
+}
+
+async fn version_manifest(api: &Api, ws: &Workspace, rel: &str, change: i64) -> Result<Manifest> {
+    let list = versions(api, ws, rel).await?;
+    let v = list.iter().find(|v| v.change == change).with_context(|| format!("{rel} has no version in change {change}. `mp versions {rel}` lists them."))?;
+    let mh = v.manifest_hash.as_deref().with_context(|| format!("Change {change} deleted {rel}, so there is no file in it to get. Pick an earlier version."))?;
+    api.manifest(&ws.config.project_id, mh).await
+}
+
+/// Where a saved copy of an older version goes by default: beside the file, as
+/// `name (change 12).ext`.
+pub fn version_copy_path(ws: &Workspace, rel: &str, change: i64) -> std::path::PathBuf {
+    let abs = ws.abs(rel);
+    let stem = abs.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_else(|| "file".into());
+    let name = match abs.extension() {
+        Some(ext) => format!("{stem} (change {change}).{}", ext.to_string_lossy()),
+        None => format!("{stem} (change {change})"),
+    };
+    abs.with_file_name(name)
+}
+
+/// Save a copy of an older version somewhere (by default beside the file), leaving the file
+/// itself alone. A copy saved inside the folder shows up as a new file; it is meant for looking
+/// at, so delete it or ignore it rather than publishing it.
+pub async fn save_version_copy(api: &Api, ws: &Workspace, rel: &str, change: i64, to: Option<&Path>) -> Result<std::path::PathBuf> {
+    let m = version_manifest(api, ws, rel, change).await?;
+    let dest = to.map(Path::to_path_buf).unwrap_or_else(|| version_copy_path(ws, rel, change));
+    write_manifest_to(api, ws, rel, &dest, &m).await?;
+    Ok(dest)
+}
+
+#[derive(Debug, Clone, Serialize, Default)]
+pub struct BringBackReport {
+    pub path: String,
+    pub change: i64,
+    /// The checkpoint taken first, holding your version if you had changed the file.
+    pub checkpoint: Option<Checkpoint>,
+}
+
+/// Put an older version into the folder in place of the file. It then shows as edited: publish
+/// it to make it the latest for everyone. Your own unpublished edits are kept in a checkpoint
+/// first (or moved to `.mp/safety/` if checkpoints cannot hold them).
+pub async fn bring_back_version(api: &Api, ws: &Workspace, rel: &str, change: i64) -> Result<BringBackReport> {
+    let m = version_manifest(api, ws, rel, change).await?;
+    let changed = scan::status(ws, &[rel.to_string()])?.changed_paths();
+    let mut report = BringBackReport { path: rel.to_string(), change, checkpoint: None };
+    if changed.iter().any(|p| p == rel) {
+        let note = format!("Before bringing back change {change} of {}", rel.rsplit('/').next().unwrap_or(rel));
+        let before = checkpoint(Some(api), ws, CheckpointOptions::undo(&note)).await?;
+        if before.unprotected(&changed).contains(rel) && ws.abs(rel).exists() {
+            ws.move_to_safety(rel, &stamp())?;
+        }
+        report.checkpoint = before.checkpoint;
+    }
+    write_from_manifest(api, ws, rel, &m).await?;
+    Ok(report)
 }
 
 /// Download these remote paths into the folder, updating the index.

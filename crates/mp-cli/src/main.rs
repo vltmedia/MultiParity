@@ -163,6 +163,25 @@ enum Cmd {
         checkpoint: String,
         paths: Vec<String>,
     },
+    /// Older versions of a file: list them, put one back, save a copy, or make one the latest.
+    Versions {
+        path: String,
+        /// Put the version from this change into the folder in place of the file. It shows as
+        /// edited; publish it to make it the latest for everyone.
+        #[arg(long, value_name = "CHANGE")]
+        get: Option<i64>,
+        /// Save a copy of the version from this change, beside the file (or at --to), leaving
+        /// the file alone.
+        #[arg(long, value_name = "CHANGE")]
+        copy: Option<i64>,
+        #[arg(long, requires = "copy")]
+        to: Option<PathBuf>,
+        /// Make the version from this change the latest on the server now, as a new change.
+        #[arg(long, value_name = "CHANGE")]
+        make_latest: Option<i64>,
+        #[arg(short, long, requires = "make_latest")]
+        message: Option<String>,
+    },
     /// Drafts: unfinished work saved on the server, visible only to you.
     #[command(subcommand)]
     Draft(DraftCmd),
@@ -833,6 +852,53 @@ async fn run(cli: Cli) -> Result<()> {
             ctx.out(json!({ "files": n, "undo": before.as_ref().map(|c| &c.id) }), || {
                 format!("Rewound {n} file(s) to {checkpoint}.{}", before.map(|c| format!(" To undo: mp rewind {}", c.id)).unwrap_or_default())
             });
+        }
+        Cmd::Versions { path, get, copy, to, make_latest, message } => {
+            let mut ws = ctx.ws()?;
+            let api = ops::api_for(&ws)?;
+            let rel = rel_paths(&ws, &ctx.dir, &[path.clone()]).pop().filter(|r| !r.is_empty()).with_context(|| format!("{path} is not a file in this folder."))?;
+            let picked = [get.is_some(), copy.is_some(), make_latest.is_some()].iter().filter(|x| **x).count();
+            anyhow::ensure!(picked <= 1, "Use one of --get, --copy and --make-latest at a time.");
+            if let Some(n) = get {
+                let r = ops::bring_back_version(&api, &ws, &rel, n).await?;
+                ctx.out(json!(r), || {
+                    let mut s = format!("Put back {rel} as of change {n}. It shows as edited: publish it to make it the latest for everyone.");
+                    if let Some(c) = &r.checkpoint {
+                        s.push_str(&format!("\nYour version is in checkpoint {}: mp rewind {} {rel}", c.id, c.id));
+                    }
+                    s
+                });
+            } else if let Some(n) = copy {
+                let dest = ops::save_version_copy(&api, &ws, &rel, n, to.as_deref()).await?;
+                ctx.out(json!({ "path": rel, "change": n, "saved_to": dest }), || format!("Saved {rel} as of change {n} to {}.", dest.display()));
+            } else if let Some(n) = make_latest {
+                let c = api.restore_version(&ws.config.project_id, &ws.config.branch_id, &rel, n, message.as_deref()).await?;
+                // Bring this folder up to date with it, unless the file has edits here.
+                let synced = ops::get_latest(&api, &mut ws, |_| {}).await;
+                ctx.out(json!({ "change": c, "got_latest": synced.is_ok() }), || {
+                    let kept = synced.as_ref().map(|r| r.kept_yours.iter().any(|p| p == &rel)).unwrap_or(false);
+                    format!("Change {}: {rel} as of change {n} is the latest again.{}", c.number, if kept { " Your folder keeps your edited copy; discard it to get this version." } else { "" })
+                });
+            } else {
+                let list = ops::versions(&api, &ws, &rel).await?;
+                ctx.out(json!(list), || {
+                    if list.is_empty() {
+                        return format!("{rel} has not been published yet.");
+                    }
+                    let mut s = String::new();
+                    for v in &list {
+                        let who = v.author.as_ref().map(|a| a.name.as_str()).unwrap_or("someone");
+                        let what = match v.op.as_str() {
+                            "delete" => "deleted".to_string(),
+                            _ => human(v.size as u64),
+                        };
+                        let on = if v.branch_id != ws.config.branch_id { format!(" [{}]", v.branch_name) } else { String::new() };
+                        s.push_str(&format!("{:>6}  {}  {:<10}  {}  {}{}{}\n", v.change, v.created_at.get(..16).unwrap_or(&v.created_at).replace('T', " "), what, who, v.message, on, if v.current { "  (latest)" } else { "" }));
+                    }
+                    s.push_str(&format!("Put one back with: mp versions {path} --get <change>"));
+                    s
+                });
+            }
         }
         Cmd::Draft(d) => draft(&ctx, d).await?,
         Cmd::Branch(b) => branch(&ctx, b).await?,

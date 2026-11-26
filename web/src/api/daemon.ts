@@ -69,4 +69,7 @@ export const daemon = {
    */
   saveDraft: (id: string, title: string, paths?: string[]) =>
     call<{ id: string }>('POST', `${w(id)}/draft`, { title, paths }, 600000),
+  /** An older version of a file: put it in the folder in place of the file, or save a copy beside it. */
+  version: (id: string, path: string, change: number, to: 'folder' | 'copy') =>
+    call<{ done: string; undo?: string | null; saved_to?: string }>('POST', `${w(id)}/versions`, { path, change, to }, 600000),
 };

@@ -281,6 +281,42 @@ step "Download endpoint streams the current file"
 curl -fs "$SERVER/api/projects/$PID/download?branch=$MAIN&path=Art/Hero/hero_body.fbx" -H "authorization: Bearer $TOKEN" -o "$WORK/dl.bin"
 check "downloaded body matches" same "$WORK/dl.bin" "$A/Art/Hero/hero_body.fbx"
 
+step "Older versions: list, download, put back, save a copy, make latest"
+printf 'brief, first version\n' > "$A/Docs/brief.txt"
+V1=$(alice -C "$A" publish -m "Brief v1" Docs/brief.txt --json | jq .change.number)
+cp "$A/Docs/brief.txt" "$WORK/brief-v1.txt"
+printf 'brief, second version\n' > "$A/Docs/brief.txt"
+V2=$(alice -C "$A" publish -m "Brief v2" Docs/brief.txt --json | jq .change.number)
+cp "$A/Docs/brief.txt" "$WORK/brief-v2.txt"
+VERS=$(alice -C "$A" versions Docs/brief.txt --json)
+check "two versions, newest first, newest marked latest" test "$(echo "$VERS" | jq -c '[.[].change, .[0].current, .[1].current]')" = "[$V2,$V1,true,false]"
+curl -fs "$SERVER/api/projects/$PID/download?branch=$MAIN&path=Docs/brief.txt&change=$V1" -H "authorization: Bearer $TOKEN" -o "$WORK/dl-v1.txt"
+check "downloading change $V1 gives the first version" same "$WORK/dl-v1.txt" "$WORK/brief-v1.txt"
+alice -C "$A" versions Docs/brief.txt --copy "$V1" >/dev/null
+check "a copy is saved beside the file" same "$A/Docs/brief (change $V1).txt" "$WORK/brief-v1.txt"
+check "the file itself is untouched" same "$A/Docs/brief.txt" "$WORK/brief-v2.txt"
+rm "$A/Docs/brief (change $V1).txt"
+printf 'unpublished thoughts\n' > "$A/Docs/brief.txt"
+alice -C "$A" versions Docs/brief.txt --get "$V1" > "$WORK/out.txt"
+check "putting back v1 writes it into the folder" same "$A/Docs/brief.txt" "$WORK/brief-v1.txt"
+check "it shows as edited" test "$(alice -C "$A" status --json | jq -r '.status.edited[].path' | grep -c '^Docs/brief.txt$')" = 1
+UNDO=$(grep -o 'mp rewind [^ ]*' "$WORK/out.txt" | awk '{print $3}')
+check "the unpublished edit went into a checkpoint" test -n "$UNDO"
+alice -C "$A" rewind "$UNDO" Docs/brief.txt >/dev/null
+check "rewinding gets the unpublished edit back" grep -q "unpublished thoughts" "$A/Docs/brief.txt"
+alice -C "$A" discard Docs/brief.txt >/dev/null
+bob -C "$B" claim Docs/brief.txt >/dev/null
+if alice -C "$A" versions Docs/brief.txt --make-latest "$V1" > "$WORK/out.txt" 2>&1; then fail "make-latest over someone else's claim should fail"; fi
+check "the refusal names the claim" grep -q "claimed by Bob" "$WORK/out.txt"
+bob -C "$B" release Docs/brief.txt >/dev/null
+if alice -C "$A" versions Docs/brief.txt --make-latest "$V2" > "$WORK/out.txt" 2>&1; then fail "the latest version cannot be made latest again"; fi
+V3=$(alice -C "$A" versions Docs/brief.txt --make-latest "$V1" --json | jq .change.number)
+check "making v1 the latest is a new change ($V3)" test "$V3" -gt "$V2"
+check "alice's folder got it" same "$A/Docs/brief.txt" "$WORK/brief-v1.txt"
+bob -C "$B" get-latest >/dev/null
+check "bob gets it too" same "$B/Docs/brief.txt" "$WORK/brief-v1.txt"
+check "the history keeps all three" test "$(alice -C "$A" versions Docs/brief.txt --json | jq length)" = 3
+
 step "Checkpoints leave out render output and caches"
 mkdir -p "$A/renders" "$A/Art/Textures"
 head -c 2000000 /dev/urandom > "$A/renders/shot_0001.exr"

@@ -171,6 +171,20 @@ impl Api {
         Ok(serde_json::from_value(v["change"].clone())?)
     }
 
+    // Older versions
+
+    pub async fn versions(&self, project: &str, branch: &str, path: &str) -> Result<Vec<FileVersion>> {
+        let r = self.req(Method::GET, &format!("/projects/{project}/versions")).query(&[("path", path), ("branch", branch)]);
+        let v: Value = self.send(r).await?;
+        Ok(serde_json::from_value(v["versions"].clone())?)
+    }
+
+    /// Make an older version the latest on the server, as a new change.
+    pub async fn restore_version(&self, project: &str, branch: &str, path: &str, change: i64, message: Option<&str>) -> Result<Change> {
+        let v: Value = self.post(&format!("/projects/{project}/branches/{branch}/restore-version"), &json!({ "path": path, "change": change, "message": message })).await?;
+        Ok(serde_json::from_value(v["change"].clone())?)
+    }
+
     // Claims
 
     pub async fn claim(&self, project: &str, branch: &str, paths: &[String], device: &str) -> Result<(Vec<String>, Vec<Claim>)> {

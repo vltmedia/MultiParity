@@ -109,6 +109,20 @@ ignored, and by which rule. The files currently ignored can always be listed.
 - CLI: `mp ignore <pattern>`, `mp ignore --mine <pattern>`, `mp ignore --check <path>`,
   `mp ignored`.
 
+## Older versions of a file
+
+Every published version of a file stays on the server. Right-click a file (desktop) or select it
+and choose Older versions (web) to see them, newest first, and:
+
+- **Download** one (web), or **Save a copy** beside the file as `name (change 12).ext` (desktop,
+  `mp versions <file> --copy 12`). The file itself is left alone.
+- **Put back** one in your folder in place of the file (desktop, `--get 12`). It shows as edited;
+  publish it to make it the latest for everyone. Your unpublished edits go into a checkpoint first.
+- **Make latest**: make it the latest on the server straight away, as a new change, without a
+  folder (web, desktop, `--make-latest 12`). Refused while someone else has the file claimed.
+
+Going back never loses anything: the newer versions stay in the history.
+
 ## Checkpoints
 
 The step between editing and publishing. Three levels, each one further from your computer:

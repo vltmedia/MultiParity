@@ -18,6 +18,7 @@ import type {
   GcDryRun,
   GcResult,
   History,
+  FileVersion,
   Invite,
   InviteInfo,
   LoginResponse,
@@ -164,13 +165,13 @@ export async function request<T>(method: string, path: string, body?: unknown, q
 }
 
 /** Fetch a file with the bearer token and hand it to the browser as a download. */
-export async function downloadFile(projectId: string, branchId: string, path: string) {
+export async function downloadFile(projectId: string, branchId: string, path: string, change?: number) {
   const headers: Record<string, string> = {};
   const token = getToken();
   if (token) headers.Authorization = `Bearer ${token}`;
   let res: Response;
   try {
-    res = await transport(`/api/projects/${enc(projectId)}/download${qs({ path, branch: branchId })}`, { headers });
+    res = await transport(`/api/projects/${enc(projectId)}/download${qs({ path, branch: branchId, change })}`, { headers });
   } catch {
     throw new ApiError(0, 'network', 'The server did not answer.');
   }
@@ -178,7 +179,9 @@ export async function downloadFile(projectId: string, branchId: string, path: st
   const blob = await res.blob();
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = path.split('/').pop() || 'file';
+  const name = path.split('/').pop() || 'file';
+  const dot = name.lastIndexOf('.');
+  a.download = change === undefined ? name : dot > 0 ? `${name.slice(0, dot)} (change ${change})${name.slice(dot)}` : `${name} (change ${change})`;
   document.body.appendChild(a);
   a.click();
   a.remove();
@@ -224,6 +227,10 @@ export const api = {
   change: (pid: string, n: number) => request<ChangeDetail>('GET', `${p(pid)}/changes/${n}`),
   history: (pid: string, q: { branch: string; prefix?: string; limit?: number }) =>
     request<History>('GET', `${p(pid)}/history`, undefined, q),
+  versions: (pid: string, branch: string, path: string) =>
+    request<{ path: string; versions: FileVersion[] }>('GET', `${p(pid)}/versions`, undefined, { path, branch }),
+  restoreVersion: (pid: string, bid: string, path: string, change: number, message?: string) =>
+    request<{ change: Change }>('POST', `${p(pid)}/branches/${enc(bid)}/restore-version`, { path, change, message }),
 
   // claims
   claims: (pid: string) => request<Claim[]>('GET', `${p(pid)}/claims`),

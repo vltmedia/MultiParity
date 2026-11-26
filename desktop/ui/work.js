@@ -355,6 +355,52 @@ async function spaceDialog() {
     <div class="dlg-acts"><button class="btn pri" value="cancel">Done</button></div>`, async () => {});
 }
 
+/** Every published version of one file, with three ways to get one back. */
+async function versionsDialog(path) {
+  let r;
+  try { r = await api(`/workspaces/${work.wsId}/versions?path=${encodeURIComponent(path)}`); }
+  catch (e) { toast(e.message, true); return; }
+  const list = r.versions || [];
+  const edited = files().some((f) => f.path === path && f.kind !== "new");
+  const row = (v) => {
+    const who = (v.author && v.author.name) || "someone";
+    const gone = v.op === "delete";
+    const elsewhere = v.branch_id !== work.ws.branch_id;
+    return `<li class="${v.current ? "cur" : ""}">
+      <div class="when"><strong>Change ${v.change}</strong><small>${esc(ago(v.created_at))}</small></div>
+      <div class="what"><strong>${esc(v.message)}</strong><small>${esc(who)} · ${gone ? "deleted it" : human(v.size)}${elsewhere ? ` · on ${esc(v.branch_name)}` : ""}${v.current ? " · the latest" : ""}</small></div>
+      <div class="acts">${gone ? "" : `
+        ${v.current && !edited ? "" : `<button class="btn sm" value="folder:${v.change}" title="Put this version in your folder in place of the file. Publish it to make it the latest for everyone.">Put back</button>`}
+        <button class="btn sm" value="copy:${v.change}" title="Save this version beside the file, leaving the file alone.">Save a copy</button>
+        ${v.current ? "" : `<button class="btn sm" value="latest:${v.change}" title="Make this the latest on the server now, as a new change, and get it.">Make latest</button>`}`}
+      </div>
+    </li>`;
+  };
+  dialog(`<h2>Older versions of ${esc(baseName(path))}</h2>
+    <p class="note">${list.length ? `${plural(list.length, "published version")}, newest first. Nothing is lost by going back: the newer versions stay in the history.` : "This file has not been published yet, so there are no older versions."}
+    ${edited ? " You have edits to this file: putting a version back saves them in a checkpoint first." : ""}</p>
+    <ul class="versions">${list.map(row).join("")}</ul>
+    <p class="err" id="v-err" role="alert"></p>
+    <div class="dlg-acts"><button class="btn pri" value="cancel">Done</button></div>`,
+    async (value, body, dlg) => {
+      const [to, n] = value.split(":");
+      const change = Number(n);
+      if (to === "latest" && !confirm(`Make change ${change}'s version of ${baseName(path)} the latest for everyone on ${work.ws.branch_name}?`)) return;
+      body.querySelectorAll("button").forEach((b) => (b.disabled = true));
+      try {
+        const res = await api(`/workspaces/${work.wsId}/versions`, { method: "POST", body: JSON.stringify({ path, change, to }) });
+        dlg.close();
+        if (to === "folder") toast(`Put back ${baseName(path)} as of change ${change}. Publish it to make it the latest.${res.undo ? " Your version is in a checkpoint." : ""}`);
+        else if (to === "copy") toast(`Saved a copy: ${res.saved_to}`);
+        else toast(`Change ${res.change.number}: ${baseName(path)} as of change ${change} is the latest again.${res.kept_yours ? " Your folder keeps your edited copy." : ""}`);
+        refreshWork();
+      } catch (e) {
+        body.querySelectorAll("button").forEach((b) => (b.disabled = false));
+        $("#v-err", body).textContent = e.message;
+      }
+    });
+}
+
 // ------------------------------------------------------------------ context menu
 
 function openMenu(li, x, y) {
@@ -365,6 +411,7 @@ function openMenu(li, x, y) {
     [off ? "Put back in this change" : "Leave out of this change", () => { off ? work.left.delete(path) : work.left.add(path); renderWork(); }],
     ["Discard…", () => discardDialog([path])],
   ];
+  if (kind !== "new") items.push(["Older versions…", () => versionsDialog(path)]);
   if (kind !== "deleted") items.push(["Leave out of checkpoints…", () => patternDialog(path, "nocheckpoint")]);
   if (kind === "new") items.push(["Ignore…", () => patternDialog(path, "ignore")]);
   const ul = $("#ctx");

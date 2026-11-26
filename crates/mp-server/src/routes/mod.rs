@@ -46,6 +46,8 @@ pub fn router() -> Router<AppState> {
         .route("/projects/:p/changes/:n", get(files::get_change))
         .route("/projects/:p/history", get(files::history))
         .route("/projects/:p/download", get(files::download))
+        .route("/projects/:p/versions", get(files::versions))
+        .route("/projects/:p/branches/:b/restore-version", post(files::restore_version))
         // Claims
         .route("/projects/:p/claims", get(claims::list).post(claims::claim))
         .route("/projects/:p/claims/release", post(claims::release))

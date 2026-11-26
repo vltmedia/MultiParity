@@ -2,11 +2,11 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api, downloadFile } from '../../api/client';
 import { daemon } from '../../api/daemon';
-import type { FileEntry, Tag, TagRef } from '../../api/types';
+import type { FileEntry, FileVersion, Tag, TagRef } from '../../api/types';
 import { useAsync } from '../../lib/useAsync';
 import { useDaemon } from '../../lib/daemon';
 import { useSession } from '../../lib/session';
-import { baseName, firstName, held, KIND_LABEL, plural, size } from '../../lib/format';
+import { baseName, dateTime, firstName, held, KIND_LABEL, plural, since, size } from '../../lib/format';
 import { Dialog, Empty, ErrorNote, Loading, Menu, Thumb, Who, useAction, useUi } from '../../components/ui';
 import { useHref, useProject, ViewHead } from './context';
 
@@ -33,6 +33,7 @@ export default function Files() {
   const [qLive, setQLive] = useState(q);
   const [sel, setSel] = useState<Set<string>>(new Set());
   const [newTag, setNewTag] = useState(false);
+  const [versionsOf, setVersionsOf] = useState<FileEntry | null>(null);
 
   useEffect(() => {
     const t = setTimeout(() => setQLive(q), 250);
@@ -240,7 +241,10 @@ export default function Files() {
               </Menu>
             )}
             {selected.length === 1 && (
-              <button className="btn sm" onClick={() => downloadFile(project.id, branch.id, selected[0].path).catch((e) => fail(e, 'download the file'))}>Download</button>
+              <>
+                <button className="btn sm" onClick={() => downloadFile(project.id, branch.id, selected[0].path).catch((e) => fail(e, 'download the file'))}>Download</button>
+                <button className="btn sm" onClick={() => setVersionsOf(selected[0])}>Older versions</button>
+              </>
             )}
             <button className="link" onClick={() => setSel(new Set())}>Clear selection</button>
           </div>
@@ -355,6 +359,14 @@ export default function Files() {
           </div>
         )}
       </div>
+      {versionsOf && (
+        <VersionsDialog
+          file={versionsOf}
+          edited={edited.has(versionsOf.path)}
+          onClose={() => setVersionsOf(null)}
+          onChanged={() => { bump('changes'); reloadStatus(); }}
+        />
+      )}
       {newTag && <NewTagDialog onClose={() => setNewTag(false)} onMade={(t) => { setNewTag(false); bump('tags'); toast(`Made the tag ${t.name}.`); }} />}
     </>
   );
@@ -399,6 +411,97 @@ function NewTagDialog({ onClose, onMade }: { onClose: () => void; onMade: (t: Ta
       <div className="actions">
         <button className="btn" onClick={onClose}>Cancel</button>
         <button className="btn pri" onClick={make} disabled={!!busy}>Make tag</button>
+      </div>
+    </Dialog>
+  );
+}
+
+/** Every published version of one file, newest first, with ways to get one back. */
+function VersionsDialog({ file, edited, onClose, onChanged }: { file: FileEntry; edited: boolean; onClose: () => void; onChanged: () => void }) {
+  const { project, branch, ws } = useProject();
+  const { toast, fail } = useUi();
+  const { busy, run } = useAction();
+  const [confirm, setConfirm] = useState<FileVersion | null>(null);
+  const list = useAsync(() => api.versions(project.id, branch.id, file.path), [project.id, branch.id, file.path]);
+  const name = baseName(file.path);
+  const inFolder = !!ws && ws.branch_id === branch.id;
+  const protectedBranch = branch.protected && project.my_role !== 'admin' && project.my_role !== 'owner';
+
+  async function makeLatest(v: FileVersion) {
+    const r = await run('latest', `make change ${v.change}'s version the latest`, () => api.restoreVersion(project.id, branch.id, file.path, v.change));
+    if (!r) return;
+    setConfirm(null);
+    toast(`Change ${r.change.number}: ${name} as of change ${v.change} is the latest again.${inFolder ? ' Get latest to have it in your folder.' : ''}`);
+    onChanged();
+    list.reload();
+  }
+  async function toFolder(v: FileVersion, to: 'folder' | 'copy') {
+    const r = await run(to + v.change, to === 'folder' ? 'put the version in your folder' : 'save a copy', () => daemon.version(ws!.id, file.path, v.change, to));
+    if (!r) return;
+    if (to === 'folder') {
+      toast(`Put back ${name} as of change ${v.change}. It shows as edited: publish it to make it the latest.${r.undo ? ' Your version is in a checkpoint.' : ''}`);
+      onChanged();
+      onClose();
+    } else toast(`Saved a copy: ${r.saved_to}`);
+  }
+
+  const versions = list.data?.versions || [];
+  return (
+    <Dialog title={`Older versions of ${name}`} onClose={onClose} wide>
+      <p className="fine">
+        {list.data && !versions.length && 'This file has no published versions yet.'}
+        {versions.length > 0 && `${plural(versions.length, 'published version')}, newest first. Going back loses nothing: newer versions stay in the history.`}
+        {edited && ' You have edits to this file on this computer: putting a version back saves them in a checkpoint first.'}
+      </p>
+      {list.loading && !list.data && <Loading what="Loading versions" />}
+      {list.error !== undefined && <ErrorNote error={list.error} doing="load the versions" retry={list.reload} />}
+      {versions.length > 0 && (
+        <ul className="versions">
+          {versions.map((v) => {
+            const gone = v.op === 'delete';
+            return (
+              <li key={v.change} className={v.current ? 'cur' : ''}>
+                <div className="vwhen">
+                  <b>Change {v.change}</b>
+                  <small title={dateTime(v.created_at)}>{since(v.created_at)}</small>
+                </div>
+                <div className="vwhat">
+                  <b>{v.message}</b>
+                  <small>
+                    {v.author ? v.author.name : 'Someone'} · {gone ? 'deleted it' : size(v.size)}
+                    {v.branch_id !== branch.id && ` · on ${v.branch_name}`}
+                    {v.current && ' · the latest'}
+                  </small>
+                </div>
+                {!gone && (
+                  <div className="vacts">
+                    <button className="btn sm" onClick={() => downloadFile(project.id, branch.id, file.path, v.change).catch((e) => fail(e, 'download that version'))}>Download</button>
+                    {inFolder && !(v.current && !edited) && (
+                      <button className="btn sm" disabled={!!busy} title="Put this version in your folder in place of the file. Publish it to make it the latest." onClick={() => toFolder(v, 'folder')}>Put back</button>
+                    )}
+                    {!v.current && !protectedBranch && (
+                      <button className="btn sm" disabled={!!busy} onClick={() => setConfirm(v)}>Make latest</button>
+                    )}
+                  </div>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      {confirm && (
+        <div className="notice hold">
+          <p>
+            Make change {confirm.change}&rsquo;s version of {name} the latest for everyone on {branch.name}? It becomes a new change; the version it replaces stays in the history.
+          </p>
+          <div className="actions">
+            <button className="btn" onClick={() => setConfirm(null)}>Cancel</button>
+            <button className="btn pri" disabled={!!busy} onClick={() => makeLatest(confirm)}>{busy === 'latest' ? 'Making it the latest' : 'Make it the latest'}</button>
+          </div>
+        </div>
+      )}
+      <div className="actions">
+        <button className="btn" onClick={onClose}>Done</button>
       </div>
     </Dialog>
   );

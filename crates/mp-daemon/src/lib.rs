@@ -139,6 +139,7 @@ pub async fn run(listen: &str, interval: u64) -> Result<()> {
         .route("/local/workspaces/:id/checkpoints/:cp", get(checkpoint_detail))
         .route("/local/workspaces/:id/rewind", post(rewind))
         .route("/local/workspaces/:id/discard", post(discard))
+        .route("/local/workspaces/:id/versions", get(versions).post(version_action))
         .route("/local/workspaces/:id/move", post(move_folder))
         .route("/local/accounts", get(accounts))
         .route("/local/accounts/login", post(account_login))
@@ -673,6 +674,51 @@ async fn rewind(State(s): State<DState>, Path(id): Path<String>, Json(b): Json<R
     let api = ops::api_for(&ws)?;
     let (undo, n) = checkpoints::rewind(&api, &ws, &b.checkpoint, &b.paths).await?;
     Ok(Json(json!({ "files": n, "undo": undo.map(|c| c.id) })))
+}
+
+#[derive(Deserialize)]
+struct VersionsQuery {
+    path: String,
+}
+
+async fn versions(Path(id): Path<String>, Query(q): Query<VersionsQuery>) -> DResult<Json<Value>> {
+    let ws = find_ws(&id)?;
+    let api = ops::api_for(&ws)?;
+    let list = ops::versions(&api, &ws, &q.path).await?;
+    Ok(Json(json!({ "path": q.path, "versions": list })))
+}
+
+#[derive(Deserialize)]
+struct VersionBody {
+    path: String,
+    change: i64,
+    /// "folder": put it in place of the file; "copy": save a copy beside it; "latest": make it
+    /// the latest on the server and get it.
+    to: String,
+    message: Option<String>,
+}
+
+async fn version_action(State(s): State<DState>, Path(id): Path<String>, Json(b): Json<VersionBody>) -> DResult<Json<Value>> {
+    let mut ws = find_ws(&id)?;
+    let lock = s.lock_for(&ws.config.id).await;
+    let _g = lock.lock().await;
+    let api = ops::api_for(&ws)?;
+    match b.to.as_str() {
+        "folder" => {
+            let r = ops::bring_back_version(&api, &ws, &b.path, b.change).await?;
+            Ok(Json(json!({ "done": "folder", "undo": r.checkpoint.map(|c| c.id) })))
+        }
+        "copy" => {
+            let dest = ops::save_version_copy(&api, &ws, &b.path, b.change, None).await?;
+            Ok(Json(json!({ "done": "copy", "saved_to": display_path(&dest) })))
+        }
+        "latest" => {
+            let c = api.restore_version(&ws.config.project_id, &ws.config.branch_id, &b.path, b.change, b.message.as_deref()).await?;
+            let r = ops::get_latest(&api, &mut ws, |_| {}).await?;
+            Ok(Json(json!({ "done": "latest", "change": c, "kept_yours": r.kept_yours.contains(&b.path) })))
+        }
+        _ => Err(DErr(StatusCode::UNPROCESSABLE_ENTITY, "Choose folder, copy or latest.".into())),
+    }
 }
 
 #[derive(Deserialize)]
