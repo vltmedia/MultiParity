@@ -26,7 +26,7 @@ The full product spec is [docs/SPEC.md](docs/SPEC.md); the HTTP API is [docs/API
 | `crates/mp-daemon` | Background service on 127.0.0.1:18519: local API for the apps, auto-claim on first edit, automatic checkpoints |
 | `crates/mp-cli` | `mp`, the command line (Perforce words work as aliases) |
 | `web/` | The web UI (React), served by the server |
-| `desktop/` | The desktop app for Windows, macOS and Linux (Tauri), with the daemon built in: every project from every account, and per project Your work, Files (claims, older versions), History, Branches and Drafts |
+| `desktop/` | The desktop app for Windows, macOS and Linux (Tauri), with the daemon built in: every project from every account, and per project Your work, Files (claims, older versions), History, Branches and Drafts; system notifications when others publish to your branch or ask for your file, and a tray count of projects with newer files |
 | `design/concepts/` | The UI concept rounds |
 | `scripts/dev/` | Build-host loop and the end-to-end test |
 

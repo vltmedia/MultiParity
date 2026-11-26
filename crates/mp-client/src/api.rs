@@ -88,6 +88,21 @@ impl Api {
         self.send(self.req(Method::DELETE, path)).await
     }
 
+    /// The live event stream (server-sent events) for every organization this account is in.
+    /// Read it with `chunk()`; it stays open until the server or network drops it.
+    pub async fn events(&self) -> Result<reqwest::Response> {
+        let resp = self
+            .http
+            .get(format!("{}/api/events", self.server))
+            .bearer_auth(self.token.as_deref().unwrap_or_default())
+            .header("accept", "text/event-stream")
+            .send()
+            .await
+            .with_context(|| format!("could not reach the server at {}", self.server))?;
+        anyhow::ensure!(resp.status().is_success(), "the server answered {} to the event stream", resp.status());
+        Ok(resp)
+    }
+
     /// Any call, for passing requests through (the desktop app's screens). `path` may carry a
     /// query string.
     pub async fn raw(&self, method: Method, path: &str, body: Option<Value>) -> Result<Value> {

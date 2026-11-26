@@ -388,11 +388,26 @@ function confirmDisconnect(ws, p) {
 // ------------------------------------------------------------------ accounts
 
 function renderAccounts() {
+  loadNotifyPrefs();
   const ul = $("#accts");
   if (!state.accounts.length) { ul.innerHTML = `<li><div><strong>No accounts yet</strong><small>Add one with the form.</small></div></li>`; return; }
   ul.innerHTML = state.accounts.map((a) => `<li><div><strong>${esc(a.label ? `${a.name}, ${a.label}` : a.name)}</strong><small>${esc(a.email)} · ${esc(a.server)}</small></div>
     <button class="btn sm" data-signout="${esc(a.id)}">Sign out</button></li>`).join("");
 }
+
+async function loadNotifyPrefs() {
+  try {
+    const p = await api("/notifications/settings");
+    for (const box of document.querySelectorAll("#notify-prefs input")) box.checked = !!p[box.dataset.pref];
+  } catch (_) {}
+}
+
+$("#notify-prefs").addEventListener("change", async () => {
+  const body = {};
+  for (const box of document.querySelectorAll("#notify-prefs input")) body[box.dataset.pref] = box.checked;
+  try { await api("/notifications/settings", { method: "PUT", body: JSON.stringify(body) }); }
+  catch (e) { alert(e.message); loadNotifyPrefs(); }
+});
 
 $("#login").addEventListener("submit", async (e) => {
   e.preventDefault();

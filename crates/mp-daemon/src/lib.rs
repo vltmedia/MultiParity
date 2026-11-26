@@ -6,6 +6,8 @@
 //! from a signed-in server's web UI, the desktop app, or localhost; otherwise a web page in the
 //! person's browser could drive it.
 
+pub mod notify;
+
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -35,6 +37,8 @@ struct DState {
     last_trim: Arc<Mutex<HashMap<String, Instant>>>,
     /// Why the last automatic checkpoint was skipped or what it left out, per folder.
     notices: Arc<Mutex<HashMap<String, String>>>,
+    /// Notifications for the desktop app (others' changes, requests to release).
+    alerts: notify::Notices,
 }
 
 impl DState {
@@ -116,6 +120,7 @@ pub async fn run(listen: &str, interval: u64) -> Result<()> {
     let addr: std::net::SocketAddr = listen.parse()?;
     anyhow::ensure!(addr.ip().is_loopback(), "The daemon only listens on this computer (127.0.0.1 or ::1), not {listen}.");
     let state = DState::default();
+    state.alerts.clone().spawn();
     let cors = CorsLayer::new()
         .allow_origin(AllowOrigin::predicate(|o: &HeaderValue, _| o.to_str().map(|s| allowed_origin(s, &server_origins())).unwrap_or(false)))
         .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE])
@@ -149,6 +154,9 @@ pub async fn run(listen: &str, interval: u64) -> Result<()> {
         .route("/local/accounts/:id", axum::routing::delete(account_logout))
         .route("/local/accounts/:id/session", get(account_session))
         .route("/local/projects", get(all_projects))
+        .route("/local/notifications", get(notifications))
+        .route("/local/notifications/settings", get(notify_settings).put(set_notify_settings))
+        .route("/local/behind", get(behind))
         .route("/local/connect", post(connect))
         .layer(middleware::from_fn(origin_guard))
         .layer(cors)
@@ -677,6 +685,31 @@ async fn rewind(State(s): State<DState>, Path(id): Path<String>, Json(b): Json<R
     let api = ops::api_for(&ws)?;
     let (undo, n) = checkpoints::rewind(&api, &ws, &b.checkpoint, &b.paths).await?;
     Ok(Json(json!({ "files": n, "undo": undo.map(|c| c.id) })))
+}
+
+#[derive(Deserialize)]
+struct NotificationsQuery {
+    after: Option<u64>,
+}
+
+/// Notifications newer than `after`. Without `after`, none, and `last` to start from.
+async fn notifications(State(s): State<DState>, Query(q): Query<NotificationsQuery>) -> Json<Value> {
+    let (list, last) = s.alerts.since(q.after.unwrap_or(u64::MAX)).await;
+    Json(json!({ "notifications": list, "last": last }))
+}
+
+async fn notify_settings() -> Json<notify::Settings> {
+    Json(notify::Settings::load())
+}
+
+async fn set_notify_settings(Json(b): Json<notify::Settings>) -> DResult<Json<notify::Settings>> {
+    b.save()?;
+    Ok(Json(b))
+}
+
+/// How many files each folder is behind its branch, for folders that are behind.
+async fn behind() -> Json<Value> {
+    Json(json!(notify::behind_counts().await))
 }
 
 #[derive(Deserialize)]

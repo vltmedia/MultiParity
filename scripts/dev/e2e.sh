@@ -492,6 +492,26 @@ curl -fs "${APP[@]}" -X DELETE "$D/workspaces/$WID/server/drafts/$DID" >/dev/nul
 check "deleting the draft" test "$(curl -fs "${APP[@]}" "$D/workspaces/$WID/server/drafts" | jq '[.[] | select(.id=="'"$DID"'")] | length')" = 0
 curl -fs "${APP[@]}" -X POST "$D/workspaces/$WID/branch" -d "{\"branch_id\":\"$BMAIN\"}" >/dev/null
 check "and back on Main the merged file is there" grep -q "app draft" "$B/Docs/app-draft.txt"
+
+step "Notifications: others' changes and requests to release reach the desktop app"
+N0=$(curl -fs "$D/notifications" | jq .last)
+A2="$WORK/alice/Emberfall-notify"
+alice connect Emberfall "$A2" >/dev/null
+printf 'from alice\n' > "$A2/Docs/for-bob.txt"
+alice -C "$A2" publish -m "A note for Bob" Docs/for-bob.txt >/dev/null
+bob -C "$B" claim Docs/notes.txt >/dev/null
+curl -fs -X POST "$SERVER/api/projects/$PID/claims/nudge" -H "authorization: Bearer $TOKEN" -H 'content-type: application/json' -d "{\"branch\":\"$MAIN\",\"path\":\"Docs/notes.txt\"}" >/dev/null
+for i in $(seq 1 30); do [ "$(curl -fs "$D/notifications?after=$N0" | jq '.notifications | length')" -ge 2 ] && break; sleep 0.5; done
+NOTES=$(curl -fs "$D/notifications?after=$N0")
+check "bob is told alice published to his branch" bash -c "echo '$(echo "$NOTES" | jq -r '[.notifications[] | select(.kind=="newer")][0].body')' | grep -q 'published change [0-9]*: A note for Bob'"
+check "and that alice is waiting for his file" bash -c "echo '$(echo "$NOTES" | jq -r '[.notifications[] | select(.kind=="nudge")][0].title')' | grep -q 'is waiting for notes.txt'"
+check "the tray count says bob's folder is behind" test "$(curl -fs "$D/behind" | jq --arg w "$WID" '.[$w]')" -ge 1
+curl -fs -X PUT "$D/notifications/settings" -H 'content-type: application/json' -d '{"newer":false,"nudges":true}' >/dev/null
+printf 'again\n' >> "$A2/Docs/for-bob.txt"
+alice -C "$A2" publish -m "Another note" Docs/for-bob.txt >/dev/null
+sleep 2
+check "turning off change notifications stops them" test "$(curl -fs "$D/notifications?after=$(echo "$NOTES" | jq .last)" | jq '[.notifications[] | select(.kind=="newer")] | length')" = 0
+bob -C "$B" release Docs/notes.txt >/dev/null
 kill $DPID 2>/dev/null || true
 
 step "Backups: back up, restore into a fresh database and storage, and serve from it"

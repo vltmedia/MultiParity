@@ -11,6 +11,7 @@ use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::TrayIconBuilder;
 use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder, WindowEvent};
 use tauri_plugin_dialog::DialogExt;
+use tauri_plugin_notification::NotificationExt;
 
 const DAEMON: &str = "127.0.0.1:18519";
 
@@ -86,6 +87,51 @@ fn reveal_path(path: String) -> Result<(), String> {
     tauri_plugin_opener::reveal_item_in_dir(p).map_err(|e| e.to_string())
 }
 
+/// Follow the daemon's notifications: show each as a system notification, and keep the tray's
+/// tooltip and "Get latest" line saying how many projects have newer files.
+async fn follow_notifications(app: AppHandle, latest_item: MenuItem<tauri::Wry>) {
+    let http = reqwest::Client::builder().timeout(std::time::Duration::from_secs(30)).build().expect("http client");
+    let base = format!("http://{DAEMON}/local");
+    let mut last: Option<u64> = None;
+    let mut tick = 0u64;
+    loop {
+        tokio::time::sleep(std::time::Duration::from_secs(4)).await;
+        let url = match last {
+            Some(n) => format!("{base}/notifications?after={n}"),
+            None => format!("{base}/notifications"),
+        };
+        if let Ok(r) = http.get(&url).send().await {
+            if let Ok(v) = r.json::<serde_json::Value>().await {
+                if last.is_some() {
+                    for n in v["notifications"].as_array().into_iter().flatten() {
+                        let _ = app.notification().builder().title(n["title"].as_str().unwrap_or("MultiParity")).body(n["body"].as_str().unwrap_or_default()).show();
+                    }
+                }
+                last = v["last"].as_u64().or(last);
+            }
+        }
+        // The "newer files" count every minute (one small request per synced folder).
+        if tick % 15 == 0 {
+            if let Ok(r) = http.get(format!("{base}/behind")).send().await {
+                if let Ok(v) = r.json::<serde_json::Map<String, serde_json::Value>>().await {
+                    let projects = v.len();
+                    let (label, tip) = if projects == 0 {
+                        ("Get latest for all projects".to_string(), "MultiParity: up to date".to_string())
+                    } else {
+                        let p = if projects == 1 { "1 project has".to_string() } else { format!("{projects} projects have") };
+                        (format!("Get latest for all ({p} newer files)"), format!("MultiParity: {p} newer files"))
+                    };
+                    let _ = latest_item.set_text(label);
+                    if let Some(t) = app.tray_by_id("main") {
+                        let _ = t.set_tooltip(Some(tip));
+                    }
+                }
+            }
+        }
+        tick += 1;
+    }
+}
+
 fn show_main(app: &AppHandle) {
     if let Some(w) = app.get_webview_window("main") {
         let _ = w.show();
@@ -111,6 +157,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_notification::init())
         .invoke_handler(tauri::generate_handler![pick_folder, default_root, open_server_page, open_path, reveal_path])
         .setup(|app| {
             // The daemon runs inside the app unless the command-line one is already running.
@@ -139,6 +186,7 @@ pub fn run() {
                 _ => {}
             })
             .build(app)?;
+            tauri::async_runtime::spawn(follow_notifications(app.handle().clone(), latest.clone()));
             Ok(())
         })
         .on_window_event(|window, event| {

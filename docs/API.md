@@ -268,6 +268,9 @@ web UI origin and from the desktop app. No auth: it is bound to loopback only.
 | POST | `/local/workspaces/{id}/drafts/{draft}/restore` | | `{files}`: the draft's files written into the folder (current work checkpointed first) |
 | POST | `/local/workspaces/{id}/branch` | `{branch_id}` | `{branch, downloaded, removed, workspace}`; `409` while there is unpublished work |
 | GET, POST | `/local/workspaces/{id}/versions` | `path` / `{path, change, to: 'folder'\|'copy'\|'latest'}` | versions, or what was done |
+| GET | `/local/notifications` | `after?` | `{notifications: Notice[], last}`: newer than `after` (none without it; start from `last`). `Notice = {id, kind: 'newer'\|'nudge', title, body, workspace_id?, project_id?}`. The daemon follows each account's `/api/events` and keeps others' publishes and merges to a branch one of your folders is on, and requests to release your claimed files. |
+| GET, PUT | `/local/notifications/settings` | `{newer, nudges}` | which kinds to keep (saved in the config folder) |
+| GET | `/local/behind` | | `{workspace_id: files behind}` for folders whose branch has newer files |
 | any | `/local/workspaces/{id}/server/{rest}` | passed through | the server's `/api/projects/{project}/{rest}` with the folder's account. Only from the app itself (or that server's web UI); server errors come back unchanged. The desktop app's Files, History, Branches and Drafts tabs use it. `MP_DAEMON_DEV_ORIGIN` allows one more origin for working on those pages in a browser. |
 | POST | `/local/workspaces/{id}/disconnect` | | `{root}` (files stay) |
 | GET | `/local/accounts` | | `Array<{id, server, email, name, label?}>` |

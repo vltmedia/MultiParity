@@ -296,3 +296,6 @@ dialog .pathrow input { flex: 1; border: var(--bw) solid var(--btn-line); paddin
 .pick li.clash label { display: flex; gap: 6px; align-items: center; border: 0; padding: 0; white-space: nowrap; }
 .field select { border: var(--bw) solid var(--btn-line); background: var(--card); padding: 9px 12px; border-radius: var(--r-btn); color: var(--ink); }
 @media (max-width: 860px) { .flist li { grid-template-columns: 22px minmax(0, 1fr) 70px 28px; } .flist .st { display: none; } .ftools { flex-wrap: wrap; } }
+.panel h2.sub2 { margin-top: 22px; }
+#notify-prefs { display: flex; flex-direction: column; gap: 10px; font-size: 13.5px; }
+#notify-prefs label { flex-direction: row; align-items: center; gap: 10px; font-weight: 400; }
