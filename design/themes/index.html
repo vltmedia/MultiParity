@@ -1,0 +1,627 @@
+<meta charset="utf-8">
+<title>MultiParity Themes</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,700&family=Geist:wght@400;600&family=Manrope:wght@400;700&family=DM+Sans:wght@400;700&family=Space+Grotesk:wght@400;700&family=Archivo:wght@400;800&family=Archivo+Black&family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Mono:wght@400;600&family=VT323&family=Share+Tech+Mono&family=Orbitron:wght@500;800&family=Rajdhani:wght@500;700&family=Chakra+Petch:wght@400;700&family=Michroma&family=Oxanium:wght@400;700&family=Martian+Mono:wght@400;700&family=Unbounded:wght@400;800&family=Syne:wght@400;800&family=Big+Shoulders+Display:wght@500;900&family=Sora:wght@400;700&family=Instrument+Sans:wght@400;700&family=JetBrains+Mono:wght@400;600&family=Roboto:wght@400;500;700&family=Roboto+Mono:wght@400;500&family=Open+Sans:wght@400;600;700&family=Press+Start+2P&family=Caveat:wght@500;700&family=Patrick+Hand&family=Permanent+Marker&family=Gochi+Hand&family=Bangers&family=Fredoka:wght@400;600&family=Jost:wght@400;800&family=Rubik:wght@400;800&family=Creepster&family=Special+Elite&family=Black+Ops+One&family=Fraunces:wght@400;700&family=Nunito:wght@400;800&display=swap">
+<style>
+/* Layout: page chrome is a quiet neutral workbench; the 30 app miniatures carry all the colour.
+   A large live preview of the focused theme sits on top, the full set in a grid below. */
+:root {
+  --bg: #f3f3f5; --fg: #17171c; --mute: #686872; --line: #dcdce2; --panel: #ffffff; --focus: #4b39ef;
+  --keep: #0b7a52; --keep-bg: #e3f5ec;
+  --ui: "Instrument Sans", "Segoe UI", system-ui, sans-serif;
+  --ui-display: "Bricolage Grotesque", "Instrument Sans", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #121216; --fg: #ececf1; --mute: #9a9aa6; --line: #2c2c34; --panel: #1b1b21; --focus: #9d92ff;
+  --keep: #5fd6a2; --keep-bg: #12322a; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #121216; --fg: #ececf1; --mute: #9a9aa6; --line: #2c2c34; --panel: #1b1b21; --focus: #9d92ff;
+  --keep: #5fd6a2; --keep-bg: #12322a; color-scheme: dark }
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font: 15px/1.45 var(--ui); margin: 0; }
+.wrap { max-width: 1320px; margin: 0 auto; padding-block: 28px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+h1 { font: 700 clamp(30px, 4vw, 44px)/1.05 var(--ui-display); letter-spacing: -0.03em; margin: 0; text-wrap: balance; }
+.intro { display: flex; flex-wrap: wrap; gap: 12px 32px; align-items: end; justify-content: space-between; margin-bottom: 22px; }
+.intro p { color: var(--mute); margin: 8px 0 0; max-width: 62ch; }
+.picks { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; font-size: 14px; }
+.picks b { font-weight: 700; }
+.picks .state { color: var(--mute); }
+button { font: inherit; color: inherit; cursor: pointer; }
+.tbtn { border: 1px solid var(--line); background: var(--panel); padding: 7px 12px; border-radius: 8px; font-weight: 600; font-size: 13.5px; }
+.tbtn:hover { border-color: var(--fg); }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+/* Focused preview */
+.stage { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 22px; align-items: start; margin-bottom: 34px; }
+.stage .info { display: flex; flex-direction: column; gap: 10px; position: sticky; top: calc(env(safe-area-inset-top, 0px) + 16px); }
+.stage .info .grp { font-size: 12.5px; font-weight: 600; color: var(--mute); }
+.stage .info h2 { font: 700 26px/1.1 var(--ui-display); letter-spacing: -0.02em; margin: 0; }
+.stage .info p { margin: 0; color: var(--mute); }
+.stage .info dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 4px 0 0; font-size: 13px; }
+.stage .info dt { color: var(--mute); } .stage .info dd { margin: 0; }
+.sw { display: flex; gap: 0; height: 26px; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.sw i { flex: 1; }
+.keep { border: 1.5px solid var(--line); background: var(--panel); padding: 10px 14px; border-radius: 10px; font-weight: 700; display: flex; align-items: center; gap: 8px; justify-content: center; }
+.keep[aria-pressed="true"] { background: var(--keep-bg); border-color: var(--keep); color: var(--keep); }
+.nav { display: flex; gap: 8px; }
+.nav .tbtn { flex: 1; }
+
+/* Filters */
+.filters { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+.filters button { border: 1px solid var(--line); background: var(--panel); padding: 6px 12px; border-radius: 999px; font-size: 13.5px; font-weight: 600; }
+.filters button[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+
+/* Grid of miniatures */
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 18px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; min-width: 0; }
+.card.on { border-color: var(--focus); box-shadow: 0 0 0 2px var(--focus); }
+.card .shot { display: block; width: 100%; padding: 0; border: 0; background: none; }
+.card .meta { display: flex; gap: 10px; align-items: center; padding: 10px 12px; border-top: 1px solid var(--line); }
+.card .meta div { flex: 1; min-width: 0; }
+.card .meta strong { display: block; font-size: 14.5px; }
+.card .meta small { color: var(--mute); font-size: 12.5px; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card .num { font: 700 12px var(--ui); color: var(--mute); font-variant-numeric: tabular-nums; }
+.card .keep { padding: 6px 10px; border-radius: 8px; font-size: 13px; }
+
+/* ---------------------------------------------------------------- The app miniature.
+   Drawn at a fixed 960 x 580 and scaled to fit (--s), entirely from per-theme variables. */
+.fit { position: relative; width: 100%; aspect-ratio: 960 / 580; overflow: hidden; }
+.mini { position: absolute; left: 0; top: 0; width: 960px; height: 580px; transform: scale(var(--s, .3)); transform-origin: 0 0;
+  display: grid; grid-template-columns: 210px 1fr; font-family: var(--font); color: var(--ink); background: var(--paper);
+  background-image: var(--bgimg, none); background-size: var(--bgsize, auto); text-align: left; overflow: hidden; }
+.mini * { box-sizing: border-box; }
+.m-side { background: var(--side); color: var(--sideInk); padding: 18px 16px; display: flex; flex-direction: column; gap: 16px; border-right: var(--sideBorder, 0); }
+.m-logo { font: var(--logoWeight, 700) 21px/1 var(--display); letter-spacing: var(--logoTrack, -0.03em); text-transform: var(--logoCase, none); }
+.m-nav div { padding: 5px 8px; margin: 0 -8px; font-weight: 500; font-size: 14px; color: var(--sideMute); border-radius: var(--br); }
+.m-nav div.cur { color: var(--sideInk); background: var(--sideSel, transparent); box-shadow: var(--sideSelBar, none); }
+.m-here h4 { margin: 0 0 4px; font-size: 11.5px; font-weight: 600; color: var(--sideMute); text-transform: var(--labelCase, none); letter-spacing: var(--labelTrack, 0); }
+.m-here div { display: flex; justify-content: space-between; font-size: 13.5px; padding: 4px 0; }
+.m-here b { font-size: 11px; background: var(--acc); color: var(--accInk); padding: 1px 6px; border-radius: var(--br); }
+.m-tot { background: var(--sideCard); padding: 10px 12px; border-radius: var(--r); font-size: 12px; color: var(--sideMute); }
+.m-tot strong { display: block; color: var(--sideInk); font-size: 18px; font-family: var(--display); }
+.m-conn { margin-top: auto; font-size: 11.5px; color: var(--sideMute); }
+.m-main { padding: 22px 24px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.m-head { display: flex; align-items: flex-end; gap: 16px; }
+.m-head .back { font-size: 12px; font-weight: 600; color: var(--mute); }
+.m-head h1 { font: var(--h1Weight, 700) 34px/1 var(--display); letter-spacing: var(--h1Track, -0.035em); margin: 4px 0 0; text-transform: var(--h1Case, none); text-shadow: var(--glowText, none); color: var(--h1Ink, var(--ink)); }
+.m-head p { margin: 6px 0 0; font-size: 12.5px; color: var(--mute); }
+.m-acts { margin-left: auto; display: flex; gap: 8px; }
+.m-btn { padding: 8px 13px; font-weight: 600; font-size: 12.5px; border: var(--bw) solid var(--btnLine, var(--ink)); background: var(--card); color: var(--ink); border-radius: var(--br); white-space: nowrap; box-shadow: var(--bsh, none); clip-path: var(--chamfer, none); }
+.m-btn.pri { background: var(--acc); border-color: var(--acc); color: var(--accInk); box-shadow: var(--bshPri, var(--bsh, none)); }
+.m-note { border-left: 4px solid var(--hold); background: var(--holdBg); padding: 8px 12px; font-size: 12.5px; border-radius: var(--rSmall, 0); }
+.m-work { display: grid; grid-template-columns: 1fr 250px; gap: 18px; align-items: start; }
+.m-bar { display: flex; align-items: baseline; gap: 10px; margin-bottom: 6px; }
+.m-bar h2 { font: 700 17px var(--display); margin: 0; letter-spacing: -0.01em; text-transform: var(--h2Case, none); }
+.m-bar span { color: var(--mute); font-size: 12px; }
+.m-files { background: var(--card); border: var(--lw, 1px) solid var(--line); border-radius: var(--r); overflow: hidden; box-shadow: var(--listShadow, none); }
+.m-files div.f { display: grid; grid-template-columns: 14px 56px 1fr auto; gap: 10px; align-items: center; padding: 8px 10px; border-top: 1px solid var(--line); font-size: 12.5px; }
+.m-files div.f:first-child { border-top: 0; }
+.m-files .off { opacity: .45; }
+.m-ck { width: 14px; height: 14px; border: 1.5px solid var(--ink); border-radius: var(--ckr, 0); background: var(--ink); }
+.m-files .off .m-ck { background: transparent; }
+.m-tag { font-size: 10.5px; font-weight: 700; text-align: center; border: 1px solid currentColor; padding: 1px 0; border-radius: var(--br); }
+.m-tag.ed { color: var(--ink); } .m-tag.nw { color: var(--new); } .m-tag.dl { color: var(--warn); }
+.m-name strong { display: block; font-weight: 600; font-family: var(--fileFont, inherit); }
+.m-name small { color: var(--mute); font-size: 11px; }
+.m-size { color: var(--mute); font-size: 11.5px; font-family: var(--mono); display: flex; gap: 8px; }
+.m-size em { font-style: normal; color: var(--hold); font-weight: 600; font-family: var(--font); }
+.m-pub { background: var(--card); border: var(--pw, 1.5px) solid var(--panelLine, var(--ink)); border-radius: var(--r); padding: 14px; display: flex; flex-direction: column; gap: 9px; box-shadow: var(--sh, none); clip-path: var(--chamferBig, none); backdrop-filter: var(--blur, none); }
+.m-pub h2 { font: 700 18px var(--display); margin: 0; text-transform: var(--h2Case, none); }
+.m-pub p { margin: 0; font-size: 11.5px; color: var(--mute); }
+.m-ta { border: 1.5px solid var(--line); border-radius: var(--rSmall, 0); padding: 8px; font-size: 12px; min-height: 54px; background: var(--field, transparent); }
+.m-pub .m-btn.pri { text-align: center; padding: 10px; font-size: 13.5px; }
+.m-two { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.m-two .m-btn { text-align: center; }
+.m-cps .row { display: grid; grid-template-columns: 120px 1fr auto; gap: 12px; align-items: center; padding: 8px 10px; background: var(--card); border: var(--lw, 1px) solid var(--line); border-radius: var(--r); font-size: 12.5px; }
+.m-cps small { color: var(--mute); font-size: 11px; display: block; }
+.m-cps strong { font-weight: 600; }
+.m-toast { position: absolute; right: 18px; bottom: 16px; background: var(--toastBg, var(--ink)); color: var(--toastInk, var(--paper)); padding: 8px 12px; font-size: 12px; border-radius: var(--br); box-shadow: var(--toastSh, none); }
+
+/* Effects some themes use */
+.fx-scan::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(0deg, rgba(0,0,0,.22) 0 1px, transparent 1px 3px); mix-blend-mode: multiply; }
+.fx-glow .m-btn.pri, .fx-glow .m-here b { box-shadow: 0 0 10px var(--acc), 0 0 22px color-mix(in srgb, var(--acc) 50%, transparent); }
+.fx-glow .m-pub, .fx-glow .m-files { box-shadow: 0 0 0 1px var(--line), 0 0 18px color-mix(in srgb, var(--acc) 22%, transparent); }
+.fx-glass .m-side { backdrop-filter: blur(18px); }
+.fx-chrome .m-btn.pri { background: linear-gradient(180deg, #ffffff, #c9cdd6 45%, #9aa1ad 55%, #e8ebf0); color: #121620; border-color: #8d94a1; }
+.fx-chrome .m-logo { background: linear-gradient(90deg, #6f7cff, #ff7ad9, #59f2ff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+/* Glass: panels blur and brighten whatever is behind them (the theme's background art). */
+.fx-frost .m-side, .fx-frost .m-files, .fx-frost .m-pub, .fx-frost .m-cps .row, .fx-frost .m-note, .fx-frost .m-tot, .fx-frost .m-btn:not(.pri), .fx-frost .m-toast {
+  -webkit-backdrop-filter: blur(var(--blurAmt, 18px)) saturate(var(--sat, 1.5)); backdrop-filter: blur(var(--blurAmt, 18px)) saturate(var(--sat, 1.5)); }
+.fx-frost .m-files, .fx-frost .m-cps .row, .fx-frost .m-note, .fx-frost .m-tot { box-shadow: var(--sh); }
+.fx-frost .m-note { border: 1px solid var(--line); border-left-width: 4px; border-left-color: var(--hold); }
+.fx-frost .m-ta { background: var(--field, rgba(255,255,255,.12)); border-color: var(--line); }
+/* Liquid glass: a bright specular rim on top and a faint one below. */
+.fx-liquid .m-files, .fx-liquid .m-pub, .fx-liquid .m-cps .row, .fx-liquid .m-btn, .fx-liquid .m-side, .fx-liquid .m-toast {
+  border-color: rgba(255,255,255,.45); box-shadow: inset 0 1px 1px rgba(255,255,255,.8), inset 0 -1px 1px rgba(255,255,255,.2), 0 10px 30px rgba(0,0,30,.22); }
+.fx-liquid .m-btn.pri { box-shadow: inset 0 1px 1px #ffffff, 0 6px 18px rgba(0,0,30,.25); }
+/* Aero gloss: the 2007 glossy button, a bright upper half over a deeper lower half. */
+.fx-gloss .m-btn { background-image: linear-gradient(180deg, rgba(255,255,255,.75) 0%, rgba(255,255,255,.25) 49%, rgba(255,255,255,0) 50%, rgba(255,255,255,.2) 100%); }
+.fx-gloss .m-btn.pri { background: linear-gradient(180deg, color-mix(in srgb, var(--acc) 35%, #ffffff) 0%, color-mix(in srgb, var(--acc) 75%, #ffffff) 48%, var(--acc) 50%, color-mix(in srgb, var(--acc) 75%, #000000) 100%);
+  border-color: color-mix(in srgb, var(--acc) 70%, #000000); text-shadow: 0 1px 1px rgba(0,0,0,.35); box-shadow: inset 0 1px 0 rgba(255,255,255,.85), 0 2px 6px rgba(0,40,90,.3); }
+.fx-gloss .m-here b, .fx-gloss .m-tag { background-image: linear-gradient(180deg, rgba(255,255,255,.55), rgba(255,255,255,0) 55%); }
+.fx-gloss .m-logo { text-shadow: 0 1px 0 rgba(255,255,255,.8), 0 0 12px rgba(255,255,255,.5); }
+.fx-gloss .m-head h1 { text-shadow: var(--glowText, 0 1px 0 rgba(255,255,255,.8)); }
+
+/* 90s desktop: raised bevels, and a title bar on the publish window. */
+.fx-bevel .m-btn, .fx-bevel .m-pub, .fx-bevel .m-files, .fx-bevel .m-cps .row, .fx-bevel .m-tot {
+  border: 2px solid; border-color: #ffffff #404040 #404040 #ffffff; box-shadow: inset -1px -1px 0 #808080, inset 1px 1px 0 #dfdfdf; }
+.fx-bevel .m-btn.pri { border-color: #ffffff #000000 #000000 #ffffff; background: var(--card); color: var(--ink); outline: 1px dotted #000; outline-offset: -5px; }
+.fx-bevel .m-pub h2 { background: linear-gradient(90deg, #000080, #1084d0); color: #ffffff; margin: -14px -14px 2px; padding: 4px 8px; font-size: 13px; }
+.fx-bevel .m-ta { border: 2px solid; border-color: #808080 #ffffff #ffffff #808080; background: #ffffff; }
+.fx-bevel .m-head h1 { color: #ffffff; text-shadow: 2px 2px 0 #000000; }
+.fx-bevel .m-head p, .fx-bevel .m-head .back { color: #e0ffff; }
+.fx-bevel .m-bar h2 { color: #ffffff; } .fx-bevel .m-bar span { color: #d0f0f0; }
+/* Sticky notes: panels as paper notes pinned slightly crooked, with tape. */
+.fx-sticky .m-pub { transform: rotate(1.4deg); position: relative; }
+.fx-sticky .m-files { transform: rotate(-0.5deg); }
+.fx-sticky .m-cps .row { transform: rotate(0.8deg); }
+.fx-sticky .m-note { transform: rotate(-0.8deg); background: #fff59d; color: #3b2a00; }
+.fx-sticky .m-pub::before { content: ""; position: absolute; top: -10px; left: 50%; width: 70px; height: 20px; margin-left: -35px; background: rgba(255,255,255,.55); transform: rotate(-3deg); box-shadow: 0 1px 2px rgba(0,0,0,.15); }
+.fx-sticky .m-head h1, .fx-sticky .m-bar h2 { color: #ffffff; text-shadow: 0 2px 0 rgba(0,0,0,.25); }
+.fx-sticky .m-head p, .fx-sticky .m-head .back, .fx-sticky .m-bar span { color: #fff4e0; }
+/* Light text on the background, dark on the panels (when the two differ a lot). */
+.fx-split .m-head h1 { color: var(--onPaper); } .fx-split .m-head p, .fx-split .m-head .back, .fx-split .m-bar h2, .fx-split .m-bar span { color: var(--onPaperMute, var(--onPaper)); }
+
+@media (max-width: 900px) { .stage { grid-template-columns: 1fr; } .stage .info { position: static; } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <div class="intro">
+    <div>
+      <h1>MultiParity themes</h1>
+      <p>Eighty-five looks for the desktop and web apps: clean macOS-style, hyper tech, loud 2021 contrast, the dark editor themes developers already use, glass from frosted to Frutiger Aero, and a pile of novelty ones. Each one is the real Your work screen. Click a theme to see it large, and use Keep on the ones you want in the app.</p>
+    </div>
+    <div class="picks" aria-live="polite">
+      <span><b id="pick-count">0</b> kept</span>
+      <span class="state" id="save-state">Loading your picks…</span>
+      <button class="tbtn" id="copy" type="button">Copy list</button>
+    </div>
+  </div>
+
+  <section class="stage" aria-label="Selected theme">
+    <div class="fit" id="big-fit"></div>
+    <div class="info">
+      <span class="grp" id="i-grp"></span>
+      <h2 id="i-name"></h2>
+      <p id="i-desc"></p>
+      <div class="sw" id="i-sw" aria-hidden="true"></div>
+      <dl>
+        <dt>Type</dt><dd id="i-type"></dd>
+        <dt>Corners</dt><dd id="i-corners"></dd>
+        <dt>Surface</dt><dd id="i-surface"></dd>
+      </dl>
+      <button class="keep" id="i-keep" type="button" aria-pressed="false">Keep this theme</button>
+      <div class="nav">
+        <button class="tbtn" id="prev" type="button">Previous</button>
+        <button class="tbtn" id="next" type="button">Next</button>
+      </div>
+    </div>
+  </section>
+
+  <div class="filters" role="toolbar" aria-label="Filter themes" id="filters"></div>
+  <div class="grid" id="grid"></div>
+</div>
+
+<template id="mini-tpl">
+  <div class="mini">
+    <aside class="m-side">
+      <div class="m-logo">MultiParity</div>
+      <div class="m-nav"><div class="cur">Projects</div><div>Accounts</div></div>
+      <div class="m-here"><h4>On this computer</h4><div><span>Emberfall</span><b>4</b></div><div><span>Tidewrack</span></div></div>
+      <div class="m-tot"><strong>61.5 MB</strong>on this computer, from 2 projects</div>
+      <div class="m-conn">Syncing on this computer</div>
+    </aside>
+    <main class="m-main">
+      <div class="m-head">
+        <div><div class="back">Projects</div><h1>Emberfall</h1><p>UAI Studio · branch Main · D:\Work\Emberfall</p></div>
+        <div class="m-acts"><span class="m-btn pri">Get latest (3 newer)</span><span class="m-btn">Open on the web</span></div>
+      </div>
+      <div class="m-note">Sana is waiting for hero_body.fbx. You have held it since 9:40.</div>
+      <div class="m-work">
+        <div>
+          <div class="m-bar"><h2>Your changes</h2><span>4 files, 2 ignored</span></div>
+          <div class="m-files">
+            <div class="f"><i class="m-ck"></i><span class="m-tag ed">Edited</span><span class="m-name"><strong>hero_body.fbx</strong><small>Characters/Hero</small></span><span class="m-size"><em>Claimed</em>48.2 MB</span></div>
+            <div class="f"><i class="m-ck"></i><span class="m-tag nw">New</span><span class="m-name"><strong>hero_body_normal_v2.png</strong><small>Characters/Hero</small></span><span class="m-size">12.6 MB</span></div>
+            <div class="f off"><i class="m-ck"></i><span class="m-tag nw">New</span><span class="m-name"><strong>shot_0001.exr</strong><small>renders</small></span><span class="m-size">88.0 MB</span></div>
+            <div class="f"><i class="m-ck"></i><span class="m-tag dl">Deleted</span><span class="m-name"><strong>wolf_howl_03.wav</strong><small>Audio</small></span><span class="m-size"></span></div>
+          </div>
+          <div class="m-cps" style="margin-top:12px">
+            <div class="m-bar"><h2>Checkpoints</h2></div>
+            <div class="row"><div><strong>6 min ago</strong><small>Today 9:52</small></div><div><strong>before fur pass</strong><small>3 files · On the server</small></div><span class="m-btn">Rewind…</span></div>
+          </div>
+        </div>
+        <div class="m-pub">
+          <h2>Publish</h2>
+          <p>3 files going to Main, 60.8 MB to send.</p>
+          <div class="m-ta">Wolf fur pass and the new hero normal map</div>
+          <span class="m-btn pri">Publish 3 files</span>
+          <div class="m-two"><span class="m-btn">Save checkpoint</span><span class="m-btn">Discard…</span></div>
+          <p>Publishing releases your claims on these files.</p>
+        </div>
+      </div>
+    </main>
+    <div class="m-toast">Published change 4813.</div>
+  </div>
+</template>
+
+<script>
+// Each theme: colours, type, corners, borders and shadows, plus optional effects.
+// c = [side, sideInk, sideMute, paper, card, ink, mute, line, acc, accInk, hold, new, warn]
+const T = [
+  // ---- Clean
+  { id: "aqua", name: "Aqua Light", grp: "Clean", desc: "macOS-style light: soft greys, system blue, gentle rounded corners.", font: "-apple-system, 'SF Pro Text', 'Segoe UI Variable', 'Instrument Sans', system-ui, sans-serif", display: "-apple-system, 'SF Pro Display', 'Segoe UI Variable Display', 'Instrument Sans', system-ui, sans-serif", mono: "'SF Mono', 'IBM Plex Mono', monospace",
+    c: ["#e9e9ee", "#1d1d1f", "#6e6e73", "#f5f5f7", "#ffffff", "#1d1d1f", "#6e6e73", "#e3e3e8", "#0a84ff", "#ffffff", "#bf5af2", "#28a745", "#ff3b30"], r: 10, br: 7, bw: "1px", btnLine: "#d2d2d7", panelLine: "#e3e3e8", pw: "1px", sh: "0 6px 24px rgba(0,0,0,.08)", sideSel: "rgba(0,0,0,.07)", holdBg: "#f6efff", ckr: "4px", corners: "Rounded, 10 px", surface: "Soft shadows" },
+  { id: "graphite", name: "Graphite Dark", grp: "Clean", desc: "macOS-style dark: layered charcoal, crisp blue, quiet shadows.", font: "-apple-system, 'SF Pro Text', 'Segoe UI Variable', 'Instrument Sans', system-ui, sans-serif", display: "-apple-system, 'SF Pro Display', 'Segoe UI Variable Display', 'Instrument Sans', system-ui, sans-serif", mono: "'SF Mono', 'IBM Plex Mono', monospace",
+    c: ["#2a2a2d", "#f5f5f7", "#98989d", "#1c1c1e", "#2c2c2e", "#f5f5f7", "#98989d", "#3a3a3c", "#0a84ff", "#ffffff", "#bf5af2", "#30d158", "#ff453a"], r: 10, br: 7, bw: "1px", btnLine: "#48484a", panelLine: "#3a3a3c", pw: "1px", sh: "0 8px 28px rgba(0,0,0,.45)", sideSel: "rgba(255,255,255,.08)", holdBg: "#2d2438", ckr: "4px", corners: "Rounded, 10 px", surface: "Soft shadows" },
+  { id: "mint", name: "Cupertino Mint", grp: "Clean", desc: "iOS-flavoured: frosted sidebar, mint green, generous rounding.", font: "-apple-system, 'SF Pro Text', 'Segoe UI Variable', 'DM Sans', system-ui, sans-serif", display: "-apple-system, 'SF Pro Rounded', 'DM Sans', system-ui, sans-serif", mono: "'SF Mono', 'IBM Plex Mono', monospace",
+    c: ["rgba(240,246,244,.75)", "#10231d", "#5c6f69", "#f4f8f6", "#ffffff", "#10231d", "#5c6f69", "#dfe9e5", "#00a67e", "#ffffff", "#5e5ce6", "#00a67e", "#ff3b30"], r: 16, br: 12, bw: "1px", btnLine: "#d5e2dd", panelLine: "#dfe9e5", pw: "1px", sh: "0 10px 30px rgba(16,35,29,.08)", sideSel: "rgba(0,166,126,.12)", holdBg: "#eeeefe", ckr: "50%", fx: ["fx-glass"], corners: "Very rounded, 16 px", surface: "Frosted glass" },
+  { id: "sonoma", name: "Sonoma Rose", grp: "Clean", desc: "Lavender-grey with a rose accent, like a calm macOS wallpaper day.", font: "'Sora', -apple-system, 'Segoe UI', system-ui, sans-serif", display: "'Sora', -apple-system, system-ui, sans-serif", mono: "'IBM Plex Mono', monospace",
+    c: ["#e8e4f0", "#26212f", "#736c80", "#f2f0f6", "#ffffff", "#26212f", "#736c80", "#e2dfea", "#ff375f", "#ffffff", "#7d5cff", "#1f9d6b", "#d70015"], r: 12, br: 9, bw: "1px", btnLine: "#d9d4e3", panelLine: "#e2dfea", pw: "1px", sh: "0 8px 26px rgba(60,40,90,.09)", sideSel: "rgba(255,55,95,.12)", holdBg: "#f1edff", ckr: "5px", corners: "Rounded, 12 px", surface: "Soft shadows" },
+  { id: "paper", name: "Paper White", grp: "Clean", desc: "Pure white and black, hairlines only. Nothing competes with your files.", font: "'Geist', 'Instrument Sans', system-ui, sans-serif", display: "'Geist', system-ui, sans-serif", mono: "'IBM Plex Mono', monospace",
+    c: ["#ffffff", "#000000", "#737373", "#ffffff", "#ffffff", "#000000", "#737373", "#ebebeb", "#000000", "#ffffff", "#000000", "#0a7d33", "#d00000"], r: 6, br: 6, bw: "1px", btnLine: "#e0e0e0", panelLine: "#ebebeb", pw: "1px", sh: "none", sideBorder: "1px solid #ebebeb", sideSel: "#f2f2f2", holdBg: "#f5f5f5", ckr: "3px", corners: "Slightly rounded, 6 px", surface: "Flat, hairlines" },
+  { id: "midnight", name: "Midnight Glass", grp: "Clean", desc: "Deep navy behind translucent panels, a cool cyan accent.", font: "'Manrope', -apple-system, 'Segoe UI', system-ui, sans-serif", display: "'Manrope', system-ui, sans-serif", mono: "'IBM Plex Mono', monospace",
+    c: ["rgba(20,28,56,.72)", "#e8eeff", "#8e9ac0", "#0b1020", "rgba(255,255,255,.06)", "#e8eeff", "#8e9ac0", "rgba(255,255,255,.12)", "#64d2ff", "#04121f", "#a78bfa", "#4ade80", "#fb7185"], r: 14, br: 10, bw: "1px", btnLine: "rgba(255,255,255,.18)", panelLine: "rgba(255,255,255,.14)", pw: "1px", sh: "0 12px 40px rgba(0,0,0,.5)", sideSel: "rgba(100,210,255,.14)", holdBg: "rgba(167,139,250,.12)", ckr: "5px", bgimg: "radial-gradient(900px 500px at 80% -10%, #22316b 0, transparent 60%), radial-gradient(700px 420px at 10% 110%, #2b1c55 0, transparent 60%)", fx: ["fx-glass"], blur: "blur(14px)", corners: "Rounded, 14 px", surface: "Translucent glass" },
+  { id: "fjord", name: "Fjord", grp: "Clean", desc: "Cool blue-grey and teal, crisp and quiet for long sessions.", font: "'Manrope', 'Segoe UI', system-ui, sans-serif", display: "'Manrope', system-ui, sans-serif", mono: "'IBM Plex Mono', monospace",
+    c: ["#dfe7ec", "#14232c", "#5f717c", "#eef3f6", "#ffffff", "#14232c", "#5f717c", "#d6e0e6", "#0f7c8c", "#ffffff", "#6a5acd", "#2e8b57", "#c0392b"], r: 8, br: 6, bw: "1px", btnLine: "#c9d5dc", panelLine: "#d6e0e6", pw: "1px", sh: "0 4px 16px rgba(20,35,44,.07)", sideSel: "rgba(15,124,140,.12)", holdBg: "#eeecfa", ckr: "3px", corners: "Rounded, 8 px", surface: "Soft shadows" },
+  { id: "neutral", name: "Studio Neutral", grp: "Clean", desc: "Mid-grey workspace that keeps colour judgement honest, with an amber accent.", font: "'DM Sans', 'Segoe UI', system-ui, sans-serif", display: "'DM Sans', system-ui, sans-serif", mono: "'IBM Plex Mono', monospace",
+    c: ["#dcdce0", "#1c1c20", "#66666e", "#e6e6e9", "#f2f2f4", "#1c1c20", "#66666e", "#d2d2d7", "#ff9f0a", "#1a1000", "#8e5cff", "#23915a", "#d63a2f"], r: 8, br: 6, bw: "1px", btnLine: "#c6c6cc", panelLine: "#d2d2d7", pw: "1px", sh: "0 3px 12px rgba(0,0,0,.06)", sideSel: "rgba(0,0,0,.06)", holdBg: "#efe8ff", ckr: "3px", corners: "Rounded, 8 px", surface: "Soft shadows" },
+
+  // ---- Studio
+  { id: "ember", name: "Ember", grp: "Studio", desc: "Today's MultiParity: deep plum, signal orange, square corners and offset shadows.", font: "'Bricolage Grotesque', system-ui, sans-serif", display: "'Bricolage Grotesque', system-ui, sans-serif", mono: "'IBM Plex Mono', monospace",
+    c: ["#221433", "#e9e2f2", "#a998c2", "#f4f2f7", "#ffffff", "#1b1324", "#6d6378", "#ddd7e4", "#ff6a13", "#1b0b00", "#7a3cff", "#00806a", "#b3261e"], r: 0, br: 0, bw: "1.5px", pw: "1.5px", sh: "6px 6px 0 #1b1324", sideSelBar: "-16px 0 0 #221433, -20px 0 0 #ff6a13", holdBg: "#f1ebff", corners: "Square", surface: "Ink borders, offset shadows", current: true },
+  { id: "embernight", name: "Ember Night", grp: "Studio", desc: "Ember after dark: plum-black surfaces, the same orange, shadows turned to light.", font: "'Bricolage Grotesque', system-ui, sans-serif", display: "'Bricolage Grotesque', system-ui, sans-serif", mono: "'IBM Plex Mono', monospace",
+    c: ["#140b20", "#efe7fa", "#9c8bb8", "#1b1228", "#251a35", "#efe7fa", "#a497b8", "#3a2d4d", "#ff7a2b", "#1b0b00", "#a580ff", "#2fc49a", "#ff6b5e"], r: 0, br: 0, bw: "1.5px", btnLine: "#efe7fa", panelLine: "#efe7fa", pw: "1.5px", sh: "6px 6px 0 #ff7a2b", sideSelBar: "-16px 0 0 #140b20, -20px 0 0 #ff7a2b", holdBg: "#2b2140", corners: "Square", surface: "Light borders, orange shadow" },
+  { id: "riso", name: "Riso", grp: "Studio", desc: "Risograph print: fluorescent pink and blue, slightly out of register.", font: "'Space Grotesk', system-ui, sans-serif", display: "'Space Grotesk', system-ui, sans-serif", mono: "'IBM Plex Mono', monospace",
+    c: ["#0078bf", "#f5f7fa", "#bcd6ee", "#f1f2f0", "#ffffff", "#1d2b4f", "#5d6c8c", "#cfd6e2", "#ff48b0", "#1d0012", "#0078bf", "#00a95c", "#ff48b0"], r: 0, br: 0, bw: "2px", btnLine: "#1d2b4f", panelLine: "#1d2b4f", pw: "2px", sh: "5px 5px 0 #ff48b0", bsh: "3px 3px 0 #0078bf", sideSel: "rgba(255,255,255,.16)", holdBg: "#e6f1fa", h1Ink: "#0078bf", corners: "Square", surface: "Two-ink offset shadows" },
+  { id: "blueprint", name: "Blueprint", grp: "Studio", desc: "Technical drawing: blue field, white linework, a measured grid.", font: "'IBM Plex Sans', system-ui, sans-serif", display: "'IBM Plex Sans', system-ui, sans-serif", mono: "'IBM Plex Mono', monospace", fileFont: "'IBM Plex Mono', monospace",
+    c: ["#0a2f57", "#eaf3ff", "#8fb4dd", "#0d3b6e", "rgba(255,255,255,.05)", "#eaf3ff", "#9fc1e6", "rgba(234,243,255,.35)", "#ffd24a", "#0a1f38", "#b9d8ff", "#7cf0b5", "#ff9e9e"], r: 0, br: 0, bw: "1px", btnLine: "#eaf3ff", panelLine: "#eaf3ff", pw: "1px", sh: "none", sideBorder: "1px solid rgba(234,243,255,.35)", sideSel: "rgba(255,255,255,.08)", holdBg: "rgba(185,216,255,.10)", bgimg: "linear-gradient(rgba(234,243,255,.08) 1px, transparent 1px), linear-gradient(90deg, rgba(234,243,255,.08) 1px, transparent 1px)", bgsize: "24px 24px", h1Case: "uppercase", h1Track: "0.04em", labelCase: "uppercase", labelTrack: "0.08em", corners: "Square", surface: "Linework on a grid" },
+  { id: "darkroom", name: "Darkroom", grp: "Studio", desc: "Near-black with safelight red. Easy on the eyes in a dark grading suite.", font: "'Instrument Sans', system-ui, sans-serif", display: "'Instrument Sans', system-ui, sans-serif", mono: "'IBM Plex Mono', monospace",
+    c: ["#0c0909", "#f2e6e4", "#8d7471", "#120d0d", "#1a1312", "#f2e6e4", "#9c8582", "#2e2220", "#ff3b30", "#1a0000", "#ff8a80", "#8fd19e", "#ff3b30"], r: 2, br: 2, bw: "1px", btnLine: "#4a3633", panelLine: "#3a2b29", pw: "1px", sh: "0 0 0 1px #2e2220", sideSel: "rgba(255,59,48,.12)", holdBg: "#241413", corners: "Nearly square, 2 px", surface: "Flat, low light" },
+  { id: "swiss", name: "Swiss", grp: "Studio", desc: "International style: white, black and one red, strict grid, heavy type.", font: "'Archivo', 'Helvetica Neue', Arial, sans-serif", display: "'Archivo', 'Helvetica Neue', Arial, sans-serif", mono: "'IBM Plex Mono', monospace",
+    c: ["#e3000f", "#ffffff", "#ffd1d4", "#ffffff", "#ffffff", "#000000", "#5c5c5c", "#000000", "#e3000f", "#ffffff", "#000000", "#007a3d", "#e3000f"], r: 0, br: 0, bw: "2px", btnLine: "#000000", panelLine: "#000000", pw: "2px", lw: "2px", sh: "none", sideSel: "rgba(0,0,0,.18)", holdBg: "#f2f2f2", h1Weight: 800, h1Track: "-0.05em", corners: "Square", surface: "Heavy black rules" },
+  { id: "moss", name: "Moss", grp: "Studio", desc: "Forest green and ochre, for teams who stare at foliage all day.", font: "'DM Sans', system-ui, sans-serif", display: "'Bricolage Grotesque', 'DM Sans', system-ui, sans-serif", mono: "'IBM Plex Mono', monospace",
+    c: ["#1f2a22", "#e9efe6", "#93a58f", "#eef1ec", "#ffffff", "#18211a", "#5f6d60", "#d6ddd3", "#d9a521", "#1d1600", "#6b4fbb", "#2f7d4a", "#b83a2e"], r: 4, br: 4, bw: "1.5px", btnLine: "#18211a", panelLine: "#18211a", pw: "1.5px", sh: "5px 5px 0 #1f2a22", sideSelBar: "-16px 0 0 #1f2a22, -20px 0 0 #d9a521", holdBg: "#efeaf9", corners: "Barely rounded, 4 px", surface: "Ink borders, offset shadows" },
+  { id: "concrete", name: "Concrete", grp: "Studio", desc: "Brutalist: raw grey, thick black borders, warning-tape yellow.", font: "'Archivo', system-ui, sans-serif", display: "'Archivo Black', 'Archivo', system-ui, sans-serif", mono: "'IBM Plex Mono', monospace",
+    c: ["#2b2b2b", "#f0f0ea", "#a5a59c", "#d6d6d0", "#ecece6", "#111111", "#4d4d48", "#111111", "#ffd400", "#111111", "#4b3cff", "#0b7a3b", "#d4210f"], r: 0, br: 0, bw: "3px", btnLine: "#111111", panelLine: "#111111", pw: "3px", lw: "3px", sh: "8px 8px 0 #111111", bsh: "3px 3px 0 #111111", sideSel: "#ffd400", holdBg: "#e6e3ff", h1Case: "uppercase", h1Track: "-0.01em", h2Case: "uppercase", corners: "Square", surface: "Thick borders, hard shadows", sideSelInk: true },
+
+  // ---- Tech
+  { id: "terminal", name: "Phosphor Terminal", grp: "Tech", desc: "Green-screen terminal with scanlines. Everything reads like a log.", font: "'Share Tech Mono', 'IBM Plex Mono', monospace", display: "'VT323', 'Share Tech Mono', monospace", mono: "'Share Tech Mono', monospace",
+    c: ["#020a03", "#7dff8f", "#2f8a3a", "#000000", "#031105", "#7dff8f", "#3fa24c", "#145a1e", "#39ff14", "#001a00", "#d0ff7a", "#39ff14", "#ff5555"], r: 0, br: 0, bw: "1px", btnLine: "#39ff14", panelLine: "#39ff14", pw: "1px", sh: "none", sideBorder: "1px solid #145a1e", sideSel: "#0b3a12", holdBg: "#0a1f08", glowText: "0 0 8px rgba(57,255,20,.7)", h1Case: "uppercase", logoCase: "uppercase", labelCase: "uppercase", fx: ["fx-scan", "fx-glow"], corners: "Square", surface: "Glow and scanlines" },
+  { id: "neon", name: "Neon Grid", grp: "Tech", desc: "Synthwave: violet night, magenta and cyan glow over a horizon grid.", font: "'Chakra Petch', system-ui, sans-serif", display: "'Orbitron', 'Chakra Petch', sans-serif", mono: "'Share Tech Mono', monospace",
+    c: ["#12002e", "#f6e9ff", "#9d7cc7", "#0d0221", "#1a0638", "#f6e9ff", "#a78bce", "#3d1a6e", "#ff2a6d", "#ffffff", "#05d9e8", "#05d9e8", "#ff2a6d"], r: 4, br: 4, bw: "1px", btnLine: "#05d9e8", panelLine: "#ff2a6d", pw: "1px", sh: "none", sideSel: "rgba(5,217,232,.12)", holdBg: "rgba(5,217,232,.08)", glowText: "0 0 12px rgba(255,42,109,.8)", h1Case: "uppercase", logoCase: "uppercase", logoTrack: "0.06em", h1Track: "0.06em", bgimg: "linear-gradient(transparent 62%, rgba(255,42,109,.16) 100%), linear-gradient(rgba(5,217,232,.10) 1px, transparent 1px), linear-gradient(90deg, rgba(5,217,232,.10) 1px, transparent 1px)", bgsize: "auto, 32px 32px, 32px 32px", fx: ["fx-glow"], corners: "Slightly rounded, 4 px", surface: "Neon glow on a grid" },
+  { id: "hud", name: "Orbital HUD", grp: "Tech", desc: "Heads-up display: cut corners, thin cyan lines, condensed type.", font: "'Rajdhani', system-ui, sans-serif", display: "'Rajdhani', system-ui, sans-serif", mono: "'Share Tech Mono', monospace",
+    c: ["#05080d", "#d9f6ff", "#5f8a99", "#070b12", "#0b121c", "#d9f6ff", "#6f98a8", "#123444", "#00e5ff", "#00141a", "#ffb020", "#3ef0a0", "#ff4d6d"], r: 0, br: 0, bw: "1px", btnLine: "#00e5ff", panelLine: "#00e5ff", pw: "1px", sh: "none", sideBorder: "1px solid #123444", sideSel: "rgba(0,229,255,.10)", holdBg: "rgba(255,176,32,.08)", chamfer: "polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px)", chamferBig: "polygon(16px 0, 100% 0, 100% calc(100% - 16px), calc(100% - 16px) 100%, 0 100%, 0 16px)", h1Case: "uppercase", h1Track: "0.08em", h1Weight: 700, labelCase: "uppercase", labelTrack: "0.12em", logoCase: "uppercase", logoTrack: "0.12em", h2Case: "uppercase", glowText: "0 0 10px rgba(0,229,255,.5)", corners: "Cut corners", surface: "Thin glowing lines" },
+  { id: "amber", name: "Cockpit Amber", grp: "Tech", desc: "Night-flight instruments: warm amber on brown-black, wide technical caps.", font: "'IBM Plex Mono', monospace", display: "'Michroma', 'IBM Plex Sans', sans-serif", mono: "'IBM Plex Mono', monospace",
+    c: ["#0f0b05", "#ffcf6b", "#8a6a2c", "#0b0804", "#15100a", "#ffd88a", "#a68246", "#3a2c14", "#ffb000", "#1a1000", "#ff7849", "#b8e05a", "#ff5a3c"], r: 2, br: 2, bw: "1px", btnLine: "#ffb000", panelLine: "#5c451c", pw: "1px", sh: "none", sideBorder: "1px solid #3a2c14", sideSel: "rgba(255,176,0,.10)", holdBg: "rgba(255,120,73,.10)", glowText: "0 0 10px rgba(255,176,0,.45)", h1Case: "uppercase", h1Track: "0.04em", logoCase: "uppercase", corners: "Nearly square, 2 px", surface: "Instrument glow" },
+  { id: "icelab", name: "Ice Lab", grp: "Tech", desc: "Clean-room light tech: white, blue linework and a fine engineering grid.", font: "'Oxanium', system-ui, sans-serif", display: "'Oxanium', system-ui, sans-serif", mono: "'Martian Mono', monospace",
+    c: ["#f4f9fd", "#0b2a40", "#6c8ba3", "#fbfdff", "#ffffff", "#0b2a40", "#6c8ba3", "#cfe4f3", "#0094ff", "#ffffff", "#7a5cff", "#00a37a", "#ff3d5a"], r: 3, br: 3, bw: "1px", btnLine: "#0094ff", panelLine: "#0094ff", pw: "1px", sh: "0 0 0 4px rgba(0,148,255,.06)", sideBorder: "1px solid #cfe4f3", sideSel: "rgba(0,148,255,.08)", holdBg: "#f1edff", bgimg: "linear-gradient(rgba(0,148,255,.06) 1px, transparent 1px), linear-gradient(90deg, rgba(0,148,255,.06) 1px, transparent 1px)", bgsize: "16px 16px", labelCase: "uppercase", labelTrack: "0.1em", chamfer: "polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px)", corners: "Cut corners, small", surface: "Linework on a fine grid" },
+  { id: "mainframe", name: "Mainframe", grp: "Tech", desc: "Old big-iron console: black, bright blue headings, mono everything.", font: "'IBM Plex Mono', monospace", display: "'IBM Plex Mono', monospace", mono: "'IBM Plex Mono', monospace",
+    c: ["#000000", "#e6e6e6", "#6b7fd7", "#000000", "#000000", "#e6e6e6", "#8a8a8a", "#2a2a2a", "#4f7bff", "#000000", "#ff5cf0", "#5cff8a", "#ff4d4d"], r: 0, br: 0, bw: "1px", btnLine: "#4f7bff", panelLine: "#e6e6e6", pw: "1px", sh: "none", sideBorder: "1px solid #2a2a2a", sideSel: "#4f7bff", holdBg: "#140a18", h1Ink: "#4f7bff", h1Weight: 600, h1Track: "0", h1Case: "uppercase", logoCase: "uppercase", logoTrack: "0", corners: "Square", surface: "Flat, monospaced" },
+  { id: "cyberdeck", name: "Cyberdeck", grp: "Tech", desc: "Hacked street-tech: black-violet, hazard yellow, cut corners, red alerts.", font: "'Chakra Petch', system-ui, sans-serif", display: "'Chakra Petch', system-ui, sans-serif", mono: "'Share Tech Mono', monospace",
+    c: ["#fcee0a", "#120022", "#5b4a00", "#120022", "#1d0736", "#f3eaff", "#a58fc4", "#3b1a5c", "#fcee0a", "#120022", "#00f0ff", "#00ff9c", "#ff003c"], r: 0, br: 0, bw: "1.5px", btnLine: "#fcee0a", panelLine: "#00f0ff", pw: "1.5px", sh: "4px 4px 0 #ff003c", bsh: "none", sideSel: "#120022", holdBg: "rgba(0,240,255,.08)", chamfer: "polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px))", chamferBig: "polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 18px 100%, 0 calc(100% - 18px))", h1Case: "uppercase", h1Track: "0.02em", h1Ink: "#fcee0a", logoCase: "uppercase", labelCase: "uppercase", labelTrack: "0.1em", sideSelInk: true, corners: "Cut corners", surface: "Hard shadows, hazard colours" },
+  { id: "ops", name: "Night Ops", grp: "Tech", desc: "Monitoring-wall dark slate, orange signal, monospaced data.", font: "'Instrument Sans', system-ui, sans-serif", display: "'Instrument Sans', system-ui, sans-serif", mono: "'Martian Mono', monospace", fileFont: "'Martian Mono', monospace",
+    c: ["#0b0e13", "#d7dde6", "#6f7a8a", "#0e1116", "#161b22", "#d7dde6", "#7d8796", "#262d38", "#f2994a", "#1a0d00", "#a78bfa", "#56d364", "#f85149"], r: 4, br: 4, bw: "1px", btnLine: "#323b48", panelLine: "#262d38", pw: "1px", sh: "0 0 0 1px #262d38", sideBorder: "1px solid #1c222b", sideSel: "#1c232d", sideSelBar: "inset 3px 0 0 #f2994a", holdBg: "#1c1830", corners: "Slightly rounded, 4 px", surface: "Flat panels" },
+
+  // ---- Contrast (2021)
+  { id: "acid", name: "Acid Pop", grp: "Contrast", desc: "White page, black rules, acid lime and hot pink, oversized rounded type.", font: "'Space Grotesk', system-ui, sans-serif", display: "'Unbounded', 'Space Grotesk', sans-serif", mono: "'IBM Plex Mono', monospace",
+    c: ["#000000", "#ffffff", "#9a9a9a", "#ffffff", "#ffffff", "#000000", "#545454", "#000000", "#c8ff00", "#000000", "#ff2e93", "#00b85c", "#ff2e93"], r: 0, br: 999, bw: "2px", btnLine: "#000000", panelLine: "#000000", pw: "2px", lw: "2px", sh: "none", sideSel: "#c8ff00", holdBg: "#ffe3f1", h1Weight: 800, h1Track: "-0.04em", sideSelInk: true, ckr: "50%", corners: "Pill buttons, square panels", surface: "Heavy black rules" },
+  { id: "bubblegum", name: "Bubblegum Brutal", grp: "Contrast", desc: "Candy pink, school-bus yellow, thick outlines and chunky drop shadows.", font: "'Syne', system-ui, sans-serif", display: "'Syne', system-ui, sans-serif", mono: "'IBM Plex Mono', monospace",
+    c: ["#ffc900", "#000000", "#5c4800", "#ff90e8", "#ffffff", "#000000", "#3a3a3a", "#000000", "#000000", "#ffc900", "#5b2bff", "#008f4c", "#e8003d"], r: 6, br: 6, bw: "2px", btnLine: "#000000", panelLine: "#000000", pw: "2px", lw: "2px", sh: "6px 6px 0 #000000", bsh: "3px 3px 0 #000000", sideSel: "#ffffff", holdBg: "#ffffff", h1Weight: 800, h1Track: "-0.03em", sideSelInk: true, corners: "Slightly rounded, 6 px", surface: "Thick outlines, chunky shadows" },
+  { id: "electric", name: "Electric Blue", grp: "Contrast", desc: "Pure #0000ff field, white type, yellow action. Loud and very legible.", font: "'Space Grotesk', system-ui, sans-serif", display: "'Space Grotesk', system-ui, sans-serif", mono: "'IBM Plex Mono', monospace",
+    c: ["#0000c8", "#ffffff", "#9fa6ff", "#0000ff", "#1a1aff", "#ffffff", "#c2c6ff", "#6b6bff", "#ffff00", "#0000ff", "#ff9bff", "#7dffb2", "#ff8a8a"], r: 0, br: 0, bw: "2px", btnLine: "#ffffff", panelLine: "#ffffff", pw: "2px", lw: "2px", sh: "none", sideSel: "#ffff00", holdBg: "#2020ff", h1Weight: 700, h1Track: "-0.05em", sideSelInk: true, toastBg: "#ffff00", toastInk: "#0000ff", corners: "Square", surface: "Flat, white rules" },
+  { id: "y2k", name: "Y2K Chrome", grp: "Contrast", desc: "Liquid silver, iridescent logo and pill-shaped everything.", font: "'Sora', system-ui, sans-serif", display: "'Michroma', 'Sora', sans-serif", mono: "'IBM Plex Mono', monospace",
+    c: ["linear-gradient(180deg, #e9ecf2, #c7ccd6)", "#151a24", "#5d6576", "#eef0f5", "#ffffff", "#151a24", "#5d6576", "#cdd2dc", "#7c6cff", "#ffffff", "#ff5cc8", "#16a37a", "#ff3d6e"], r: 18, br: 999, bw: "1px", btnLine: "#a7aebb", panelLine: "#c3c9d4", pw: "1px", sh: "inset 0 1px 0 #ffffff, 0 10px 30px rgba(21,26,36,.12)", sideSel: "rgba(124,108,255,.16)", holdBg: "#fdeef8", ckr: "50%", bgimg: "radial-gradient(600px 300px at 90% 0%, rgba(124,108,255,.18), transparent 60%), radial-gradient(500px 300px at 0% 100%, rgba(89,242,255,.16), transparent 60%)", fx: ["fx-chrome"], logoTrack: "0.02em", corners: "Very rounded, pills", surface: "Chrome and iridescence" },
+  { id: "mono", name: "Mono Max", grp: "Contrast", desc: "Black and white only, inverted panels, red reserved for trouble.", font: "'Archivo', system-ui, sans-serif", display: "'Archivo Black', 'Archivo', sans-serif", mono: "'IBM Plex Mono', monospace",
+    c: ["#000000", "#ffffff", "#8c8c8c", "#ffffff", "#ffffff", "#000000", "#5a5a5a", "#000000", "#000000", "#ffffff", "#000000", "#000000", "#ff1f1f"], r: 0, br: 0, bw: "2px", btnLine: "#000000", panelLine: "#000000", pw: "2px", lw: "2px", sh: "none", sideSel: "#ffffff", holdBg: "#efefef", h1Case: "uppercase", h1Track: "-0.03em", h2Case: "uppercase", sideSelInk: true, corners: "Square", surface: "Pure black and white" },
+  { id: "tangerine", name: "Tangerine Ink", grp: "Contrast", desc: "Full tangerine field, black condensed headlines, cream panels.", font: "'DM Sans', system-ui, sans-serif", display: "'Big Shoulders Display', 'Archivo', sans-serif", mono: "'IBM Plex Mono', monospace",
+    c: ["#111111", "#ff5f1f", "#8a8a8a", "#ff5f1f", "#fff4ea", "#111111", "#5a2a12", "#111111", "#111111", "#ff5f1f", "#3b2bff", "#006b3a", "#b00020"], r: 0, br: 0, bw: "2px", btnLine: "#111111", panelLine: "#111111", pw: "2px", lw: "2px", sh: "none", sideSel: "#ff5f1f", holdBg: "#fff4ea", h1Weight: 900, h1Case: "uppercase", h1Track: "0", logoCase: "uppercase", logoWeight: 900, sideSelInk: true, corners: "Square", surface: "Flat, black rules" },
+
+  // ---- Dark editor: the colour schemes developers and TDs already live in
+  { id: "deepocean", name: "Deep Ocean", grp: "Dark editor", desc: "Material Theme's Deep Ocean: blue-black depths, soft grey type, aqua accent.", font: "'Roboto', 'Segoe UI', system-ui, sans-serif", display: "'Roboto', system-ui, sans-serif", mono: "'Roboto Mono', 'JetBrains Mono', monospace", fileFont: "'Roboto Mono', monospace",
+    c: ["#090b10", "#a6accd", "#4b526d", "#0f111a", "#141824", "#a6accd", "#5f6782", "#1f2233", "#84ffff", "#0f111a", "#c792ea", "#c3e88d", "#f07178"], r: 4, br: 4, bw: "1px", btnLine: "#2b3047", panelLine: "#1f2233", pw: "1px", sh: "0 10px 30px rgba(0,0,0,.55)", sideSel: "rgba(132,255,255,.08)", sideSelBar: "inset 2px 0 0 #84ffff", holdBg: "rgba(199,146,234,.10)", ckr: "2px", corners: "Slightly rounded, 4 px", surface: "Material elevation" },
+  { id: "palenight", name: "Palenight", grp: "Dark editor", desc: "Material Palenight: dusky violet-grey with periwinkle blue and soft pastels.", font: "'Roboto', 'Segoe UI', system-ui, sans-serif", display: "'Roboto', system-ui, sans-serif", mono: "'Roboto Mono', monospace", fileFont: "'Roboto Mono', monospace",
+    c: ["#202331", "#bfc7d5", "#676e95", "#292d3e", "#2f3447", "#bfc7d5", "#7a82a8", "#3a3f58", "#82aaff", "#1b1e2b", "#c792ea", "#c3e88d", "#ff5370"], r: 4, br: 4, bw: "1px", btnLine: "#444a66", panelLine: "#3a3f58", pw: "1px", sh: "0 10px 30px rgba(0,0,0,.4)", sideSel: "rgba(130,170,255,.10)", sideSelBar: "inset 2px 0 0 #82aaff", holdBg: "rgba(199,146,234,.12)", ckr: "2px", corners: "Slightly rounded, 4 px", surface: "Material elevation" },
+  { id: "repodark", name: "Repo Dark", grp: "Dark editor", desc: "In the spirit of GitHub's dark mode: near-black canvas, grey borders, green primary buttons.", font: "-apple-system, 'Segoe UI', 'Noto Sans', 'Instrument Sans', system-ui, sans-serif", display: "-apple-system, 'Segoe UI', 'Instrument Sans', system-ui, sans-serif", mono: "'JetBrains Mono', 'SF Mono', monospace",
+    c: ["#010409", "#e6edf3", "#7d8590", "#0d1117", "#161b22", "#e6edf3", "#7d8590", "#30363d", "#238636", "#ffffff", "#a371f7", "#3fb950", "#f85149"], r: 6, br: 6, bw: "1px", btnLine: "#30363d", panelLine: "#30363d", pw: "1px", sh: "none", sideBorder: "1px solid #21262d", sideSel: "#161b22", sideSelBar: "inset 2px 0 0 #f78166", holdBg: "rgba(163,113,247,.12)", ckr: "3px", toastBg: "#161b22", toastInk: "#e6edf3", corners: "Rounded, 6 px", surface: "Flat, grey borders" },
+  { id: "repodimmed", name: "Repo Dimmed", grp: "Dark editor", desc: "The softer, slate-grey dimmed variant: lower contrast for long evenings.", font: "-apple-system, 'Segoe UI', 'Noto Sans', 'Instrument Sans', system-ui, sans-serif", display: "-apple-system, 'Segoe UI', 'Instrument Sans', system-ui, sans-serif", mono: "'JetBrains Mono', 'SF Mono', monospace",
+    c: ["#1c2128", "#adbac7", "#768390", "#22272e", "#2d333b", "#adbac7", "#768390", "#444c56", "#347d39", "#ffffff", "#986ee2", "#57ab5a", "#e5534b"], r: 6, br: 6, bw: "1px", btnLine: "#444c56", panelLine: "#444c56", pw: "1px", sh: "none", sideBorder: "1px solid #373e47", sideSel: "#2d333b", sideSelBar: "inset 2px 0 0 #ec775c", holdBg: "rgba(152,110,226,.14)", ckr: "3px", toastBg: "#2d333b", toastInk: "#adbac7", corners: "Rounded, 6 px", surface: "Flat, grey borders" },
+  { id: "dracula", name: "Dracula", grp: "Dark editor", desc: "Purple-grey night with purple, pink and bright green highlights.", font: "'IBM Plex Sans', system-ui, sans-serif", display: "'IBM Plex Sans', system-ui, sans-serif", mono: "'JetBrains Mono', monospace", fileFont: "'JetBrains Mono', monospace",
+    c: ["#21222c", "#f8f8f2", "#6272a4", "#282a36", "#343746", "#f8f8f2", "#8b95c2", "#44475a", "#bd93f9", "#282a36", "#ff79c6", "#50fa7b", "#ff5555"], r: 6, br: 6, bw: "1px", btnLine: "#55596f", panelLine: "#44475a", pw: "1px", sh: "0 8px 24px rgba(0,0,0,.35)", sideSel: "#44475a", holdBg: "rgba(255,121,198,.10)", ckr: "3px", corners: "Rounded, 6 px", surface: "Soft shadows" },
+  { id: "nord", name: "Polar Night", grp: "Dark editor", desc: "Nord's arctic palette: blue-grey night, frost blue accent, muted aurora colours.", font: "'Manrope', system-ui, sans-serif", display: "'Manrope', system-ui, sans-serif", mono: "'JetBrains Mono', monospace",
+    c: ["#242933", "#eceff4", "#8893a8", "#2e3440", "#3b4252", "#eceff4", "#9aa5b8", "#434c5e", "#88c0d0", "#2e3440", "#b48ead", "#a3be8c", "#bf616a"], r: 6, br: 6, bw: "1px", btnLine: "#4c566a", panelLine: "#434c5e", pw: "1px", sh: "0 8px 24px rgba(0,0,0,.25)", sideSel: "#3b4252", holdBg: "rgba(180,142,173,.14)", ckr: "3px", corners: "Rounded, 6 px", surface: "Soft shadows" },
+  { id: "tokyo", name: "Tokyo Night", grp: "Dark editor", desc: "City-lights navy with electric blue, lilac and lime.", font: "'Geist', system-ui, sans-serif", display: "'Geist', system-ui, sans-serif", mono: "'JetBrains Mono', monospace", fileFont: "'JetBrains Mono', monospace",
+    c: ["#16161e", "#c0caf5", "#565f89", "#1a1b26", "#24283b", "#c0caf5", "#737aa2", "#2f3549", "#7aa2f7", "#16161e", "#bb9af7", "#9ece6a", "#f7768e"], r: 8, br: 6, bw: "1px", btnLine: "#3b4261", panelLine: "#2f3549", pw: "1px", sh: "0 10px 30px rgba(0,0,0,.45)", sideSel: "rgba(122,162,247,.12)", holdBg: "rgba(187,154,247,.12)", ckr: "3px", corners: "Rounded, 8 px", surface: "Soft shadows" },
+  { id: "mocha", name: "Mocha", grp: "Dark editor", desc: "Catppuccin Mocha: warm pastel accents on a soft cocoa-indigo base, rounded and cosy.", font: "'DM Sans', system-ui, sans-serif", display: "'DM Sans', system-ui, sans-serif", mono: "'JetBrains Mono', monospace",
+    c: ["#181825", "#cdd6f4", "#7f849c", "#1e1e2e", "#313244", "#cdd6f4", "#9399b2", "#45475a", "#cba6f7", "#1e1e2e", "#f5c2e7", "#a6e3a1", "#f38ba8"], r: 12, br: 10, bw: "1px", btnLine: "#585b70", panelLine: "#45475a", pw: "1px", sh: "0 10px 30px rgba(0,0,0,.35)", sideSel: "#313244", holdBg: "rgba(245,194,231,.10)", ckr: "50%", corners: "Rounded, 12 px", surface: "Soft shadows" },
+  { id: "onedark", name: "One Dark", grp: "Dark editor", desc: "The classic editor dark: charcoal blue, sky blue, violet and sage.", font: "'Instrument Sans', system-ui, sans-serif", display: "'Instrument Sans', system-ui, sans-serif", mono: "'JetBrains Mono', monospace", fileFont: "'JetBrains Mono', monospace",
+    c: ["#21252b", "#d7dae0", "#7f848e", "#282c34", "#2c313a", "#d7dae0", "#8b919c", "#3e4451", "#61afef", "#1e2127", "#c678dd", "#98c379", "#e06c75"], r: 4, br: 4, bw: "1px", btnLine: "#4b5263", panelLine: "#3e4451", pw: "1px", sh: "0 6px 20px rgba(0,0,0,.35)", sideSel: "#2c313a", sideSelBar: "inset 2px 0 0 #61afef", holdBg: "rgba(198,120,221,.10)", ckr: "2px", corners: "Slightly rounded, 4 px", surface: "Soft shadows" },
+  { id: "solarized", name: "Solarized Dark", grp: "Dark editor", desc: "Deep teal base with the precise Solarized accents: yellow, violet, green, red.", font: "'IBM Plex Sans', system-ui, sans-serif", display: "'IBM Plex Sans', system-ui, sans-serif", mono: "'IBM Plex Mono', monospace", fileFont: "'IBM Plex Mono', monospace",
+    c: ["#00212b", "#eee8d5", "#657b83", "#002b36", "#073642", "#d3d6d0", "#839496", "#0e4b5a", "#b58900", "#002b36", "#6c71c4", "#859900", "#dc322f"], r: 3, br: 3, bw: "1px", btnLine: "#2a5560", panelLine: "#0e4b5a", pw: "1px", sh: "none", sideSel: "#073642", holdBg: "rgba(108,113,196,.14)", ckr: "2px", corners: "Nearly square, 3 px", surface: "Flat" },
+  { id: "gruvbox", name: "Gruvbox", grp: "Dark editor", desc: "Retro warm dark: earthy brown-black, cream type, mustard and brick.", font: "'IBM Plex Sans', system-ui, sans-serif", display: "'Archivo', system-ui, sans-serif", mono: "'JetBrains Mono', monospace", fileFont: "'JetBrains Mono', monospace",
+    c: ["#1d2021", "#ebdbb2", "#928374", "#282828", "#3c3836", "#ebdbb2", "#a89984", "#504945", "#fabd2f", "#282828", "#d3869b", "#b8bb26", "#fb4934"], r: 2, br: 2, bw: "1px", btnLine: "#665c54", panelLine: "#504945", pw: "1px", sh: "none", sideSel: "#3c3836", sideSelBar: "inset 2px 0 0 #fabd2f", holdBg: "rgba(211,134,155,.12)", corners: "Nearly square, 2 px", surface: "Flat, warm" },
+  { id: "monokai", name: "Monokai", grp: "Dark editor", desc: "Olive-black with hot pink, lime and violet: the loudest of the editor classics.", font: "'Space Grotesk', system-ui, sans-serif", display: "'Space Grotesk', system-ui, sans-serif", mono: "'JetBrains Mono', monospace", fileFont: "'JetBrains Mono', monospace",
+    c: ["#1e1f1c", "#f8f8f2", "#75715e", "#272822", "#3e3d32", "#f8f8f2", "#a59f85", "#49483e", "#f92672", "#ffffff", "#ae81ff", "#a6e22e", "#fd971f"], r: 3, br: 3, bw: "1px", btnLine: "#5c5b4e", panelLine: "#49483e", pw: "1px", sh: "none", sideSel: "#3e3d32", sideSelBar: "inset 2px 0 0 #f92672", holdBg: "rgba(174,129,255,.12)", corners: "Nearly square, 3 px", surface: "Flat" },
+  { id: "rosepine", name: "Rosé Pine", grp: "Dark editor", desc: "Soho-vibes violet night with rose, iris and foam. Elegant and low-glare.", font: "'Sora', system-ui, sans-serif", display: "'Sora', system-ui, sans-serif", mono: "'JetBrains Mono', monospace",
+    c: ["#1f1d2e", "#e0def4", "#6e6a86", "#191724", "#26233a", "#e0def4", "#908caa", "#403d52", "#ebbcba", "#191724", "#c4a7e7", "#9ccfd8", "#eb6f92"], r: 10, br: 8, bw: "1px", btnLine: "#524f67", panelLine: "#403d52", pw: "1px", sh: "0 10px 30px rgba(0,0,0,.35)", sideSel: "#26233a", holdBg: "rgba(196,167,231,.12)", ckr: "50%", corners: "Rounded, 10 px", surface: "Soft shadows" },
+  { id: "nightowl", name: "Night Owl", grp: "Dark editor", desc: "Midnight navy tuned for late nights, with periwinkle, lilac and lime.", font: "'Manrope', system-ui, sans-serif", display: "'Manrope', system-ui, sans-serif", mono: "'JetBrains Mono', monospace", fileFont: "'JetBrains Mono', monospace",
+    c: ["#01111d", "#d6deeb", "#5f7e97", "#011627", "#0b2942", "#d6deeb", "#7e97ab", "#1d3b53", "#82aaff", "#011627", "#c792ea", "#addb67", "#ef5350"], r: 6, br: 6, bw: "1px", btnLine: "#2a4a64", panelLine: "#1d3b53", pw: "1px", sh: "0 10px 30px rgba(0,0,0,.45)", sideSel: "#0b2942", sideSelBar: "inset 2px 0 0 #7fdbca", holdBg: "rgba(199,146,234,.12)", ckr: "3px", corners: "Rounded, 6 px", surface: "Soft shadows" },
+  { id: "everforest", name: "Everforest", grp: "Dark editor", desc: "Comfortable green-grey forest with sage, rose and warm parchment type.", font: "'DM Sans', system-ui, sans-serif", display: "'Bricolage Grotesque', 'DM Sans', system-ui, sans-serif", mono: "'JetBrains Mono', monospace",
+    c: ["#232a2e", "#d3c6aa", "#7a8478", "#2d353b", "#343f44", "#d3c6aa", "#9da9a0", "#475258", "#a7c080", "#232a2e", "#d699b6", "#a7c080", "#e67e80"], r: 8, br: 6, bw: "1px", btnLine: "#56635f", panelLine: "#475258", pw: "1px", sh: "0 8px 24px rgba(0,0,0,.3)", sideSel: "#343f44", holdBg: "rgba(214,153,182,.12)", ckr: "3px", corners: "Rounded, 8 px", surface: "Soft shadows" },
+
+  // ---- Glass: from frosted light to Frutiger Aero
+  { id: "frosted", name: "Frosted", grp: "Glass", desc: "Milky white glass over drifting pastel light. Calm, airy and bright.", font: "'Manrope', -apple-system, system-ui, sans-serif", display: "'Manrope', system-ui, sans-serif", mono: "'JetBrains Mono', monospace",
+    c: ["rgba(255,255,255,.42)", "#1c1c2e", "#5c5c75", "#eef0fb", "rgba(255,255,255,.55)", "#1c1c2e", "#5c5c75", "rgba(255,255,255,.75)", "#5b5bf7", "#ffffff", "#b33cff", "#0f9d6e", "#e5484d"], r: 16, br: 12, bw: "1px", btnLine: "rgba(255,255,255,.85)", panelLine: "rgba(255,255,255,.85)", pw: "1px", sh: "0 8px 32px rgba(60,60,120,.12), inset 0 1px 0 rgba(255,255,255,.9)", sideSel: "rgba(255,255,255,.6)", holdBg: "rgba(255,255,255,.45)", ckr: "50%", field: "rgba(255,255,255,.5)", blurAmt: "22px",
+    bgimg: "radial-gradient(420px 320px at 15% 20%, #c7b8ff 0, transparent 70%), radial-gradient(460px 340px at 85% 15%, #ffc9b0 0, transparent 70%), radial-gradient(520px 380px at 70% 95%, #b5f0dc 0, transparent 70%), linear-gradient(135deg, #eef0fb, #f6eef8)", fx: ["fx-frost"], corners: "Rounded, 16 px", surface: "Frosted glass over pastel light" },
+  { id: "liquid", name: "Liquid Glass", grp: "Glass", desc: "Clear, refractive glass with bright edges over a vivid wallpaper, like the newest Apple look.", font: "-apple-system, 'SF Pro Text', 'Segoe UI Variable', 'Manrope', system-ui, sans-serif", display: "-apple-system, 'SF Pro Display', 'Segoe UI Variable Display', 'Manrope', system-ui, sans-serif", mono: "'SF Mono', 'JetBrains Mono', monospace",
+    c: ["rgba(255,255,255,.16)", "#ffffff", "rgba(255,255,255,.72)", "#1a3b8a", "rgba(255,255,255,.14)", "#ffffff", "rgba(255,255,255,.78)", "rgba(255,255,255,.3)", "#ffffff", "#0a2a6b", "#ffd60a", "#5af0a0", "#ff6b6b"], r: 22, br: 999, bw: "1px", btnLine: "rgba(255,255,255,.45)", panelLine: "rgba(255,255,255,.45)", pw: "1px", sh: "inset 0 1px 1px rgba(255,255,255,.75), 0 12px 32px rgba(0,0,20,.25)", sideSel: "rgba(255,255,255,.2)", holdBg: "rgba(255,214,10,.14)", ckr: "50%", field: "rgba(255,255,255,.1)", blurAmt: "12px", sat: "1.8", toastBg: "rgba(255,255,255,.22)", toastInk: "#ffffff",
+    bgimg: "radial-gradient(500px 400px at 10% 10%, #ff8a3d 0, transparent 65%), radial-gradient(600px 420px at 90% 30%, #3d7bff 0, transparent 65%), radial-gradient(520px 400px at 50% 110%, #b14dff 0, transparent 65%), linear-gradient(160deg, #2457d6, #1a3b8a)", fx: ["fx-frost", "fx-liquid"], corners: "Very rounded, pills", surface: "Clear glass with bright rims" },
+  { id: "spatial", name: "Spatial", grp: "Glass", desc: "Smoky grey glass floating over a dusk scene, white type, pill controls. Headset-style.", font: "-apple-system, 'SF Pro Text', 'Segoe UI Variable', 'Manrope', system-ui, sans-serif", display: "-apple-system, 'SF Pro Display', 'Segoe UI Variable Display', 'Manrope', system-ui, sans-serif", mono: "'SF Mono', 'JetBrains Mono', monospace",
+    c: ["rgba(80,80,92,.38)", "#ffffff", "rgba(255,255,255,.66)", "#3a4150", "rgba(92,92,104,.34)", "#ffffff", "rgba(255,255,255,.72)", "rgba(255,255,255,.18)", "rgba(255,255,255,.92)", "#1d1d1f", "#c8a8ff", "#7ee0a6", "#ff8a80"], r: 24, br: 999, bw: "1px", btnLine: "rgba(255,255,255,.22)", panelLine: "rgba(255,255,255,.2)", pw: "1px", sh: "inset 0 1px 0 rgba(255,255,255,.3), 0 20px 50px rgba(0,0,0,.28)", sideSel: "rgba(255,255,255,.16)", holdBg: "rgba(200,168,255,.14)", ckr: "50%", field: "rgba(0,0,0,.12)", blurAmt: "30px", sat: "1.4", toastBg: "rgba(255,255,255,.88)", toastInk: "#1d1d1f",
+    bgimg: "radial-gradient(700px 400px at 30% 0%, #f3b37a 0, transparent 60%), radial-gradient(600px 500px at 90% 80%, #5a6fa8 0, transparent 60%), linear-gradient(180deg, #8a7a8f, #2d3a52)", fx: ["fx-frost"], corners: "Very rounded, 24 px", surface: "Smoky glass over a scene" },
+  { id: "mica", name: "Mica", grp: "Glass", desc: "Windows 11's Mica: a barely tinted, mostly solid material that picks up the desktop's colour.", font: "'Segoe UI Variable', 'Segoe UI', 'Open Sans', system-ui, sans-serif", display: "'Segoe UI Variable Display', 'Segoe UI', 'Open Sans', system-ui, sans-serif", mono: "'Cascadia Code', 'JetBrains Mono', monospace",
+    c: ["rgba(238,240,246,.82)", "#1b1b1b", "#5f5f5f", "#f3f3f3", "rgba(255,255,255,.74)", "#1b1b1b", "#5f5f5f", "rgba(0,0,0,.08)", "#005fb8", "#ffffff", "#8a3ffc", "#0f7b0f", "#c42b1c"], r: 8, br: 4, bw: "1px", btnLine: "rgba(0,0,0,.1)", panelLine: "rgba(0,0,0,.07)", pw: "1px", sh: "0 2px 8px rgba(0,0,0,.06)", sideSel: "rgba(0,0,0,.05)", sideSelBar: "inset 3px 0 0 #005fb8", holdBg: "rgba(138,63,252,.08)", ckr: "3px", field: "rgba(255,255,255,.8)", blurAmt: "40px", sat: "1.2",
+    bgimg: "radial-gradient(700px 500px at 0% 0%, #dbe6f7 0, transparent 70%), radial-gradient(700px 500px at 100% 100%, #f2e4ea 0, transparent 70%), linear-gradient(135deg, #eaeef6, #f4f1f2)", fx: ["fx-frost"], corners: "Rounded, 8 px", surface: "Mica material" },
+  { id: "acrylic", name: "Acrylic Dark", grp: "Glass", desc: "Windows dark acrylic: smoky panels over a deep blue and violet backdrop, sky-blue accent.", font: "'Segoe UI Variable', 'Segoe UI', 'Open Sans', system-ui, sans-serif", display: "'Segoe UI Variable Display', 'Segoe UI', 'Open Sans', system-ui, sans-serif", mono: "'Cascadia Code', 'JetBrains Mono', monospace",
+    c: ["rgba(32,32,36,.6)", "#ffffff", "#a0a0a8", "#1f2230", "rgba(44,44,50,.58)", "#ffffff", "#a8a8b0", "rgba(255,255,255,.08)", "#60cdff", "#002b3d", "#c7a4ff", "#6ccb5f", "#ff99a4"], r: 8, br: 4, bw: "1px", btnLine: "rgba(255,255,255,.1)", panelLine: "rgba(255,255,255,.08)", pw: "1px", sh: "0 8px 24px rgba(0,0,0,.35)", sideSel: "rgba(255,255,255,.06)", sideSelBar: "inset 3px 0 0 #60cdff", holdBg: "rgba(199,164,255,.1)", ckr: "3px", field: "rgba(0,0,0,.2)", blurAmt: "30px", sat: "1.25",
+    bgimg: "radial-gradient(500px 400px at 80% 10%, #1b4f8a 0, transparent 60%), radial-gradient(500px 400px at 10% 90%, #4a2b6b 0, transparent 60%), linear-gradient(135deg, #151826, #20202c)", fx: ["fx-frost"], corners: "Rounded, 8 px", surface: "Acrylic material" },
+  { id: "smoked", name: "Smoked Glass", grp: "Glass", desc: "Dark tinted glass over warm out-of-focus lights, like a late edit in a dim suite.", font: "'Sora', system-ui, sans-serif", display: "'Sora', system-ui, sans-serif", mono: "'JetBrains Mono', monospace",
+    c: ["rgba(20,16,14,.52)", "#f4e9dc", "#a89482", "#1a1410", "rgba(30,24,20,.48)", "#f4e9dc", "#b8a48f", "rgba(255,220,180,.14)", "#ffb347", "#1f1200", "#ff8fa3", "#9be37c", "#ff6b5b"], r: 14, br: 10, bw: "1px", btnLine: "rgba(255,220,180,.22)", panelLine: "rgba(255,220,180,.18)", pw: "1px", sh: "inset 0 1px 0 rgba(255,230,200,.12), 0 16px 40px rgba(0,0,0,.45)", sideSel: "rgba(255,179,71,.12)", holdBg: "rgba(255,143,163,.1)", ckr: "50%", field: "rgba(0,0,0,.25)", blurAmt: "26px",
+    bgimg: "radial-gradient(160px 160px at 20% 30%, rgba(255,170,60,.55) 0, transparent 70%), radial-gradient(220px 220px at 75% 20%, rgba(255,120,40,.45) 0, transparent 70%), radial-gradient(260px 260px at 60% 85%, rgba(255,200,120,.35) 0, transparent 70%), radial-gradient(140px 140px at 92% 62%, rgba(255,90,60,.4) 0, transparent 70%), radial-gradient(120px 120px at 38% 70%, rgba(255,230,150,.3) 0, transparent 70%), linear-gradient(160deg, #241a12, #0f0b08)", fx: ["fx-frost"], corners: "Rounded, 14 px", surface: "Tinted glass over bokeh" },
+  { id: "auroraglass", name: "Aurora Glass", grp: "Glass", desc: "Dark glass under northern lights: green and violet ribbons glowing through.", font: "'Manrope', system-ui, sans-serif", display: "'Manrope', system-ui, sans-serif", mono: "'JetBrains Mono', monospace",
+    c: ["rgba(8,18,26,.45)", "#e6fff6", "#7fa8a0", "#071018", "rgba(10,22,32,.42)", "#e6fff6", "#89aeb0", "rgba(124,255,203,.16)", "#7cffcb", "#002417", "#c3a6ff", "#7cffcb", "#ff7a90"], r: 14, br: 10, bw: "1px", btnLine: "rgba(124,255,203,.28)", panelLine: "rgba(124,255,203,.22)", pw: "1px", sh: "inset 0 1px 0 rgba(200,255,235,.12), 0 16px 40px rgba(0,0,0,.4)", sideSel: "rgba(124,255,203,.1)", holdBg: "rgba(195,166,255,.1)", ckr: "50%", field: "rgba(0,0,0,.25)", blurAmt: "24px", sat: "1.6",
+    bgimg: "radial-gradient(700px 260px at 30% 10%, rgba(40,255,170,.45) 0, transparent 65%), radial-gradient(600px 300px at 80% 25%, rgba(140,80,255,.45) 0, transparent 65%), radial-gradient(600px 300px at 50% 100%, rgba(0,150,255,.3) 0, transparent 70%), linear-gradient(180deg, #071a24, #04080f)", fx: ["fx-frost"], corners: "Rounded, 14 px", surface: "Dark glass over aurora" },
+  { id: "neonglass", name: "Neon Glass", grp: "Glass", desc: "Black glass over magenta and cyan light pools, with a soft neon glow on actions.", font: "'Space Grotesk', system-ui, sans-serif", display: "'Space Grotesk', system-ui, sans-serif", mono: "'JetBrains Mono', monospace",
+    c: ["rgba(12,8,20,.5)", "#f6edff", "#9a88b8", "#0a0710", "rgba(20,12,32,.45)", "#f6edff", "#a898c4", "rgba(255,79,216,.2)", "#ff4fd8", "#1a0016", "#4ff0ff", "#4dffa6", "#ff5c7a"], r: 12, br: 8, bw: "1px", btnLine: "rgba(79,240,255,.35)", panelLine: "rgba(255,79,216,.3)", pw: "1px", sh: "inset 0 1px 0 rgba(255,255,255,.08), 0 16px 40px rgba(0,0,0,.5)", sideSel: "rgba(255,79,216,.12)", holdBg: "rgba(79,240,255,.08)", ckr: "50%", field: "rgba(0,0,0,.3)", blurAmt: "22px", sat: "1.7",
+    bgimg: "radial-gradient(380px 300px at 18% 25%, rgba(255,79,216,.55) 0, transparent 70%), radial-gradient(420px 320px at 85% 70%, rgba(79,240,255,.45) 0, transparent 70%), radial-gradient(300px 240px at 60% 10%, rgba(120,70,255,.4) 0, transparent 70%), linear-gradient(160deg, #120a1e, #05030a)", fx: ["fx-frost", "fx-glow"], corners: "Rounded, 12 px", surface: "Black glass and neon light" },
+  { id: "oceanglass", name: "Ocean Glass", grp: "Glass", desc: "Deep-water glass: teal panels over shifting blue light, like looking up from below the surface.", font: "'DM Sans', system-ui, sans-serif", display: "'DM Sans', system-ui, sans-serif", mono: "'JetBrains Mono', monospace",
+    c: ["rgba(4,30,44,.45)", "#e3f8ff", "#7fb2c4", "#03202e", "rgba(6,40,58,.42)", "#e3f8ff", "#8fbfd0", "rgba(79,209,255,.2)", "#4fd1ff", "#00202e", "#b39dff", "#62f5c3", "#ff8a8a"], r: 16, br: 12, bw: "1px", btnLine: "rgba(79,209,255,.3)", panelLine: "rgba(79,209,255,.25)", pw: "1px", sh: "inset 0 1px 0 rgba(200,240,255,.14), 0 16px 40px rgba(0,10,20,.4)", sideSel: "rgba(79,209,255,.12)", holdBg: "rgba(179,157,255,.1)", ckr: "50%", field: "rgba(0,0,0,.2)", blurAmt: "24px",
+    bgimg: "radial-gradient(600px 300px at 50% -10%, rgba(120,230,255,.5) 0, transparent 65%), radial-gradient(500px 400px at 10% 80%, #0b6e8f 0, transparent 65%), radial-gradient(500px 400px at 90% 90%, #0a3d62 0, transparent 65%), linear-gradient(180deg, #05405a, #021820)", fx: ["fx-frost"], corners: "Rounded, 16 px", surface: "Teal glass over water light" },
+  { id: "rosequartz", name: "Rose Quartz", grp: "Glass", desc: "Pink frosted crystal over peach and lilac light, soft pill controls.", font: "'Sora', system-ui, sans-serif", display: "'Sora', system-ui, sans-serif", mono: "'JetBrains Mono', monospace",
+    c: ["rgba(255,255,255,.4)", "#3a1d2a", "#8a6475", "#fbe9ef", "rgba(255,255,255,.5)", "#3a1d2a", "#8a6475", "rgba(255,255,255,.8)", "#e0457b", "#ffffff", "#8c5cf5", "#1f9e74", "#d92d4a"], r: 18, br: 999, bw: "1px", btnLine: "rgba(255,255,255,.9)", panelLine: "rgba(255,255,255,.9)", pw: "1px", sh: "0 8px 30px rgba(140,40,80,.12), inset 0 1px 0 rgba(255,255,255,.9)", sideSel: "rgba(255,255,255,.55)", holdBg: "rgba(255,255,255,.45)", ckr: "50%", field: "rgba(255,255,255,.5)", blurAmt: "22px",
+    bgimg: "radial-gradient(420px 320px at 12% 18%, #ffb8cf 0, transparent 70%), radial-gradient(460px 340px at 88% 22%, #e0c3ff 0, transparent 70%), radial-gradient(520px 380px at 60% 100%, #ffd8b8 0, transparent 70%), linear-gradient(135deg, #fbe9ef, #f7e8f6)", fx: ["fx-frost"], corners: "Very rounded, pills", surface: "Frosted glass over pink light" },
+  { id: "aero", name: "Frutiger Aero", grp: "Glass", desc: "Blue sky, white clouds, bright grass and glossy buttons: optimistic mid-2000s tech.", font: "'Segoe UI', 'Open Sans', Tahoma, sans-serif", display: "'Segoe UI', 'Open Sans', Tahoma, sans-serif", mono: "'Consolas', 'JetBrains Mono', monospace",
+    c: ["linear-gradient(180deg, rgba(255,255,255,.78), rgba(215,238,255,.55))", "#0b3a63", "#3d6a91", "#bfe6ff", "rgba(255,255,255,.62)", "#0b2f52", "#4a6f8f", "rgba(255,255,255,.95)", "#1f9bff", "#ffffff", "#8a4dff", "#2f9e1e", "#e0262f"], r: 10, br: 6, bw: "1px", btnLine: "rgba(120,170,210,.7)", panelLine: "rgba(255,255,255,.95)", pw: "1px", sh: "inset 0 1px 0 rgba(255,255,255,.95), 0 6px 18px rgba(0,60,120,.18)", sideSel: "rgba(255,255,255,.7)", holdBg: "rgba(255,255,255,.55)", ckr: "4px", field: "rgba(255,255,255,.7)", blurAmt: "10px", h1Ink: "#0b3a63", glowText: "0 1px 0 rgba(255,255,255,.9)",
+    bgimg: "radial-gradient(180px 80px at 20% 16%, rgba(255,255,255,.95) 0, transparent 70%), radial-gradient(240px 100px at 32% 20%, rgba(255,255,255,.75) 0, transparent 70%), radial-gradient(260px 110px at 72% 12%, rgba(255,255,255,.9) 0, transparent 70%), radial-gradient(1000px 260px at 50% 122%, #6ed12f 0, #3fa21a 45%, transparent 72%), linear-gradient(180deg, #3aa8ff 0%, #9fd8ff 55%, #e6f7ff 78%)", fx: ["fx-frost", "fx-gloss"], corners: "Rounded, 10 px", surface: "Glossy glass, sky and grass" },
+  { id: "aeroeco", name: "Aero Eco", grp: "Glass", desc: "Leafy green and clear water with floating droplets. Very 2008 eco-tech.", font: "'Segoe UI', 'Open Sans', Tahoma, sans-serif", display: "'Segoe UI', 'Open Sans', Tahoma, sans-serif", mono: "'Consolas', 'JetBrains Mono', monospace",
+    c: ["linear-gradient(180deg, rgba(255,255,255,.75), rgba(220,250,210,.55))", "#163d12", "#4a7a40", "#dff5d0", "rgba(255,255,255,.6)", "#163d12", "#4f7a46", "rgba(255,255,255,.95)", "#39b54a", "#ffffff", "#2e8bff", "#2f9e1e", "#d93025"], r: 10, br: 6, bw: "1px", btnLine: "rgba(110,180,100,.7)", panelLine: "rgba(255,255,255,.95)", pw: "1px", sh: "inset 0 1px 0 rgba(255,255,255,.95), 0 6px 18px rgba(20,90,30,.18)", sideSel: "rgba(255,255,255,.7)", holdBg: "rgba(255,255,255,.55)", ckr: "4px", field: "rgba(255,255,255,.7)", blurAmt: "10px", h1Ink: "#1f5a17", glowText: "0 1px 0 rgba(255,255,255,.9)",
+    bgimg: "radial-gradient(circle 34px at 14% 70%, rgba(255,255,255,0) 62%, rgba(255,255,255,.9) 80%, rgba(255,255,255,0) 100%), radial-gradient(circle 22px at 83% 40%, rgba(255,255,255,0) 60%, rgba(255,255,255,.9) 80%, rgba(255,255,255,0) 100%), radial-gradient(circle 46px at 62% 82%, rgba(255,255,255,0) 64%, rgba(255,255,255,.85) 80%, rgba(255,255,255,0) 100%), radial-gradient(circle 14px at 40% 30%, rgba(255,255,255,0) 55%, rgba(255,255,255,.9) 80%, rgba(255,255,255,0) 100%), radial-gradient(800px 400px at 0% 100%, #8ee05a 0, transparent 60%), radial-gradient(700px 300px at 100% 0%, #5fd0ff 0, transparent 60%), linear-gradient(160deg, #7ad8ff, #c8f2a8)", fx: ["fx-frost", "fx-gloss"], corners: "Rounded, 10 px", surface: "Glossy glass, leaves and droplets" },
+  { id: "aerobubbles", name: "Aero Bubbles", grp: "Glass", desc: "Aqua water full of rising bubbles, white glass panels and a glossy ocean-blue button.", font: "'Segoe UI', 'Open Sans', Tahoma, sans-serif", display: "'Segoe UI', 'Open Sans', Tahoma, sans-serif", mono: "'Consolas', 'JetBrains Mono', monospace",
+    c: ["linear-gradient(180deg, rgba(255,255,255,.7), rgba(200,240,255,.5))", "#00324a", "#2f6e88", "#90e0ef", "rgba(255,255,255,.58)", "#00324a", "#2f6e88", "rgba(255,255,255,.95)", "#0077b6", "#ffffff", "#7b4dff", "#078a5e", "#d62839"], r: 14, br: 999, bw: "1px", btnLine: "rgba(80,170,210,.7)", panelLine: "rgba(255,255,255,.95)", pw: "1px", sh: "inset 0 1px 0 rgba(255,255,255,.95), 0 8px 22px rgba(0,80,120,.2)", sideSel: "rgba(255,255,255,.7)", holdBg: "rgba(255,255,255,.55)", ckr: "50%", field: "rgba(255,255,255,.7)", blurAmt: "8px", h1Ink: "#005077", glowText: "0 1px 0 rgba(255,255,255,.9)",
+    bgimg: "radial-gradient(circle 40px at 12% 25%, rgba(255,255,255,0) 64%, rgba(255,255,255,.85) 82%, rgba(255,255,255,0) 100%), radial-gradient(circle 18px at 30% 60%, rgba(255,255,255,0) 58%, rgba(255,255,255,.9) 80%, rgba(255,255,255,0) 100%), radial-gradient(circle 56px at 78% 30%, rgba(255,255,255,0) 66%, rgba(255,255,255,.8) 82%, rgba(255,255,255,0) 100%), radial-gradient(circle 26px at 88% 78%, rgba(255,255,255,0) 60%, rgba(255,255,255,.9) 80%, rgba(255,255,255,0) 100%), radial-gradient(circle 12px at 55% 15%, rgba(255,255,255,0) 52%, rgba(255,255,255,.9) 80%, rgba(255,255,255,0) 100%), radial-gradient(circle 32px at 50% 88%, rgba(255,255,255,0) 62%, rgba(255,255,255,.85) 82%, rgba(255,255,255,0) 100%), linear-gradient(180deg, #00b4d8, #90e0ef 70%, #caf0f8)", fx: ["fx-frost", "fx-gloss"], corners: "Rounded, pill buttons", surface: "Glossy glass and bubbles" },
+  { id: "vista", name: "Vista Black", grp: "Glass", desc: "Black Aero glass with a blue sheen and a diagonal reflection, glossy dark buttons.", font: "'Segoe UI', 'Open Sans', Tahoma, sans-serif", display: "'Segoe UI', 'Open Sans', Tahoma, sans-serif", mono: "'Consolas', 'JetBrains Mono', monospace",
+    c: ["linear-gradient(180deg, rgba(30,44,64,.78), rgba(5,10,18,.88))", "#e8f2ff", "#8aa6c4", "#0b1420", "rgba(10,18,30,.55)", "#e8f2ff", "#9cb4cf", "rgba(140,190,255,.22)", "#3aa0ff", "#ffffff", "#a98bff", "#61d04f", "#ff5f57"], r: 6, br: 4, bw: "1px", btnLine: "rgba(140,190,255,.35)", panelLine: "rgba(140,190,255,.28)", pw: "1px", sh: "inset 0 1px 0 rgba(255,255,255,.22), 0 0 0 1px rgba(0,0,0,.6), 0 10px 30px rgba(0,0,0,.5)", sideSel: "rgba(58,160,255,.18)", holdBg: "rgba(169,139,255,.1)", ckr: "3px", field: "rgba(0,0,0,.35)", blurAmt: "14px",
+    bgimg: "linear-gradient(115deg, rgba(255,255,255,.09) 0 28%, rgba(255,255,255,0) 28.2%), radial-gradient(700px 300px at 70% 0%, #1d5fa8 0, transparent 60%), radial-gradient(500px 300px at 10% 100%, #0d3a5e 0, transparent 60%), linear-gradient(180deg, #0e2238, #05090f)", fx: ["fx-frost", "fx-gloss"], corners: "Rounded, 6 px", surface: "Black glass with reflections" },
+  { id: "aerosunset", name: "Aero Sunset", grp: "Glass", desc: "Glossy glass over a violet-to-gold sunset, with a warm pink glossy button.", font: "'Segoe UI', 'Open Sans', Tahoma, sans-serif", display: "'Segoe UI', 'Open Sans', Tahoma, sans-serif", mono: "'Consolas', 'JetBrains Mono', monospace",
+    c: ["linear-gradient(180deg, rgba(255,255,255,.62), rgba(255,220,235,.45))", "#3a1f3d", "#7a5277", "#ffd3b0", "rgba(255,255,255,.55)", "#3a1f3d", "#7a5277", "rgba(255,255,255,.9)", "#ff4f86", "#ffffff", "#6a5cff", "#2e9e5b", "#e0262f"], r: 10, br: 6, bw: "1px", btnLine: "rgba(220,140,180,.7)", panelLine: "rgba(255,255,255,.9)", pw: "1px", sh: "inset 0 1px 0 rgba(255,255,255,.9), 0 8px 22px rgba(120,40,80,.2)", sideSel: "rgba(255,255,255,.6)", holdBg: "rgba(255,255,255,.5)", ckr: "4px", field: "rgba(255,255,255,.65)", blurAmt: "10px", h1Ink: "#4a1d4a", glowText: "0 1px 0 rgba(255,255,255,.85)",
+    bgimg: "radial-gradient(240px 240px at 80% 80%, #fff3b0 0, #ffb347 35%, transparent 62%), radial-gradient(200px 70px at 25% 22%, rgba(255,255,255,.55) 0, transparent 70%), linear-gradient(180deg, #5b6cff 0%, #ff7eb3 45%, #ffb36b 75%, #ffe3a3 100%)", fx: ["fx-frost", "fx-gloss"], corners: "Rounded, 10 px", surface: "Glossy glass over a sunset" },
+
+  // ---- Novelty
+  { id: "pocket", name: "Pocket Handheld", grp: "Novelty", desc: "Four shades of green on a pea-soup LCD, like a 1989 handheld game.", font: "'VT323', monospace", display: "'Press Start 2P', 'VT323', monospace", mono: "'VT323', monospace",
+    c: ["#0f380f", "#9bbc0f", "#8bac0f", "#9bbc0f", "#8bac0f", "#0f380f", "#306230", "#306230", "#0f380f", "#9bbc0f", "#306230", "#0f380f", "#0f380f"], r: 0, br: 0, bw: "2px", btnLine: "#0f380f", panelLine: "#0f380f", pw: "3px", lw: "2px", sh: "4px 4px 0 #306230", sideSel: "#306230", holdBg: "#8bac0f", h1Track: "0", logoCase: "uppercase", logoTrack: "0", h1Case: "uppercase", corners: "Square, pixel", surface: "Four-shade LCD" },
+  { id: "bevel", name: "Classic Bevel", grp: "Novelty", desc: "Teal desktop, grey raised windows, a navy title bar. Straight out of 1995.", font: "Tahoma, Verdana, 'Segoe UI', sans-serif", display: "Tahoma, Verdana, sans-serif", mono: "'Courier New', monospace",
+    c: ["#c0c0c0", "#000000", "#404040", "#008080", "#c0c0c0", "#000000", "#404040", "#808080", "#000080", "#ffffff", "#800080", "#008000", "#ff0000"], r: 0, br: 0, bw: "2px", pw: "2px", sh: "none", sideBorder: "2px solid #ffffff", sideSel: "#000080", sideSelColor: "#ffffff", holdBg: "#ffffe1", h1Weight: 700, h1Track: "0", fx: ["fx-bevel"], toastBg: "#ffffe1", toastInk: "#000000", corners: "Square", surface: "Raised 3D bevels" },
+  { id: "onebit", name: "One Bit", grp: "Novelty", desc: "Pure black and white with a dithered desktop, like the first graphical Macs.", font: "'VT323', monospace", display: "'VT323', monospace", mono: "'VT323', monospace",
+    c: ["#ffffff", "#000000", "#000000", "#ffffff", "#ffffff", "#000000", "#000000", "#000000", "#000000", "#ffffff", "#000000", "#000000", "#000000"], r: 6, br: 6, bw: "2px", btnLine: "#000000", panelLine: "#000000", pw: "2px", lw: "2px", sh: "3px 3px 0 #000000", sideBorder: "2px solid #000000", sideSel: "#000000", sideSelColor: "#ffffff", holdBg: "#ffffff", h1Track: "0", h1Weight: 400,
+    bgimg: "repeating-conic-gradient(#000000 0 25%, #ffffff 0 50%)", bgsize: "4px 4px", fx: ["fx-split"], onPaper: "#000000", corners: "Slightly rounded, 6 px", surface: "1-bit dither" },
+  { id: "vapor", name: "Vaporwave", grp: "Novelty", desc: "Pink-to-violet sunset, a teal grid floor, glowing wide caps. Very aesthetic.", font: "'Rubik', system-ui, sans-serif", display: "'Rubik', system-ui, sans-serif", mono: "'VT323', monospace",
+    c: ["rgba(60,10,90,.55)", "#fffb96", "#ffb1e6", "#2b0b4a", "rgba(255,255,255,.12)", "#ffffff", "#ffc6ee", "rgba(1,205,254,.45)", "#01cdfe", "#1b0430", "#b967ff", "#05ffa1", "#ff71ce"], r: 2, br: 2, bw: "1px", btnLine: "#ff71ce", panelLine: "#01cdfe", pw: "1px", sh: "0 0 20px rgba(255,113,206,.35)", sideSel: "rgba(1,205,254,.2)", holdBg: "rgba(185,103,255,.18)", glowText: "0 0 14px #ff71ce, 3px 3px 0 #01cdfe", h1Case: "uppercase", h1Track: "0.2em", h1Weight: 800, logoCase: "uppercase", logoTrack: "0.15em", blurAmt: "8px",
+    bgimg: "linear-gradient(transparent 58%, rgba(1,205,254,.0) 58%), repeating-linear-gradient(0deg, transparent 0 22px, rgba(1,205,254,.5) 22px 23px), radial-gradient(260px 260px at 70% 48%, #fffb96 0, #ff71ce 45%, transparent 70%), linear-gradient(180deg, #2b0b4a 0%, #8a2be2 50%, #ff71ce 100%)", fx: ["fx-frost"], corners: "Nearly square", surface: "Sunset, grid and glow" },
+  { id: "notebook", name: "Notebook", grp: "Novelty", desc: "Lined school paper with a red margin, blue binder and handwritten headings.", font: "'Patrick Hand', 'Comic Sans MS', cursive", display: "'Caveat', 'Patrick Hand', cursive", mono: "'Patrick Hand', cursive",
+    c: ["#2b4c7e", "#ffffff", "#b8c9e6", "#fdfdf8", "rgba(255,255,255,.7)", "#1d2a44", "#5b6a85", "#9db8dc", "#2b5fd9", "#ffffff", "#c2185b", "#2e7d32", "#d32f2f"], r: 4, br: 4, bw: "1.5px", btnLine: "#1d2a44", panelLine: "#1d2a44", pw: "1.5px", sh: "3px 3px 0 rgba(29,42,68,.25)", sideSel: "rgba(255,255,255,.15)", holdBg: "#fff3c4", h1Weight: 700, h1Track: "0", logoWeight: 700,
+    bgimg: "linear-gradient(90deg, transparent 0 30px, #ff9aa2 30px 32px, transparent 32px), repeating-linear-gradient(180deg, transparent 0 23px, #b9d4f0 23px 24px)", corners: "Barely rounded", surface: "Lined paper" },
+  { id: "sticky", name: "Sticky Notes", grp: "Novelty", desc: "Cork board, yellow notes pinned a little crooked, marker headings.", font: "'Patrick Hand', cursive", display: "'Permanent Marker', 'Patrick Hand', cursive", mono: "'Patrick Hand', cursive",
+    c: ["#5b3a1f", "#ffe9c4", "#c9a47a", "#c89b6d", "#fff59d", "#3b2a00", "#7a6420", "#e0c95c", "#ff4d6d", "#ffffff", "#7e57c2", "#2e7d32", "#d32f2f"], r: 2, br: 2, bw: "0px", btnLine: "transparent", panelLine: "transparent", pw: "0px", lw: "0px", sh: "2px 6px 12px rgba(60,30,0,.35)", bsh: "1px 3px 6px rgba(60,30,0,.3)", sideSel: "rgba(255,233,196,.15)", holdBg: "#fff59d", h1Track: "0", h1Weight: 400, logoWeight: 400,
+    bgimg: "radial-gradient(rgba(90,50,10,.25) 1px, transparent 1.5px), radial-gradient(rgba(255,240,210,.18) 1px, transparent 1.5px)", bgsize: "7px 7px, 11px 11px", fx: ["fx-sticky"], corners: "Paper", surface: "Notes on cork" },
+  { id: "chalk", name: "Chalkboard", grp: "Novelty", desc: "Green slate in a wooden frame, chalk handwriting and a yellow chalk highlight.", font: "'Gochi Hand', cursive", display: "'Gochi Hand', cursive", mono: "'Gochi Hand', cursive",
+    c: ["#5a3e2b", "#f5e6d3", "#c7a88a", "#2e4a3a", "rgba(255,255,255,.04)", "#f5f5ef", "#c9d6cc", "rgba(255,255,255,.55)", "#ffe066", "#2e4a3a", "#ffb3d1", "#b8f2c0", "#ff9b9b"], r: 6, br: 6, bw: "2px", btnLine: "rgba(255,255,255,.75)", panelLine: "rgba(255,255,255,.7)", pw: "2px", lw: "2px", sh: "none", sideBorder: "8px solid #3e2a1c", sideSel: "rgba(255,255,255,.08)", holdBg: "rgba(255,255,255,.06)", h1Weight: 400, h1Track: "0.01em", logoWeight: 400, glowText: "0 0 2px rgba(255,255,255,.6)",
+    bgimg: "radial-gradient(300px 120px at 30% 30%, rgba(255,255,255,.07) 0, transparent 70%), radial-gradient(260px 100px at 75% 70%, rgba(255,255,255,.05) 0, transparent 70%)", corners: "Rounded, 6 px", surface: "Chalk on slate" },
+  { id: "comic", name: "Comic Book", grp: "Novelty", desc: "Halftone dots, thick ink outlines, punchy caps and a big red action button.", font: "'Rubik', system-ui, sans-serif", display: "'Bangers', 'Rubik', system-ui, sans-serif", mono: "'Rubik', monospace",
+    c: ["#1f4fd8", "#ffffff", "#c7d4ff", "#fff6d6", "#ffffff", "#111111", "#444444", "#111111", "#e8222b", "#ffffff", "#1f4fd8", "#0b8a3e", "#e8222b"], r: 0, br: 0, bw: "3px", btnLine: "#111111", panelLine: "#111111", pw: "3px", lw: "3px", sh: "5px 5px 0 #111111", bsh: "3px 3px 0 #111111", sideSel: "#ffcf33", holdBg: "#fff1a8", h1Case: "uppercase", h1Track: "0.04em", h1Weight: 400, logoCase: "uppercase", logoTrack: "0.06em", logoWeight: 400, h2Case: "uppercase", glowText: "3px 3px 0 #ffcf33", sideSelInk: true,
+    bgimg: "radial-gradient(circle, #ffcf33 1.6px, transparent 1.9px)", bgsize: "10px 10px", corners: "Square", surface: "Halftone and ink" },
+  { id: "bauhaus", name: "Bauhaus", grp: "Novelty", desc: "Primary red, yellow and blue shapes, geometric sans, nothing decorative that is not a circle or a square.", font: "'Jost', 'Futura', system-ui, sans-serif", display: "'Jost', 'Futura', system-ui, sans-serif", mono: "'IBM Plex Mono', monospace",
+    c: ["#111111", "#f2f0eb", "#9a968e", "#f2f0eb", "#ffffff", "#111111", "#55524c", "#111111", "#1d4fa3", "#ffffff", "#e63322", "#1d7a3e", "#e63322"], r: 0, br: 0, bw: "2px", btnLine: "#111111", panelLine: "#111111", pw: "2px", lw: "2px", sh: "none", sideSel: "#e63322", holdBg: "#ffe9a8", h1Case: "uppercase", h1Track: "0.02em", h1Weight: 800, logoCase: "lowercase", logoTrack: "0", h2Case: "lowercase", sideSelInk: false,
+    bgimg: "radial-gradient(circle at 96% 8%, #e63322 0 64px, transparent 65px), radial-gradient(circle at 82% 104%, #f6c445 0 90px, transparent 91px), linear-gradient(90deg, transparent 0 calc(100% - 26px), #1d4fa3 calc(100% - 26px))", corners: "Square", surface: "Primary shapes" },
+  { id: "memphis", name: "Memphis", grp: "Novelty", desc: "Eighties Milan design: confetti, zigzags, candy colours and chunky black shadows.", font: "'Rubik', system-ui, sans-serif", display: "'Rubik', system-ui, sans-serif", mono: "'IBM Plex Mono', monospace",
+    c: ["#ffd23f", "#222222", "#6b5a12", "#ffffff", "#ffffff", "#222222", "#555555", "#222222", "#ff5ca8", "#ffffff", "#3ec1d3", "#00a86b", "#ff3b3b"], r: 10, br: 999, bw: "2px", btnLine: "#222222", panelLine: "#222222", pw: "2px", lw: "2px", sh: "6px 6px 0 #3ec1d3", bsh: "3px 3px 0 #222222", sideSel: "#ffffff", holdBg: "#e6f9fb", h1Weight: 800, h1Track: "-0.03em", sideSelInk: true, ckr: "50%",
+    bgimg: "radial-gradient(circle, #ff5ca8 3px, transparent 3.5px), radial-gradient(circle, #3ec1d3 2.5px, transparent 3px), repeating-linear-gradient(135deg, transparent 0 14px, rgba(34,34,34,.06) 14px 16px)", bgsize: "46px 46px, 34px 34px, auto", corners: "Rounded panels, pill buttons", surface: "Confetti and hard shadows" },
+  { id: "arcade", name: "Pixel Arcade", grp: "Novelty", desc: "Starry purple cabinet, chunky pixel headings and coin-op yellow buttons.", font: "'VT323', monospace", display: "'Press Start 2P', 'VT323', monospace", mono: "'VT323', monospace",
+    c: ["#0b0018", "#ffe600", "#a58bd6", "#13002b", "#22004d", "#ffffff", "#c3aef0", "#ff2bd6", "#ffe600", "#13002b", "#ff2bd6", "#3dff7a", "#ff3b3b"], r: 0, br: 0, bw: "3px", btnLine: "#ffffff", panelLine: "#ff2bd6", pw: "3px", lw: "3px", sh: "6px 6px 0 #000000", bsh: "3px 3px 0 #000000", sideBorder: "3px solid #ff2bd6", sideSel: "#ff2bd6", holdBg: "#2d0060", h1Track: "0", h1Case: "uppercase", logoCase: "uppercase", logoTrack: "0", glowText: "3px 3px 0 #ff2bd6",
+    bgimg: "radial-gradient(circle, #ffffff 1px, transparent 1.5px), radial-gradient(circle, rgba(255,230,0,.8) 1px, transparent 1.5px)", bgsize: "53px 53px, 37px 37px", corners: "Square, pixel", surface: "Pixels and stars" },
+  { id: "mission", name: "Mission Control", grp: "Novelty", desc: "Deep-space console: starfield, white-on-black readouts and a launch-orange action.", font: "'IBM Plex Sans', system-ui, sans-serif", display: "'Michroma', 'IBM Plex Sans', sans-serif", mono: "'IBM Plex Mono', monospace", fileFont: "'IBM Plex Mono', monospace",
+    c: ["#06080c", "#f0f0ea", "#7f8696", "#0b0d12", "#151922", "#f0f0ea", "#9aa1b1", "#2a3140", "#ff7a1a", "#1a0b00", "#9fb4ff", "#5be08a", "#ff4d4d"], r: 2, br: 2, bw: "1px", btnLine: "#4a5366", panelLine: "#4a5366", pw: "1px", sh: "none", sideBorder: "1px solid #1d2330", sideSel: "#151922", sideSelBar: "inset 3px 0 0 #ff7a1a", holdBg: "#151d33", h1Case: "uppercase", h1Track: "0.08em", logoCase: "uppercase", logoTrack: "0.1em", labelCase: "uppercase", labelTrack: "0.14em", h2Case: "uppercase",
+    bgimg: "radial-gradient(circle, rgba(255,255,255,.9) .8px, transparent 1.2px), radial-gradient(circle, rgba(255,255,255,.5) .6px, transparent 1px), radial-gradient(500px 300px at 100% 100%, rgba(80,110,200,.18) 0, transparent 70%)", bgsize: "61px 61px, 23px 23px, auto", corners: "Nearly square", surface: "Readouts in space" },
+  { id: "pumpkin", name: "Pumpkin Night", grp: "Novelty", desc: "Midnight purple, a full moon and pumpkin orange, with dripping headline type.", font: "'Nunito', system-ui, sans-serif", display: "'Creepster', 'Nunito', cursive", mono: "'IBM Plex Mono', monospace",
+    c: ["#0b060e", "#f7e9d7", "#9a8aa6", "#120a14", "#1f1426", "#f7e9d7", "#b5a3bf", "#3a2747", "#ff7a1a", "#1a0a00", "#9d5cff", "#7ddc4c", "#ff3d3d"], r: 10, br: 10, bw: "1px", btnLine: "#4a3459", panelLine: "#3a2747", pw: "1px", sh: "0 10px 30px rgba(0,0,0,.5)", sideSel: "rgba(255,122,26,.14)", holdBg: "rgba(157,92,255,.14)", h1Weight: 400, h1Track: "0.03em", logoWeight: 400, glowText: "0 0 14px rgba(255,122,26,.55)",
+    bgimg: "radial-gradient(circle at 88% 14%, #f5e6b3 0 34px, rgba(245,230,179,.25) 36px, transparent 70px), radial-gradient(600px 240px at 20% 100%, rgba(157,92,255,.2) 0, transparent 70%)", corners: "Rounded, 10 px", surface: "Moonlit" },
+  { id: "snowfall", name: "Snowfall", grp: "Novelty", desc: "Icy blue morning with drifting snow, frosted panels and a cheerful holiday red.", font: "'Nunito', system-ui, sans-serif", display: "'Fraunces', Georgia, serif", mono: "'IBM Plex Mono', monospace",
+    c: ["#24415f", "#ffffff", "#a9c2dc", "#e8f1fb", "rgba(255,255,255,.75)", "#183048", "#56708c", "rgba(255,255,255,.95)", "#d62839", "#ffffff", "#6a4fc8", "#1f8a5a", "#d62839"], r: 12, br: 10, bw: "1px", btnLine: "#b9cde3", panelLine: "#ffffff", pw: "1px", sh: "0 8px 24px rgba(24,48,72,.12)", sideSel: "rgba(255,255,255,.12)", holdBg: "#fdeef0", h1Track: "-0.02em", ckr: "50%", blurAmt: "6px",
+    bgimg: "radial-gradient(circle, #ffffff 2px, transparent 2.5px), radial-gradient(circle, rgba(255,255,255,.85) 1.4px, transparent 1.8px), linear-gradient(180deg, #cfe2f6, #eef5fc)", bgsize: "41px 41px, 23px 23px, auto", fx: ["fx-frost"], corners: "Rounded, 12 px", surface: "Frost and snow" },
+  { id: "lava", name: "Lava Lamp", grp: "Novelty", desc: "Glowing orange and pink blobs floating in violet goo, behind rounded glass.", font: "'Fredoka', system-ui, sans-serif", display: "'Fredoka', system-ui, sans-serif", mono: "'IBM Plex Mono', monospace",
+    c: ["rgba(40,10,60,.5)", "#ffe9d6", "#d3a6c8", "#2a0e3d", "rgba(40,10,60,.5)", "#ffe9d6", "#e0b9d0", "rgba(255,180,120,.25)", "#ff7b2f", "#2a0e00", "#ff5fa2", "#8fe388", "#ff4d4d"], r: 22, br: 999, bw: "1px", btnLine: "rgba(255,180,120,.4)", panelLine: "rgba(255,180,120,.35)", pw: "1px", sh: "inset 0 1px 0 rgba(255,220,200,.2), 0 16px 40px rgba(0,0,0,.35)", sideSel: "rgba(255,123,47,.16)", holdBg: "rgba(255,95,162,.14)", ckr: "50%", field: "rgba(0,0,0,.2)", blurAmt: "18px", h1Weight: 600,
+    bgimg: "radial-gradient(140px 180px at 22% 30%, #ff7b2f 0, rgba(255,123,47,.4) 55%, transparent 72%), radial-gradient(170px 140px at 70% 18%, #ff5fa2 0, rgba(255,95,162,.4) 55%, transparent 72%), radial-gradient(200px 220px at 60% 86%, #ffb347 0, rgba(255,179,71,.4) 55%, transparent 72%), radial-gradient(110px 110px at 90% 60%, #ff7b2f 0, transparent 72%), linear-gradient(180deg, #3d0f57, #1a0724)", fx: ["fx-frost"], corners: "Very rounded, pills", surface: "Glass over glowing blobs" },
+  { id: "holo", name: "Holo Foil", grp: "Novelty", desc: "Iridescent foil that shifts from pink to cyan to gold, with a chrome button.", font: "'Sora', system-ui, sans-serif", display: "'Sora', system-ui, sans-serif", mono: "'IBM Plex Mono', monospace",
+    c: ["rgba(255,255,255,.45)", "#1c1530", "#5b5275", "#f2e9ff", "rgba(255,255,255,.6)", "#1c1530", "#5b5275", "rgba(255,255,255,.9)", "#1c1530", "#ffffff", "#9b5cff", "#14946a", "#e0245e"], r: 14, br: 999, bw: "1px", btnLine: "rgba(255,255,255,.9)", panelLine: "rgba(255,255,255,.9)", pw: "1px", sh: "0 8px 30px rgba(80,40,140,.15), inset 0 1px 0 #ffffff", sideSel: "rgba(255,255,255,.6)", holdBg: "rgba(255,255,255,.5)", ckr: "50%", field: "rgba(255,255,255,.5)", blurAmt: "16px", h1Weight: 700,
+    bgimg: "linear-gradient(120deg, #ffd6f6 0%, #c6f1ff 25%, #e3ffd6 50%, #fff2c4 70%, #e9d6ff 100%), repeating-linear-gradient(60deg, rgba(255,255,255,.35) 0 2px, transparent 2px 12px)", fx: ["fx-frost", "fx-chrome"], corners: "Very rounded, pills", surface: "Iridescent foil" },
+  { id: "cardboard", name: "Cardboard", grp: "Novelty", desc: "Kraft paper and corrugated board, stencilled headings, packing-tape brown.", font: "'Nunito', system-ui, sans-serif", display: "'Black Ops One', 'Archivo Black', sans-serif", mono: "'Special Elite', monospace",
+    c: ["#6b4a2b", "#f3e3c8", "#c9a982", "#c89f6b", "#e3c8a0", "#2b1d0e", "#5e4426", "#8a6a43", "#2b1d0e", "#e8d3b0", "#7a3e9d", "#2f6b2a", "#b3261e"], r: 0, br: 0, bw: "2px", btnLine: "#2b1d0e", panelLine: "#2b1d0e", pw: "2px", lw: "2px", sh: "4px 4px 0 rgba(43,29,14,.35)", sideSel: "rgba(243,227,200,.12)", holdBg: "#efd9b5", h1Weight: 400, h1Case: "uppercase", h1Track: "0.03em", logoCase: "uppercase", logoWeight: 400, h2Case: "uppercase",
+    bgimg: "repeating-linear-gradient(90deg, rgba(90,60,25,.08) 0 3px, transparent 3px 9px), radial-gradient(500px 300px at 20% 10%, rgba(255,240,210,.25) 0, transparent 70%)", corners: "Square", surface: "Kraft paper" },
+  { id: "hazard", name: "Hazard", grp: "Novelty", desc: "Industrial black with caution-tape yellow, stencil type and a striped floor line.", font: "'Archivo', system-ui, sans-serif", display: "'Black Ops One', 'Archivo Black', sans-serif", mono: "'IBM Plex Mono', monospace",
+    c: ["#111111", "#ffcc00", "#8a7a3a", "#1b1b1b", "#262626", "#f2f2f2", "#a6a6a6", "#3a3a3a", "#ffcc00", "#111111", "#ff6b00", "#7ddc4c", "#ff3b30"], r: 0, br: 0, bw: "2px", btnLine: "#ffcc00", panelLine: "#ffcc00", pw: "2px", lw: "1px", sh: "none", sideBorder: "4px solid #ffcc00", sideSel: "#ffcc00", sideSelColor: "#111111", holdBg: "#2b2410", h1Weight: 400, h1Case: "uppercase", h1Track: "0.03em", logoCase: "uppercase", logoWeight: 400, h2Case: "uppercase",
+    bgimg: "linear-gradient(#1b1b1b 0 calc(100% - 22px), transparent calc(100% - 22px)), repeating-linear-gradient(-45deg, #ffcc00 0 14px, #111111 14px 28px)", corners: "Square", surface: "Caution stripes" },
+  { id: "typewriter", name: "Typewriter", grp: "Novelty", desc: "Uneven typewriter letters on a fresh sheet, with a red-ribbon accent.", font: "'Special Elite', 'Courier New', monospace", display: "'Special Elite', 'Courier New', monospace", mono: "'Special Elite', monospace",
+    c: ["#2a2a2a", "#f1ece0", "#9a958a", "#ece8de", "#fbfaf6", "#222222", "#5f5b52", "#c9c3b6", "#c1272d", "#ffffff", "#2b4bb8", "#2e6b2e", "#c1272d"], r: 0, br: 0, bw: "1px", btnLine: "#222222", panelLine: "#222222", pw: "1px", sh: "2px 2px 0 rgba(0,0,0,.15)", sideSel: "rgba(241,236,224,.1)", holdBg: "#f6efdf", h1Weight: 400, h1Track: "0.02em", logoWeight: 400,
+    bgimg: "radial-gradient(600px 400px at 50% 40%, rgba(255,255,255,.6) 0, transparent 70%)", corners: "Square", surface: "Paper and ink" },
+  { id: "kawaii", name: "Kawaii", grp: "Novelty", desc: "Bubblegum pink, lilac and mint, round letters and soft bouncy shadows.", font: "'Fredoka', system-ui, sans-serif", display: "'Fredoka', system-ui, sans-serif", mono: "'Fredoka', monospace",
+    c: ["#ffd6e8", "#5a2a4a", "#a8628f", "#ffe9f3", "#ffffff", "#5a2a4a", "#9a6a8a", "#ffc2dc", "#ff7eb6", "#ffffff", "#9b7bff", "#3cc59a", "#ff5c7a"], r: 20, br: 999, bw: "2px", btnLine: "#ffc2dc", panelLine: "#ffc2dc", pw: "2px", lw: "2px", sh: "0 6px 0 #ffc2dc", bsh: "0 3px 0 #ffc2dc", sideSel: "#ffffff", holdBg: "#f3ecff", h1Weight: 600, ckr: "50%",
+    bgimg: "radial-gradient(circle, #ffc2dc 2.5px, transparent 3px), radial-gradient(circle, #d9ccff 2px, transparent 2.5px)", bgsize: "36px 36px, 52px 52px", corners: "Very rounded, pills", surface: "Soft bounce shadows" },
+  { id: "flowers", name: "Pressed Flowers", grp: "Novelty", desc: "Herbarium page: blush and sage petals, an elegant serif and dried-leaf green.", font: "'Nunito', system-ui, sans-serif", display: "'Fraunces', Georgia, serif", mono: "'IBM Plex Mono', monospace",
+    c: ["#4a5a3a", "#f1efe4", "#b9c2a4", "#f3f1ea", "#fffdf7", "#3a3328", "#7a7062", "#e2dccd", "#7a8f5a", "#ffffff", "#c46a8a", "#5d7a3a", "#b9473b"], r: 10, br: 8, bw: "1px", btnLine: "#cfc6b2", panelLine: "#e2dccd", pw: "1px", sh: "0 6px 20px rgba(58,51,40,.08)", sideSel: "rgba(241,239,228,.12)", holdBg: "#f8ecef", h1Track: "-0.02em", h1Weight: 700, ckr: "50%",
+    bgimg: "radial-gradient(28px 14px at 8% 88%, #e9b7c4 0, transparent 70%), radial-gradient(14px 28px at 10% 82%, #e9b7c4 0, transparent 70%), radial-gradient(40px 16px at 95% 14%, #a9bd8a 0, transparent 70%), radial-gradient(16px 34px at 92% 20%, #a9bd8a 0, transparent 70%), radial-gradient(22px 22px at 90% 92%, #f2d38b 0, transparent 70%)", corners: "Rounded, 10 px", surface: "Paper with petals" },
+  { id: "biolum", name: "Bioluminescent", grp: "Novelty", desc: "Abyssal dark with glowing jellyfish light in cyan and violet behind glass.", font: "'Manrope', system-ui, sans-serif", display: "'Manrope', system-ui, sans-serif", mono: "'JetBrains Mono', monospace",
+    c: ["rgba(2,8,20,.5)", "#dffcff", "#6f9fb0", "#020611", "rgba(4,12,30,.5)", "#dffcff", "#86b6c4", "rgba(54,241,255,.18)", "#36f1ff", "#00141a", "#c77dff", "#5dffb2", "#ff5c8a"], r: 16, br: 12, bw: "1px", btnLine: "rgba(54,241,255,.35)", panelLine: "rgba(54,241,255,.25)", pw: "1px", sh: "inset 0 1px 0 rgba(160,250,255,.1), 0 16px 40px rgba(0,0,0,.5)", sideSel: "rgba(54,241,255,.1)", holdBg: "rgba(199,125,255,.1)", ckr: "50%", field: "rgba(0,0,0,.3)", blurAmt: "20px", sat: "1.6",
+    bgimg: "radial-gradient(120px 90px at 25% 25%, rgba(54,241,255,.55) 0, transparent 70%), radial-gradient(4px 140px at 25% 40%, rgba(54,241,255,.35) 0, transparent 70%), radial-gradient(150px 110px at 78% 60%, rgba(199,125,255,.5) 0, transparent 70%), radial-gradient(4px 160px at 78% 78%, rgba(199,125,255,.3) 0, transparent 70%), radial-gradient(90px 70px at 55% 90%, rgba(93,255,178,.3) 0, transparent 70%), linear-gradient(180deg, #03102a, #01030a)", fx: ["fx-frost", "fx-glow"], corners: "Rounded, 16 px", surface: "Glass over living light" },
+  { id: "lofi", name: "Lo-fi Café", grp: "Novelty", desc: "Warm brown room, window light and a peach accent. Beats to publish to.", font: "'Nunito', system-ui, sans-serif", display: "'Fraunces', Georgia, serif", mono: "'IBM Plex Mono', monospace",
+    c: ["#2a1d17", "#f3e3cf", "#a88e78", "#3b2a22", "#4a362b", "#f3e3cf", "#c2a890", "#5e4637", "#e8a87c", "#2a1a12", "#c3a6d9", "#9cc58c", "#e36b5b"], r: 12, br: 10, bw: "1px", btnLine: "#6e5442", panelLine: "#5e4637", pw: "1px", sh: "0 10px 30px rgba(0,0,0,.35)", sideSel: "rgba(232,168,124,.14)", holdBg: "rgba(195,166,217,.12)", h1Track: "-0.02em", ckr: "50%",
+    bgimg: "linear-gradient(160deg, rgba(255,214,160,.16) 0 30%, transparent 30%), radial-gradient(400px 300px at 90% 0%, rgba(255,200,140,.2) 0, transparent 70%)", corners: "Rounded, 12 px", surface: "Warm and soft" },
+  { id: "tabloid", name: "Tabloid", grp: "Novelty", desc: "Grey newsprint, a red masthead and shouting condensed headlines.", font: "'Archivo', system-ui, sans-serif", display: "'Big Shoulders Display', 'Archivo Black', sans-serif", mono: "'IBM Plex Mono', monospace",
+    c: ["#d1001f", "#ffffff", "#ffc2ca", "#e9e7e1", "#f5f4f0", "#111111", "#55534d", "#111111", "#d1001f", "#ffffff", "#1d3fa3", "#0b7a3b", "#d1001f"], r: 0, br: 0, bw: "2px", btnLine: "#111111", panelLine: "#111111", pw: "2px", lw: "1px", sh: "none", sideSel: "#ffffff", holdBg: "#fff3a8", h1Case: "uppercase", h1Track: "-0.01em", h1Weight: 900, logoCase: "uppercase", logoWeight: 900, h2Case: "uppercase", sideSelInk: true,
+    bgimg: "radial-gradient(circle, rgba(0,0,0,.05) 1px, transparent 1.4px)", bgsize: "5px 5px", corners: "Square", surface: "Newsprint" },
+  { id: "stained", name: "Stained Glass", grp: "Novelty", desc: "Jewel-coloured panes divided by black leading, with gold light on the action.", font: "'Nunito', system-ui, sans-serif", display: "'Fraunces', Georgia, serif", mono: "'IBM Plex Mono', monospace",
+    c: ["rgba(14,10,22,.82)", "#fbf3e2", "#b9a88a", "#14101c", "rgba(14,10,22,.8)", "#fbf3e2", "#c9b99a", "rgba(242,177,52,.3)", "#f2b134", "#1a0f00", "#c58cff", "#7fd88f", "#ff6b6b"], r: 6, br: 6, bw: "1px", btnLine: "rgba(242,177,52,.5)", panelLine: "rgba(242,177,52,.45)", pw: "1.5px", sh: "0 10px 30px rgba(0,0,0,.5)", sideSel: "rgba(242,177,52,.14)", holdBg: "rgba(197,140,255,.12)", h1Track: "-0.01em", blurAmt: "4px",
+    bgimg: "repeating-linear-gradient(60deg, transparent 0 56px, #0b0810 56px 60px), repeating-linear-gradient(-60deg, transparent 0 56px, #0b0810 56px 60px), repeating-linear-gradient(0deg, transparent 0 96px, #0b0810 96px 100px), conic-gradient(from 30deg at 35% 45%, #b3122e, #1a4fa0, #f2b134, #1f7a4d, #6a2c91, #b3122e)", fx: ["fx-frost"], corners: "Slightly rounded, 6 px", surface: "Jewel glass and leading" },
+];
+
+const GROUPS = ["All", "Clean", "Studio", "Tech", "Contrast", "Dark editor", "Glass", "Novelty", "Kept"];
+const tpl = document.getElementById("mini-tpl");
+let focus = 8; // Ember, today's look
+let filter = "All";
+let picks = new Set();
+let store = null; // db doc ref when the page can save
+
+function vars(t) {
+  const [side, sideInk, sideMute, paper, card, ink, mute, line, acc, accInk, hold, nw, warn] = t.c;
+  const v = {
+    "--font": t.font, "--display": t.display, "--mono": t.mono,
+    "--side": side, "--sideInk": sideInk, "--sideMute": sideMute, "--paper": paper, "--card": card, "--ink": ink, "--mute": mute, "--line": line,
+    "--acc": acc, "--accInk": accInk, "--hold": hold, "--new": nw, "--warn": warn,
+    "--r": t.r + "px", "--rSmall": Math.min(t.r, 8) + "px", "--br": (t.br ?? t.r) + "px", "--bw": t.bw,
+    "--sh": t.sh, "--sideCard": "color-mix(in srgb, " + (side.includes("gradient") ? "#ffffff" : sideInk) + " 9%, transparent)",
+    "--holdBg": t.holdBg, "--sideSel": t.sideSel || "transparent",
+  };
+  const opt = { btnLine: "--btnLine", panelLine: "--panelLine", pw: "--pw", lw: "--lw", bsh: "--bsh", sideBorder: "--sideBorder", sideSelBar: "--sideSelBar", bgimg: "--bgimg", bgsize: "--bgsize",
+    glowText: "--glowText", h1Case: "--h1Case", h1Track: "--h1Track", h1Weight: "--h1Weight", h1Ink: "--h1Ink", h2Case: "--h2Case", labelCase: "--labelCase", labelTrack: "--labelTrack",
+    logoCase: "--logoCase", logoTrack: "--logoTrack", logoWeight: "--logoWeight", chamfer: "--chamfer", chamferBig: "--chamferBig", ckr: "--ckr", fileFont: "--fileFont", toastBg: "--toastBg", toastInk: "--toastInk", blur: "--blur", blurAmt: "--blurAmt", sat: "--sat", field: "--field", onPaper: "--onPaper", onPaperMute: "--onPaperMute" };
+  for (const [k, name] of Object.entries(opt)) if (t[k] !== undefined) v[name] = String(t[k]);
+  return v;
+}
+
+function mini(t) {
+  const node = tpl.content.firstElementChild.cloneNode(true);
+  for (const [k, val] of Object.entries(vars(t))) node.style.setProperty(k, val);
+  if (t.c[0].includes("gradient")) node.querySelector(".m-side").style.background = t.c[0];
+  for (const fx of t.fx || []) node.classList.add(fx);
+  if (t.sideSelColor) node.querySelector(".m-nav .cur").style.color = t.sideSelColor;
+  else if (t.sideSelInk) { const cur = node.querySelector(".m-nav .cur"); cur.style.color = t.c[3] === t.c[0] ? t.c[5] : (t.id === "cyberdeck" ? "#fcee0a" : t.c[5]); }
+  return node;
+}
+
+// Scale each 960 x 580 miniature to its frame.
+const ro = new ResizeObserver((entries) => { for (const e of entries) e.target.firstElementChild?.style.setProperty("--s", String(e.contentRect.width / 960)); });
+
+function renderBig() {
+  const t = T[focus];
+  const fit = document.getElementById("big-fit");
+  fit.replaceChildren(mini(t));
+  ro.observe(fit);
+  fit.firstElementChild.style.setProperty("--s", String(fit.clientWidth / 960));
+  document.getElementById("i-grp").textContent = `${focus + 1} of ${T.length} · ${t.grp}${t.current ? " · current look" : ""}`;
+  document.getElementById("i-name").textContent = t.name;
+  document.getElementById("i-desc").textContent = t.desc;
+  document.getElementById("i-type").textContent = t.display.split(",")[0].replace(/'/g, "").replace("-apple-system", "System (San Francisco)") + (t.display === t.font ? "" : " + " + t.font.split(",")[0].replace(/'/g, "").replace("-apple-system", "System"));
+  document.getElementById("i-corners").textContent = t.corners;
+  document.getElementById("i-surface").textContent = t.surface;
+  const sw = document.getElementById("i-sw");
+  sw.replaceChildren(...[0, 3, 4, 5, 8, 10, 11, 12].map((i) => { const el = document.createElement("i"); el.style.background = t.c[i]; return el; }));
+  const k = document.getElementById("i-keep");
+  k.setAttribute("aria-pressed", String(picks.has(t.id)));
+  k.textContent = picks.has(t.id) ? "Kept" : "Keep this theme";
+}
+
+function renderGrid() {
+  const grid = document.getElementById("grid");
+  const list = T.map((t, i) => ({ t, i })).filter(({ t }) => filter === "All" || (filter === "Kept" ? picks.has(t.id) : t.grp === filter));
+  grid.replaceChildren(...list.map(({ t, i }) => {
+    const card = document.createElement("article");
+    card.className = "card" + (i === focus ? " on" : "");
+    const shot = document.createElement("button");
+    shot.className = "shot"; shot.type = "button"; shot.setAttribute("aria-label", `Preview ${t.name}`);
+    const fit = document.createElement("div"); fit.className = "fit"; fit.appendChild(mini(t)); shot.appendChild(fit);
+    shot.addEventListener("click", () => { focus = i; renderBig(); renderGrid(); document.querySelector(".stage").scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" }); });
+    const meta = document.createElement("div"); meta.className = "meta";
+    const num = document.createElement("span"); num.className = "num"; num.textContent = String(i + 1).padStart(2, "0");
+    const txt = document.createElement("div");
+    const nm = document.createElement("strong"); nm.textContent = t.name;
+    const ds = document.createElement("small"); ds.textContent = `${t.grp} · ${t.corners}`;
+    txt.append(nm, ds);
+    const keep = document.createElement("button"); keep.className = "keep"; keep.type = "button";
+    keep.setAttribute("aria-pressed", String(picks.has(t.id))); keep.textContent = picks.has(t.id) ? "Kept" : "Keep";
+    keep.setAttribute("aria-label", `${picks.has(t.id) ? "Remove" : "Keep"} ${t.name}`);
+    keep.addEventListener("click", () => toggle(t.id));
+    meta.append(num, txt, keep);
+    card.append(shot, meta);
+    ro.observe(fit);
+    return card;
+  }));
+  if (!list.length) { const p = document.createElement("p"); p.style.color = "var(--mute)"; p.textContent = "Nothing kept yet. Use Keep on the themes you like."; grid.appendChild(p); }
+  document.getElementById("pick-count").textContent = String(picks.size);
+}
+
+function renderFilters() {
+  const bar = document.getElementById("filters");
+  bar.replaceChildren(...GROUPS.map((g) => {
+    const b = document.createElement("button"); b.type = "button"; b.textContent = g;
+    b.setAttribute("aria-pressed", String(g === filter));
+    b.addEventListener("click", () => { filter = g; renderFilters(); renderGrid(); });
+    return b;
+  }));
+}
+
+// ---------------------------------------------------------------- Saving picks
+const LS = "mp-theme-picks";
+function setState(text) { document.getElementById("save-state").textContent = text; }
+let saveTimer = null;
+function toggle(id) {
+  picks.has(id) ? picks.delete(id) : picks.add(id);
+  renderBig(); renderGrid();
+  try { localStorage.setItem(LS, JSON.stringify([...picks])); } catch (_) {}
+  if (!store) { setState("Saved in this browser only"); return; }
+  setState("Saving…");
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(async () => {
+    try {
+      await store.set({ ids: T.map((t) => t.id).filter((x) => picks.has(x)), updatedAt: new Date().toISOString() });
+      setState("Saved. Claude can see your picks.");
+    } catch (e) { setState("Could not save (" + (e && e.code ? e.code : "error") + "). Use Copy list."); }
+  }, 500);
+}
+
+document.getElementById("i-keep").addEventListener("click", () => toggle(T[focus].id));
+document.getElementById("prev").addEventListener("click", () => { focus = (focus - 1 + T.length) % T.length; renderBig(); renderGrid(); });
+document.getElementById("next").addEventListener("click", () => { focus = (focus + 1) % T.length; renderBig(); renderGrid(); });
+document.getElementById("copy").addEventListener("click", async () => {
+  const text = T.filter((t) => picks.has(t.id)).map((t, i) => `${T.indexOf(t) + 1}. ${t.name}`).join("\n") || "No themes kept yet.";
+  try { await navigator.clipboard.writeText(text); setState("List copied."); }
+  catch (_) { setState(text.replace(/\n/g, ", ")); }
+});
+document.addEventListener("keydown", (e) => {
+  if (e.target.closest("input, textarea")) return;
+  if (e.key === "ArrowRight") document.getElementById("next").click();
+  if (e.key === "ArrowLeft") document.getElementById("prev").click();
+});
+
+try { const saved = JSON.parse(localStorage.getItem(LS) || "[]"); if (Array.isArray(saved)) saved.forEach((x) => picks.add(String(x))); } catch (_) {}
+renderFilters(); renderBig(); renderGrid();
+setState("Saved in this browser only");
+
+(async () => {
+  const db = await window.claude?.use?.("db").catch(() => null);
+  if (!db) { setState(picks.size ? "Saved in this browser only" : "Picks save in this browser"); return; }
+  store = db.doc("picks/current");
+  let first = true;
+  const timer = setTimeout(() => setState("Could not reach saved picks yet"), 10000);
+  store.onSnapshot((snap) => {
+    clearTimeout(timer);
+    const ids = snap.exists && Array.isArray(snap.data()?.ids) ? snap.data().ids.map(String) : null;
+    if (ids && first) { picks = new Set([...ids, ...picks]); renderBig(); renderGrid(); }
+    first = false;
+    setState(ids ? "Saved. Claude can see your picks." : "Pick themes and they save here");
+  }, () => { clearTimeout(timer); setState("Saved in this browser only"); store = null; });
+})();
+</script>

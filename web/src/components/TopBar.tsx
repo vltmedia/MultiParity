@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom';
+import { Link, NavLink } from 'react-router-dom';
 import { useSession } from '../lib/session';
 import { Menu, Who } from './ui';
 
@@ -28,6 +28,7 @@ export default function TopBar() {
                 </div>
               ))}
               <hr />
+              <Link role="menuitem" to="/look" onClick={close}>Look</Link>
               <button role="menuitem" onClick={() => { close(); signOut(); }}>Sign out</button>
             </>
           )}

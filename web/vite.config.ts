@@ -12,6 +12,8 @@ export default defineConfig(({ command }) => {
   return {
     plugins: [react()],
     server: {
+      // The theme list and engine live in desktop/ui and are shared with the desktop app.
+      fs: { allow: ['..'] },
       proxy: {
         '/api': {
           target: 'http://localhost:18500',

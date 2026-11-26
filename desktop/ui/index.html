@@ -5,6 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>MultiParity</title>
 <link rel="stylesheet" href="app.css">
+<link rel="stylesheet" href="theme-fx.css">
+<script src="themes.js"></script>
+<script src="theme-engine.js"></script>
+<script>
+  // Apply the chosen theme before anything is drawn.
+  (function () { var id = MPTheme.saved(); var t = MP_THEMES.find(function (x) { return x.id === id; }) || MP_THEMES[0]; MPTheme.apply(t); })();
+</script>
 </head>
 <body>
 <div class="app">
@@ -14,6 +21,7 @@
     <nav class="nav" aria-label="Sections">
       <button data-view="projects" aria-current="page">Projects</button>
       <button data-view="accounts">Accounts</button>
+      <button data-view="look">Look</button>
     </nav>
     <nav class="here" id="here" aria-label="Projects on this computer"></nav>
     <div class="totals" id="totals"></div>
@@ -39,6 +47,12 @@
     </section>
 
     <section class="view" id="v-work" aria-live="polite"></section>
+
+    <section class="view" id="v-look">
+      <header class="head"><div><h1>Look</h1><p>Choose how MultiParity looks on this computer. It changes right away and only for you.</p></div></header>
+      <div class="filters" id="look-filters" role="toolbar" aria-label="Filter themes"></div>
+      <div class="looks" id="looks"></div>
+    </section>
 
     <section class="view" id="v-accounts">
       <header class="head"><div><h1>Accounts</h1><p>Sign in to as many servers and accounts as you need. Each project remembers which one it uses.</p></div></header>
@@ -66,5 +80,6 @@
 <div class="toast" id="toast" role="status" hidden></div>
 <script src="app.js"></script>
 <script src="work.js"></script>
+<script src="look.js"></script>
 </body>
 </html>

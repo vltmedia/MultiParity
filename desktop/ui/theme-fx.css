@@ -1,0 +1,55 @@
+/* Theme effects for the desktop app, switched on by theme-engine.js through <html data-fx="...">. */
+/* Glass: panels blur and brighten the theme's background art behind them. */
+[data-fx~="frost"] :is(.side, .proj, .panel, .publish, .files, .cplist, .notice, .totals, .tree, .empty, .ctx, dialog, .toast, .btn:not(.pri), .filters button, .search input) {
+  -webkit-backdrop-filter: blur(var(--blur)) saturate(var(--sat)); backdrop-filter: blur(var(--blur)) saturate(var(--sat)); }
+[data-fx~="frost"] :is(.files, .cplist, .tree, .notice, .proj) { box-shadow: var(--sh-panel); }
+[data-fx~="frost"] .notice { border: 1px solid var(--line); border-left: 4px solid var(--ink); }
+[data-fx~="frost"] .notice.hold { border-left-color: var(--hold); } [data-fx~="frost"] .notice.bad { border-left-color: var(--warn); }
+[data-fx~="frost"] dialog::backdrop { -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+
+/* Liquid glass: bright rims. */
+[data-fx~="liquid"] :is(.files, .publish, .cplist, .btn, .side, .toast, .proj, .panel, dialog) {
+  border-color: rgba(255,255,255,.45); box-shadow: inset 0 1px 1px rgba(255,255,255,.8), inset 0 -1px 1px rgba(255,255,255,.2), 0 10px 30px rgba(0,0,30,.22); }
+[data-fx~="liquid"] .btn.pri { box-shadow: inset 0 1px 1px #ffffff, 0 6px 18px rgba(0,0,30,.25); }
+
+/* Aero gloss. */
+[data-fx~="gloss"] .btn { background-image: linear-gradient(180deg, rgba(255,255,255,.75) 0%, rgba(255,255,255,.25) 49%, rgba(255,255,255,0) 50%, rgba(255,255,255,.2) 100%); }
+[data-fx~="gloss"] .btn.pri { background: linear-gradient(180deg, color-mix(in srgb, var(--acc) 35%, #ffffff) 0%, color-mix(in srgb, var(--acc) 75%, #ffffff) 48%, var(--acc) 50%, color-mix(in srgb, var(--acc) 75%, #000000) 100%);
+  border-color: color-mix(in srgb, var(--acc) 70%, #000000); text-shadow: 0 1px 1px rgba(0,0,0,.35); box-shadow: inset 0 1px 0 rgba(255,255,255,.85), 0 2px 6px rgba(0,40,90,.3); }
+[data-fx~="gloss"] :is(.here button b, .tag, .chip) { background-image: linear-gradient(180deg, rgba(255,255,255,.55), rgba(255,255,255,0) 55%); }
+[data-fx~="gloss"] .logo { text-shadow: 0 1px 0 rgba(255,255,255,.8), 0 0 12px rgba(255,255,255,.5); }
+
+/* Neon glow. */
+[data-fx~="glow"] :is(.btn.pri, .here button b) { box-shadow: 0 0 10px var(--acc), 0 0 22px color-mix(in srgb, var(--acc) 50%, transparent); }
+[data-fx~="glow"] :is(.publish, .files, .cplist, .proj.open, .panel) { box-shadow: 0 0 0 1px var(--line), 0 0 18px color-mix(in srgb, var(--acc) 22%, transparent); }
+
+/* CRT scanlines over everything. */
+[data-fx~="scan"] body::after { content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 100;
+  background: repeating-linear-gradient(0deg, rgba(0,0,0,.22) 0 1px, transparent 1px 3px); mix-blend-mode: multiply; }
+
+/* Chrome. */
+[data-fx~="chrome"] .btn.pri { background: linear-gradient(180deg, #ffffff, #c9cdd6 45%, #9aa1ad 55%, #e8ebf0); color: #121620; border-color: #8d94a1; }
+[data-fx~="chrome"] .logo { background: linear-gradient(90deg, #6f7cff, #ff7ad9, #59f2ff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+/* 90s desktop bevels and a title bar on panels. */
+[data-fx~="bevel"] :is(.btn, .panel, .publish, .files, .cplist, .proj, .totals, .tree, .filters button) {
+  border: 2px solid; border-color: #ffffff #404040 #404040 #ffffff; box-shadow: inset -1px -1px 0 #808080, inset 1px 1px 0 #dfdfdf; }
+[data-fx~="bevel"] .btn.pri { border-color: #ffffff #000000 #000000 #ffffff; background: var(--card); color: var(--ink); outline: 1px dotted #000000; outline-offset: -5px; }
+[data-fx~="bevel"] .publish h2, [data-fx~="bevel"] .panel h2 { background: linear-gradient(90deg, #000080, #1084d0); color: #ffffff; margin: -20px -20px 4px; padding: 5px 10px; font-size: 15px; }
+[data-fx~="bevel"] .panel h2 { margin: -24px -24px 4px; }
+[data-fx~="bevel"] :is(.publish textarea, .search input, .field input, .panel input) { border: 2px solid; border-color: #808080 #ffffff #ffffff #808080; background: #ffffff; }
+[data-fx~="bevel"] :is(.head h1, .head p, .back, .bar h2, .bar span, .group h2, .group h2 b, .cps > .note, .changes > .note) { color: #ffffff; }
+[data-fx~="bevel"] .head h1 { text-shadow: 2px 2px 0 #000000; }
+
+/* Sticky notes on cork. */
+[data-fx~="sticky"] .publish { transform: rotate(1deg); }
+[data-fx~="sticky"] .publish::before { content: ""; position: absolute; top: -10px; left: 50%; width: 80px; height: 22px; margin-left: -40px; background: rgba(255,255,255,.55); transform: rotate(-3deg); box-shadow: 0 1px 2px rgba(0,0,0,.15); }
+[data-fx~="sticky"] .files, [data-fx~="sticky"] .proj { transform: rotate(-0.3deg); }
+[data-fx~="sticky"] .notice { transform: rotate(-0.6deg); }
+[data-fx~="sticky"] :is(.head h1, .bar h2, .group h2 b) { color: #ffffff; text-shadow: 0 2px 0 rgba(0,0,0,.25); }
+[data-fx~="sticky"] :is(.head p, .back, .bar span, .group h2, .cps > .note, .changes > .note) { color: #fff4e0; }
+
+/* Dark text on light panels over a busy background: headings on the background use --on-paper. */
+[data-fx~="split"] :is(.head h1, .head p, .back, .bar h2, .bar span) { color: var(--on-paper); background: var(--card); padding-inline: 4px; }
+
+@media (prefers-reduced-motion: reduce) { [data-fx~="sticky"] * { transform: none !important; } }

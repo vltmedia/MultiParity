@@ -5,6 +5,11 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App';
+// The theme layer comes after every page's own styles so theme settings win.
+import './styles/theme.css';
+import { applySavedTheme } from './lib/theme';
+
+applySavedTheme();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
