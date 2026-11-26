@@ -14,6 +14,8 @@ import type {
   PublishEntry,
   Role,
   Session,
+  StorageKind,
+  StorageMove,
   Tag,
   Workspace,
 } from '../types';
@@ -124,6 +126,10 @@ export type MProject = {
   /** where the project is set to keep checkpoints */
   checkpoints: CheckpointSetting;
   auto_checkpoints?: boolean;
+  /** storage location holding the file data */
+  storage: string;
+  /** where the data was before an unfinished move */
+  storage_previous: string | null;
   created_at: string;
   head: number;
   files: Map<string, MFile[]>; // by branch id
@@ -147,7 +153,7 @@ export const kindOf = (path: string) => KIND_BY_EXT[path.split('.').pop()?.toLow
 function mkProject(id: string, slug: string, name: string, org: Org, head: number, created: number): MProject {
   const mainId = `${id.slice(0, 8)}-b000-4000-8000-000000000001`;
   return {
-    id, slug, name, org_id: org.id, archived: false, checkpoints: 'auto', created_at: ago(created), head,
+    id, slug, name, org_id: org.id, archived: false, checkpoints: 'auto', storage: 'main', storage_previous: null, created_at: ago(created), head,
     files: new Map(), changes: [], merge: new Map(),
     branches: [{
       id: mainId, name: 'Main', parent_id: null, shares_claims: true, protected: false, archived: false,
@@ -504,6 +510,37 @@ kept(PELL, EMBER, 2, 31, 41 * DAY, 13 * DAY, 3870, 12400);
 kept(SANA, EMBER, 3, 8, 3 * DAY, 50 * MIN, 912, 1730);
 kept(TEO, EMBER, 0, 6, 26 * HOUR, 2 * HOUR, 148, 610);
 kept(ROWAN, HARBOR, 1, 12, 6 * DAY, 2 * DAY, 1310, 4480);
+
+// ---------- storage locations ----------
+
+export type MLocation = { name: string; kind: StorageKind; main: boolean; description: string };
+export const locations: MLocation[] = [
+  { name: 'main', kind: 'local', main: true, description: '/var/lib/multiparity/data' },
+  { name: 'nas', kind: 'mount', main: false, description: '/mnt/studio-nas/multiparity' },
+  { name: 'archive', kind: 's3', main: false, description: 's3://cinder-archive/multiparity' },
+];
+
+/** A move with what the mock needs to play it out over time. */
+export type MMove = StorageMove & { ms: number; total_bytes: number };
+export const storageMoves: MMove[] = [];
+/** old copies left behind by finished moves, by location, until space is reclaimed */
+export const leftovers = new Map<string, { chunks: number; bytes: number }>();
+
+// The prototype was moved to the archive bucket a month ago; its old copy was reclaimed since.
+PROTO.storage = 'archive';
+storageMoves.push({
+  id: 'mov00001-0000-4000-8000-000000000001', project_id: PROTO.id, project_name: PROTO.name, from: 'main', to: 'archive', status: 'done',
+  total_chunks: 4810, copied_chunks: 4810, copied_bytes: Math.round(612 * MB), error: null, started_at: ago(30 * DAY + 2 * HOUR), finished_at: ago(30 * DAY),
+  ms: 0, total_bytes: Math.round(612 * MB),
+});
+// Harbor DLC was halfway to the NAS when the server restarted.
+HARBOR.storage = 'nas';
+HARBOR.storage_previous = 'main';
+storageMoves.unshift({
+  id: 'mov00002-0000-4000-8000-000000000002', project_id: HARBOR.id, project_name: HARBOR.name, from: 'main', to: 'nas', status: 'interrupted',
+  total_chunks: 18240, copied_chunks: 7311, copied_bytes: Math.round(2.4 * GB), error: null, started_at: ago(2 * DAY + 40 * MIN), finished_at: ago(2 * DAY),
+  ms: 0, total_bytes: Math.round(6.1 * GB),
+});
 
 // ---------- local daemon ----------
 

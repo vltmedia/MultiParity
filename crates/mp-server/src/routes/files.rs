@@ -190,7 +190,7 @@ pub struct DownloadQuery {
 
 /// Stream one file's current content (web UI download button and previews).
 pub async fn download(State(s): State<AppState>, user: CurrentUser, Path(p): Path<Uuid>, Query(q): Query<DownloadQuery>) -> ApiResult<Response> {
-    access::project(&s, &user, p, Level::Read).await?;
+    let acc = access::project(&s, &user, p, Level::Read).await?;
     let r = sqlx::query("SELECT t.manifest_hash, m.chunks FROM tree_entries t JOIN manifests m ON m.hash = t.manifest_hash WHERE t.branch_id = $1 AND t.path = $2")
         .bind(q.branch)
         .bind(&q.path)
@@ -198,11 +198,11 @@ pub async fn download(State(s): State<AppState>, user: CurrentUser, Path(p): Pat
         .await?
         .ok_or_else(|| ApiError::not_found("That file"))?;
     let chunks: Vec<mp_core::ChunkRef> = serde_json::from_value(r.get("chunks")).map_err(|e| anyhow::anyhow!("bad manifest: {e}"))?;
-    let store = s.store.clone();
+    let (state, ps) = (s.clone(), acc.storage.clone());
     let stream = futures::stream::iter(chunks).then(move |c| {
-        let store = store.clone();
+        let (state, ps) = (state.clone(), ps.clone());
         async move {
-            let data = store.get_chunk(&c.hash).await.map_err(std::io::Error::other)?;
+            let data = crate::chunks::get(&state, &ps, &c.hash).await.map_err(|e| std::io::Error::other(e.message))?;
             mp_core::decompress(&data, c.len as usize).map(bytes::Bytes::from).map_err(std::io::Error::other)
         }
     });

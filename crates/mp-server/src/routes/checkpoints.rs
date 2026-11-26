@@ -59,7 +59,7 @@ pub struct CreateCheckpoint {
 
 /// Keep a checkpoint on the server. Its file data must already be uploaded (as for publishing).
 pub async fn create(State(s): State<AppState>, user: CurrentUser, Path(p): Path<Uuid>, Json(b): Json<CreateCheckpoint>) -> ApiResult<Json<Value>> {
-    access::project(&s, &user, p, Level::Write).await?;
+    let acc = access::project(&s, &user, p, Level::Write).await?;
     let client_id = b.id.trim();
     if client_id.is_empty() || client_id.len() > 80 {
         return Err(ApiError::invalid("The checkpoint needs an id of up to 80 characters."));
@@ -68,7 +68,7 @@ pub async fn create(State(s): State<AppState>, user: CurrentUser, Path(p): Path<
         return Err(ApiError::invalid("There is nothing in this checkpoint."));
     }
     let mut tx = s.db.begin().await?;
-    let checked = check_entries(&s, &mut tx, &b.entries).await?;
+    let checked = check_entries(&s, &mut tx, &acc.storage, &b.entries).await?;
     let size: i64 = checked.iter().map(|(_, e)| e.size).sum();
     let sql = format!(
         "INSERT INTO checkpoints (project_id, branch_id, user_id, client_id, device, note, auto, system, entries, file_count, size, stored)

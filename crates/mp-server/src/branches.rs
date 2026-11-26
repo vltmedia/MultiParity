@@ -128,27 +128,28 @@ async fn load_tree(db: &mut PgConnection, branch: Uuid) -> ApiResult<Tree> {
 }
 
 /// Read a whole file's bytes from its manifest.
-pub async fn read_blob(state: &AppState, db: &mut PgConnection, manifest_hash: &str) -> ApiResult<Vec<u8>> {
+pub async fn read_blob(state: &AppState, db: &mut PgConnection, ps: &crate::chunks::ProjectStore, manifest_hash: &str) -> ApiResult<Vec<u8>> {
     let chunks: serde_json::Value = sqlx::query_scalar("SELECT chunks FROM manifests WHERE hash = $1").bind(manifest_hash).fetch_one(&mut *db).await?;
     let list: Vec<mp_core::ChunkRef> = serde_json::from_value(chunks).map_err(|e| anyhow::anyhow!("bad manifest {manifest_hash}: {e}"))?;
     let mut out = Vec::new();
     for c in list {
-        let data = state.store.get_chunk(&c.hash).await?;
+        let data = crate::chunks::get(state, ps, &c.hash).await?;
         out.extend(mp_core::decompress(&data, c.len as usize).map_err(ApiError::from)?);
     }
     Ok(out)
 }
 
 /// Store bytes as chunks and a manifest; returns the manifest.
-pub async fn write_blob(state: &AppState, db: &mut PgConnection, data: &[u8]) -> ApiResult<Manifest> {
+pub async fn write_blob(state: &AppState, db: &mut PgConnection, ps: &crate::chunks::ProjectStore, data: &[u8]) -> ApiResult<Manifest> {
     let (manifest, chunks) = chunk_bytes(data, ChunkParams::default()).map_err(ApiError::from)?;
     for c in chunks {
-        let exists: bool = sqlx::query_scalar("SELECT EXISTS (SELECT 1 FROM chunks WHERE hash = $1)").bind(&c.hash).fetch_one(&mut *db).await?;
+        let exists: bool = sqlx::query_scalar("SELECT EXISTS (SELECT 1 FROM chunks WHERE location = $1 AND hash = $2)").bind(&ps.current).bind(&c.hash).fetch_one(&mut *db).await?;
         if !exists {
             let comp = mp_core::compress(&c.data).map_err(ApiError::from)?;
             let stored = comp.len() as i64;
-            state.store.put_chunk(&c.hash, Bytes::from(comp)).await?;
-            sqlx::query("INSERT INTO chunks (hash, size, stored_size) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING")
+            crate::chunks::store(state, &ps.current)?.put_chunk(&c.hash, Bytes::from(comp)).await?;
+            sqlx::query("INSERT INTO chunks (location, hash, size, stored_size) VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING")
+                .bind(&ps.current)
                 .bind(&c.hash)
                 .bind(c.data.len() as i64)
                 .bind(stored)
@@ -191,6 +192,7 @@ pub async fn update_from_parent(
     author: Uuid,
 ) -> ApiResult<(MergeReport, Option<i32>)> {
     let parent_id = child.parent_id.ok_or_else(|| ApiError::invalid("Main has no parent branch to update from."))?;
+    let ps = crate::chunks::ProjectStore::load(db, child.project_id).await?;
     let parent = load_tree(db, parent_id).await?;
     let mine = load_tree(db, child.id).await?;
     let paths: BTreeSet<&String> = parent.keys().chain(mine.keys()).collect();
@@ -235,10 +237,10 @@ pub async fn update_from_parent(
             && p.size <= MERGE_SIZE_LIMIT
             && b.size <= MERGE_SIZE_LIMIT;
         if mergeable {
-            let mine_bytes = read_blob(state, db, c.manifest_hash.as_deref().unwrap()).await?;
-            let their_bytes = read_blob(state, db, p.manifest_hash.as_deref().unwrap()).await?;
+            let mine_bytes = read_blob(state, db, &ps, c.manifest_hash.as_deref().unwrap()).await?;
+            let their_bytes = read_blob(state, db, &ps, p.manifest_hash.as_deref().unwrap()).await?;
             let base_bytes = match &b.manifest_hash {
-                Some(h) => Some(read_blob(state, db, h).await?),
+                Some(h) => Some(read_blob(state, db, &ps, h).await?),
                 None => None,
             };
             if looks_like_text(&mine_bytes) && looks_like_text(&their_bytes) {
@@ -251,7 +253,7 @@ pub async fn update_from_parent(
                 if let Ok(text) = merged {
                     report.auto_merged.push(path.clone());
                     if apply {
-                        let m = write_blob(state, db, text.as_bytes()).await?;
+                        let m = write_blob(state, db, &ps, text.as_bytes()).await?;
                         acts.push(Act::Write(path.clone(), Entry { file_hash: Some(m.file_hash.clone()), manifest_hash: Some(m.hash.clone()), size: m.size as i64 }, p));
                     }
                     continue;

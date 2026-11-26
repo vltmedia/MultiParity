@@ -27,9 +27,12 @@ import type {
   MpEvent,
   Org,
   Project,
+  ProjectStorage,
   ProjectSummary,
   Role,
   StorageCheckReport,
+  StorageMove,
+  StorageOverview,
   Tag,
 } from './types';
 
@@ -197,8 +200,8 @@ export const api = {
   orgs: () => request<Org[]>('GET', '/orgs'),
   createOrg: (name: string, slug?: string) => request<Org>('POST', '/orgs', { name, slug: slug || undefined }),
   projects: () => request<ProjectSummary[]>('GET', '/projects'),
-  createProject: (org: string, name: string, slug?: string) =>
-    request<Project>('POST', `/orgs/${enc(org)}/projects`, { name, slug: slug || undefined }),
+  createProject: (org: string, name: string, slug?: string, storage?: string) =>
+    request<Project>('POST', `/orgs/${enc(org)}/projects`, { name, slug: slug || undefined, storage: storage || undefined }),
   project: (id: string) => request<Project>('GET', p(id)),
 
   // branches
@@ -279,6 +282,10 @@ export const api = {
       request<StorageCheckReport>('POST', '/admin/storage/check', project ? { project } : {}),
     gcDryRun: () => request<GcDryRun>('GET', '/admin/storage/gc'),
     gcRun: () => request<GcResult>('POST', '/admin/storage/gc'),
+    storage: () => request<StorageOverview>('GET', '/admin/storage'),
+    projectStorage: (pid: string) => request<ProjectStorage>('GET', `/admin/projects/${enc(pid)}/storage`),
+    moveProjectStorage: (pid: string, to: string) =>
+      request<StorageMove>('POST', `/admin/projects/${enc(pid)}/storage`, { to }),
     checkpoints: (org?: string) => request<CheckpointUsage[]>('GET', '/admin/checkpoints', undefined, { org }),
     clearCheckpoints: (body: ClearCheckpoints) =>
       request<{ removed: number }>('POST', '/admin/checkpoints/clear', body),

@@ -12,6 +12,7 @@ mod drafts;
 mod events;
 mod files;
 mod projects;
+pub mod storage;
 mod sync;
 mod tags;
 
@@ -87,6 +88,8 @@ pub fn router() -> Router<AppState> {
         .route("/admin/claims/release", post(admin::release_claims))
         .route("/admin/checkpoints", get(checkpoints::admin_usage))
         .route("/admin/checkpoints/clear", post(checkpoints::admin_clear))
+        .route("/admin/storage", get(storage::locations))
+        .route("/admin/projects/:p/storage", get(storage::project_storage).post(storage::start_move))
         .route("/admin/storage/check", post(admin::storage_check))
         .route("/admin/storage/gc", get(admin::gc_preview).post(admin::gc_run))
         .route("/admin/audit", get(admin::audit))

@@ -24,6 +24,8 @@ pub struct ProjectAccess {
     pub level: Level,
     pub role: String,
     pub archived: bool,
+    /// Where the project's file data is kept.
+    pub storage: crate::chunks::ProjectStore,
 }
 
 pub async fn org_role(state: &AppState, user: Uuid, org: Uuid) -> ApiResult<Option<String>> {
@@ -35,7 +37,7 @@ pub async fn org_role(state: &AppState, user: Uuid, org: Uuid) -> ApiResult<Opti
 }
 
 pub async fn project(state: &AppState, user: &CurrentUser, project: Uuid, need: Level) -> ApiResult<ProjectAccess> {
-    let row = sqlx::query("SELECT id, org_id, name, archived_at IS NOT NULL AS archived FROM projects WHERE id = $1")
+    let row = sqlx::query("SELECT id, org_id, name, archived_at IS NOT NULL AS archived, storage, storage_previous FROM projects WHERE id = $1")
         .bind(project)
         .fetch_optional(&state.db)
         .await?
@@ -72,7 +74,8 @@ pub async fn project(state: &AppState, user: &CurrentUser, project: Uuid, need: 
     if archived && need >= Level::Write {
         return Err(ApiError::conflict("This project is archived. Restore it in Admin before changing it."));
     }
-    Ok(ProjectAccess { project_id: project, org_id, name: row.get("name"), level, role: role_name, archived })
+    let storage = crate::chunks::ProjectStore { current: row.get("storage"), previous: row.get("storage_previous") };
+    Ok(ProjectAccess { project_id: project, org_id, name: row.get("name"), level, role: role_name, archived, storage })
 }
 
 /// Require owner or admin of `org` (or server admin).

@@ -639,6 +639,96 @@ pub async fn set_scope(api: &Api, ws: &mut Workspace, include: Vec<String>, excl
     Ok(report)
 }
 
+// ---------------------------------------------------------------------------------------------
+// Moving a synced folder
+
+#[derive(Debug, Clone, Serialize)]
+pub struct MoveReport {
+    pub from: String,
+    pub to: String,
+    /// "renamed" (same drive: instant) or "copied" (another drive).
+    pub method: &'static str,
+    pub files: u64,
+    pub bytes: u64,
+    /// Set when the copy succeeded but the old folder could not be fully removed.
+    pub old_folder_left: Option<String>,
+}
+
+fn crosses_devices(e: &std::io::Error) -> bool {
+    // EXDEV on Linux and macOS (18), ERROR_NOT_SAME_DEVICE on Windows (17).
+    e.kind() == std::io::ErrorKind::CrossesDevices || matches!(e.raw_os_error(), Some(18) if cfg!(unix)) || matches!(e.raw_os_error(), Some(17) if cfg!(windows))
+}
+
+/// Copy a folder tree, keeping modification times so nothing looks edited afterwards.
+fn copy_tree(from: &Path, to: &Path, progress: &mut impl FnMut(u64, u64)) -> Result<(u64, u64)> {
+    let total: u64 = walkdir::WalkDir::new(from).into_iter().flatten().filter(|e| e.file_type().is_file()).filter_map(|e| e.metadata().ok()).map(|m| m.len()).sum();
+    let (mut files, mut bytes) = (0u64, 0u64);
+    for entry in walkdir::WalkDir::new(from) {
+        let entry = entry?;
+        let rel = entry.path().strip_prefix(from)?;
+        let dest = to.join(rel);
+        if entry.file_type().is_dir() {
+            std::fs::create_dir_all(&dest)?;
+        } else if entry.file_type().is_file() {
+            let n = std::fs::copy(entry.path(), &dest).with_context(|| format!("copying {}", entry.path().display()))?;
+            if let Some(t) = entry.metadata().ok().and_then(|m| m.modified().ok()) {
+                let _ = std::fs::File::options().write(true).open(&dest).and_then(|f| f.set_modified(t));
+            }
+            files += 1;
+            bytes += n;
+            progress(bytes, total);
+        }
+    }
+    anyhow::ensure!(bytes == total, "the copy came out at {bytes} bytes instead of {total}; the old folder was left as it was");
+    Ok((files, bytes))
+}
+
+/// Move a synced folder to a new place on this computer. On the same drive it is renamed, which
+/// is instant; to another drive everything is copied (modification times kept, so nothing needs
+/// downloading or reading again), checked, and then the old folder is removed.
+pub fn move_folder(ws: &Workspace, to: &Path, mut progress: impl FnMut(u64, u64)) -> Result<MoveReport> {
+    let from = ws.root.clone();
+    let to = std::path::absolute(to).with_context(|| format!("{} is not a usable folder path", to.display()))?;
+    let to_cmp = std::fs::canonicalize(to.parent().unwrap_or(&to)).map(|p| p.join(to.file_name().unwrap_or_default())).unwrap_or_else(|_| to.clone());
+    anyhow::ensure!(to_cmp != from, "That is where the folder already is.");
+    anyhow::ensure!(!to_cmp.starts_with(&from), "The new place is inside the folder itself. Choose a place outside it.");
+    for other in crate::workspace::Registry::workspaces()? {
+        if other != from && (to_cmp.starts_with(&other) || other.starts_with(&to_cmp)) {
+            anyhow::bail!("{} overlaps {}, which is another synced project. Choose another place.", to.display(), other.display());
+        }
+    }
+    if to.exists() {
+        let empty = to.is_dir() && std::fs::read_dir(&to)?.next().is_none();
+        anyhow::ensure!(empty, "{} already has files in it. Choose a new or empty folder.", to.display());
+        std::fs::remove_dir(&to)?;
+    }
+    if let Some(parent) = to.parent() {
+        std::fs::create_dir_all(parent).with_context(|| format!("creating {}", parent.display()))?;
+    }
+    let report = match std::fs::rename(&from, &to) {
+        Ok(()) => {
+            let files = walkdir::WalkDir::new(&to).into_iter().flatten().filter(|e| e.file_type().is_file()).count() as u64;
+            let bytes = ws.index.files.values().map(|i| i.size).sum();
+            MoveReport { from: from.display().to_string(), to: to.display().to_string(), method: "renamed", files, bytes, old_folder_left: None }
+        }
+        Err(e) if crosses_devices(&e) => {
+            let (files, bytes) = match copy_tree(&from, &to, &mut progress) {
+                Ok(r) => r,
+                Err(err) => {
+                    let _ = std::fs::remove_dir_all(&to);
+                    return Err(err);
+                }
+            };
+            let left = std::fs::remove_dir_all(&from).err().map(|e| format!("{} could not be fully removed ({e}). Everything was copied; delete it yourself once nothing is using it.", from.display()));
+            MoveReport { from: from.display().to_string(), to: to.display().to_string(), method: "copied", files, bytes, old_folder_left: left }
+        }
+        Err(e) => anyhow::bail!("Could not move {}: {e}. Close any app that has files from it open, then try again.", from.display()),
+    };
+    crate::workspace::Registry::remove(&from)?;
+    crate::workspace::Registry::add(&to)?;
+    Ok(report)
+}
+
 /// Folder tree with sizes for the selective sync screen.
 #[derive(Debug, Clone, Serialize)]
 pub struct FolderNode {

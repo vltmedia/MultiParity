@@ -135,6 +135,12 @@ enum Cmd {
         #[arg(long)]
         check: Option<String>,
     },
+    /// Move this synced folder somewhere else on this computer, another drive included. Nothing
+    /// is downloaded again.
+    MoveFolder {
+        /// The new place, e.g. D:\Projects\Emberfall (a new or empty folder).
+        to: PathBuf,
+    },
     /// Disk space MultiParity uses in this folder beyond your files, and free what is not needed.
     Space {
         /// Most space checkpoints may use here: a number of MB, or "auto" for a tenth of the
@@ -733,6 +739,26 @@ async fn run(cli: Cli) -> Result<()> {
                     format!("Built in: {}\nThis project (.mpnocheckpoint):\n{}", list.join("  "), if shared.trim().is_empty() { "  (nothing added)" } else { shared.trim_end() })
                 });
             }
+        }
+        Cmd::MoveFolder { to } => {
+            let ws = ctx.ws()?;
+            let to = if to.is_absolute() { to } else { ctx.dir.join(to) };
+            let quiet = ctx.json;
+            let mut last = 0u64;
+            let r = ops::move_folder(&ws, &to, |done, total| {
+                if !quiet && total > 0 && done - last > total / 20 {
+                    last = done;
+                    eprintln!("  copied {} of {}", mb(done), mb(total));
+                }
+            })?;
+            ctx.out(json!(r), || {
+                let how = if r.method == "renamed" { "Moved".to_string() } else { format!("Copied {} files ({}) and removed the old folder", r.files, mb(r.bytes)) };
+                let mut s = format!("{how}: {} is now at {}.", ws.config.project_name, r.to);
+                if let Some(left) = &r.old_folder_left {
+                    s.push_str(&format!("\n{left}"));
+                }
+                s
+            });
         }
         Cmd::Space { limit, keep, auto_checkpoints } => {
             let mut ws = ctx.ws()?;

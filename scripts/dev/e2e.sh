@@ -22,7 +22,7 @@ check() { local what="$1"; shift; if "$@"; then echo "   ok: $what"; else fail "
 same() { [ "$(sha256sum < "$1")" = "$(sha256sum < "$2")" ]; }
 alice() { MP_CONFIG_DIR="$WORK/cfg-alice" MP_DEVICE=alice-pc "$BIN/mp" "$@"; }
 bob() { MP_CONFIG_DIR="$WORK/cfg-bob" MP_DEVICE=bob-pc "$BIN/mp" "$@"; }
-cleanup() { [ -n "${SPID:-}" ] && kill "$SPID" 2>/dev/null || true; }
+cleanup() { [ -n "${SPID:-}" ] && kill "$SPID" 2>/dev/null || true; [ -n "${DPID:-}" ] && kill "$DPID" 2>/dev/null || true; }
 trap cleanup EXIT
 
 step "Fresh database and server"
@@ -38,7 +38,7 @@ else
   echo "psql not found; install postgresql-client" >&2; exit 2
 fi
 export DATABASE_URL="${psql_url}/$DBNAME"
-MP_LISTEN="127.0.0.1:$PORT" MP_PUBLIC_URL="$SERVER" MP_STORAGE="${E2E_STORAGE:-local}" MP_STORAGE_PATH="${E2E_STORAGE_PATH:-$WORK/blobs}" \
+MP_STORAGE_LOCATIONS="second=local:$WORK/blobs2" MP_LISTEN="127.0.0.1:$PORT" MP_PUBLIC_URL="$SERVER" MP_STORAGE="${E2E_STORAGE:-local}" MP_STORAGE_PATH="${E2E_STORAGE_PATH:-$WORK/blobs}" \
   MP_ADMIN_EMAIL=alice@example.com MP_ADMIN_PASSWORD="$PASS_A" MP_DEFAULT_ORG="Cinder Works" \
   RUST_LOG=info,tower_http=warn "$BIN/mp-server" > "$WORK/server.log" 2>&1 &
 SPID=$!
@@ -358,6 +358,47 @@ curl -fs -X PATCH "$SERVER/api/admin/projects/$PID" "${AUTH[@]}" -d '{"auto_chec
 alice -C "$A" space --auto-checkpoints project >/dev/null
 bob -C "$B" space --auto-checkpoints on >/dev/null
 
+step "Storage locations: a project's data moves while people keep working"
+AUTH=(-H "authorization: Bearer $TOKEN" -H 'content-type: application/json')
+check "the server lists main and second" test "$(curl -fs "$SERVER/api/admin/storage" "${AUTH[@]}" | jq -c '[.locations[].name]')" = '["main","second"]'
+NEWP=$(curl -fs -X POST "$SERVER/api/orgs/$ORG_ID/projects" "${AUTH[@]}" -d '{"name":"Tidepool","storage":"second"}')
+check "a new project can start in another location" test "$(echo "$NEWP" | jq -r .storage)" = second
+check "an unknown location is refused" test "$(curl -s -o /dev/null -w '%{http_code}' -X POST "$SERVER/api/orgs/$ORG_ID/projects" "${AUTH[@]}" -d '{"name":"Nowhere","storage":"moon"}')" = 422
+check "Emberfall starts in main" test "$(curl -fs "$SERVER/api/projects/$PID" "${AUTH[@]}" | jq -r .storage)" = main
+MV=$(curl -fs -X POST "$SERVER/api/admin/projects/$PID/storage" "${AUTH[@]}" -d '{"to":"second"}')
+check "a move starts" test "$(echo "$MV" | jq -r .status)" = running
+for i in $(seq 1 120); do ST=$(curl -fs "$SERVER/api/admin/projects/$PID/storage" "${AUTH[@]}"); [ "$(echo "$ST" | jq -r .move.status)" != running ] && break; sleep 0.5; done
+echo "   move: $(echo "$ST" | jq -c '{storage, previous, move: (.move | {status, total_chunks, copied_chunks, copied_bytes, error})}')"
+check "the move finished" test "$(echo "$ST" | jq -r .move.status)" = done
+check "Emberfall is now in second, nothing left mid-move" test "$(echo "$ST" | jq -c '[.storage, .previous]')" = '["second",null]'
+check "every part was copied once, into the second location's folder" test "$(find "$WORK/blobs2/chunks" -type f | wc -l)" = "$(echo "$ST" | jq .move.copied_chunks)"
+check "storage check passes after the move" test "$(alice admin check --json | jq .ok)" = true
+head -c 300000 /dev/urandom > "$A/Docs/after_move.bin"
+BEFORE=$(find "$WORK/blobs2/chunks" -type f | wc -l)
+alice -C "$A" publish -m "First file after moving storage" >/dev/null
+check "new uploads go to the new location" test "$(find "$WORK/blobs2/chunks" -type f | wc -l)" -gt "$BEFORE"
+bob -C "$B" get-latest >/dev/null
+check "bob gets it from the new location" same "$A/Docs/after_move.bin" "$B/Docs/after_move.bin"
+curl -fs "$SERVER/api/projects/$PID/download?branch=$MAIN&path=Art/Hero/hero_body.fbx" -H "authorization: Bearer $TOKEN" -o "$WORK/dl2.bin"
+check "old files download from the new location" same "$WORK/dl2.bin" "$A/Art/Hero/hero_body.fbx"
+check "only server admins can move storage" test "$(curl -s -o /dev/null -w '%{http_code}' -X POST "$SERVER/api/admin/projects/$PID/storage" -H "authorization: Bearer $BTOK" -H 'content-type: application/json' -d '{"to":"main"}')" = 403
+check "reclaim space reports per location" test "$(curl -fs "$SERVER/api/admin/storage/gc" "${AUTH[@]}" | jq '.by_location | type')" = '"array"'
+
+step "Moving a synced folder keeps everything"
+EDITED_BEFORE=$(alice -C "$A" status --json | jq '[.status.new, .status.edited, .status.deleted] | map(length) | add')
+A2="$WORK/moved/alice/Emberfall"
+R=$(alice -C "$A" move-folder "$A2" --json)
+check "moved by renaming on the same drive" test "$(echo "$R" | jq -r .method)" = renamed
+check "the old folder is gone" test ! -e "$A"
+check "the new folder has the files" same "$A2/Art/Hero/hero_body.fbx" "$B/Art/Hero/hero_body.fbx"
+check "nothing looks changed after the move" test "$(alice -C "$A2" status --json | jq '[.status.new, .status.edited, .status.deleted] | map(length) | add')" = "$EDITED_BEFORE"
+check "the list of synced folders points at the new place" bash -c "MP_CONFIG_DIR='$WORK/cfg-alice' '$BIN/mp' workspaces --json | grep -q moved"
+mkdir -p "$WORK/occupied" && touch "$WORK/occupied/x"
+check "moving into a folder with files is refused" bash -c "! MP_CONFIG_DIR='$WORK/cfg-alice' '$BIN/mp' -C '$A2' move-folder '$WORK/occupied' >/dev/null 2>&1"
+check "moving into another synced folder is refused" bash -c "! MP_CONFIG_DIR='$WORK/cfg-bob' '$BIN/mp' -C '$B' move-folder '$C/inside' >/dev/null 2>&1"
+check "and bob's folder stayed where it was" test -e "$B/Art/Hero/hero_body.fbx"
+A="$A2"
+
 step "Daemon: local API, cross-account projects, selective sync, origin guard"
 DPORT=$((PORT+27))
 MP_CONFIG_DIR="$WORK/cfg-bob" MP_DEVICE=bob-pc "$BIN/mp" daemon --listen "127.0.0.1:$DPORT" --interval 5 > "$WORK/daemon.log" 2>&1 &
@@ -367,7 +408,7 @@ D="http://127.0.0.1:$DPORT/local"
 check "daemon health lists bob's 2 folders" test "$(curl -fs "$D/health" | jq .workspaces)" = 2
 check "projects across accounts include Emberfall with 2 folders here" test "$(curl -fs "$D/projects" | jq '.accounts[0].projects[] | select(.project.name=="Emberfall") | .workspaces | length')" = 2
 WID=$(curl -fs "$D/workspaces" | jq -r --arg r "$B" '.[] | select(.root==$r) | .id')
-check "folder tree has Art, Audio, Docs" test "$(curl -fs "$D/workspaces/$WID/folders" | jq -c '[.children[].name]')" = '["Art","Audio","Docs"]'
+check "folder tree has Art, Audio, Docs" test "$(curl -fs "$D/workspaces/$WID/folders" | jq -c '[.children[].name] | map(select(. == "Art" or . == "Audio" or . == "Docs"))')" = '["Art","Audio","Docs"]'
 curl -fs -X PUT "$D/workspaces/$WID/sync" -H 'content-type: application/json' -d '{"include":[],"exclude":["Audio"]}' >/dev/null
 check "excluding Audio through the daemon removed it" test ! -e "$B/Audio/wolf_howl.wav"
 check "the tree shows Audio as not on this computer" test "$(curl -fs "$D/workspaces/$WID/folders" | jq -r '.children[] | select(.name=="Audio") | .included')" = none

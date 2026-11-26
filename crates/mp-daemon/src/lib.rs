@@ -139,6 +139,7 @@ pub async fn run(listen: &str, interval: u64) -> Result<()> {
         .route("/local/workspaces/:id/checkpoints/:cp", get(checkpoint_detail))
         .route("/local/workspaces/:id/rewind", post(rewind))
         .route("/local/workspaces/:id/discard", post(discard))
+        .route("/local/workspaces/:id/move", post(move_folder))
         .route("/local/accounts", get(accounts))
         .route("/local/accounts/login", post(account_login))
         .route("/local/accounts/:id", axum::routing::delete(account_logout))
@@ -691,6 +692,31 @@ async fn discard(State(s): State<DState>, Path(id): Path<String>, Json(b): Json<
     let api = ops::api_for(&ws)?;
     let (undo, n) = ops::discard(&api, &mut ws, &b.paths).await?;
     Ok(Json(json!({ "files": n, "undo": undo.map(|c| c.id) })))
+}
+
+#[derive(Deserialize)]
+struct MoveBody {
+    to: String,
+}
+
+/// Move the synced folder somewhere else on this computer (another drive included). Nothing is
+/// downloaded again.
+async fn move_folder(State(s): State<DState>, Path(id): Path<String>, Json(b): Json<MoveBody>) -> DResult<Json<Value>> {
+    let ws = find_ws(&id)?;
+    let to = b.to.trim().to_string();
+    if to.is_empty() {
+        return Err(DErr(StatusCode::UNPROCESSABLE_ENTITY, "Choose where to move the folder.".into()));
+    }
+    let lock = s.lock_for(&ws.config.id).await;
+    let _g = lock.lock().await;
+    let r = tokio::task::spawn_blocking(move || ops::move_folder(&ws, std::path::Path::new(&to), |_, _| {}))
+        .await
+        .map_err(|e| anyhow::anyhow!(e))?
+        .map_err(|e| DErr(StatusCode::CONFLICT, format!("{e:#}")))?;
+    let mut v = serde_json::to_value(&r).unwrap_or_default();
+    v["to"] = json!(display_path(std::path::Path::new(&r.to)));
+    v["from"] = json!(display_path(std::path::Path::new(&r.from)));
+    Ok(Json(v))
 }
 
 /// Stop syncing a folder on this computer. Files stay where they are.

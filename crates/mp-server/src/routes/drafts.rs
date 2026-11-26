@@ -47,7 +47,7 @@ pub async fn create(State(s): State<AppState>, user: CurrentUser, Path(p): Path<
         return Err(ApiError::invalid("There is nothing to save in a draft."));
     }
     let mut tx = s.db.begin().await?;
-    let checked = check_entries(&s, &mut tx, &b.entries).await?;
+    let checked = check_entries(&s, &mut tx, &acc.storage, &b.entries).await?;
     let size: i64 = checked.iter().map(|(_, e)| e.size).sum();
     let row = sqlx::query("INSERT INTO drafts (project_id, branch_id, user_id, title, entries, file_count, size) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id, title, branch_id, created_at, file_count, size")
         .bind(p)

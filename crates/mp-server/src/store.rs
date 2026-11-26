@@ -1,6 +1,7 @@
 //! Blob storage for chunks. One interface over a local directory (also used for mounted network
 //! paths) and any S3-compatible service.
 
+use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use anyhow::{Context, Result};
@@ -16,7 +17,95 @@ pub enum StorageConfig {
     /// A directory on this machine, or a mounted share (NFS, SMB). Mounted paths get a health
     /// check at start-up so a missing mount fails loudly instead of filling the container disk.
     Local { path: String, mounted: bool },
-    S3 { bucket: String, endpoint: Option<String>, region: Option<String>, prefix: Option<String> },
+    S3 {
+        bucket: String,
+        endpoint: Option<String>,
+        region: Option<String>,
+        prefix: Option<String>,
+        /// Credentials for this location only; otherwise the usual `AWS_*` variables.
+        access_key: Option<(String, String)>,
+    },
+}
+
+/// The location every server has: the one `MP_STORAGE` describes. Projects use it unless they
+/// are given another.
+pub const MAIN: &str = "main";
+
+/// Named storage locations: `main` from `MP_STORAGE`, plus any in `MP_STORAGE_LOCATIONS`:
+///
+/// ```text
+/// MP_STORAGE_LOCATIONS="nas=mount:/data/nas archive=s3:bucket=mp-archive;endpoint=https://x.r2.cloudflarestorage.com;region=auto;prefix=mp"
+/// ```
+///
+/// Locations are separated by spaces or commas; each is `name=kind:details`, with `kind` one of
+/// `local`, `mount` (a path) or `s3` (`;`-separated settings). An S3 location's credentials come
+/// from `MP_STORAGE_<NAME>_ACCESS_KEY_ID` and `_SECRET_ACCESS_KEY`, or the `AWS_*` variables.
+pub fn locations_from_env(main: StorageConfig) -> Result<Vec<(String, StorageConfig)>> {
+    let mut out = vec![(MAIN.to_string(), main)];
+    let spec = std::env::var("MP_STORAGE_LOCATIONS").unwrap_or_default();
+    for item in spec.split(|c: char| c.is_whitespace() || c == ',').filter(|s| !s.is_empty()) {
+        let (name, rest) = item.split_once('=').with_context(|| format!("storage location `{item}` should look like name=kind:details"))?;
+        let name = name.trim().to_lowercase();
+        anyhow::ensure!(
+            !name.is_empty() && name.len() <= 40 && name.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_'),
+            "storage location name `{name}` may use letters, digits, - and _ (up to 40)"
+        );
+        anyhow::ensure!(!out.iter().any(|(n, _)| *n == name), "storage location `{name}` is defined twice");
+        let (kind, details) = rest.split_once(':').with_context(|| format!("storage location `{name}` should be name=kind:details"))?;
+        let cfg = match kind {
+            "local" | "mount" => StorageConfig::Local { path: details.to_string(), mounted: kind == "mount" },
+            "s3" => {
+                let mut kv: BTreeMap<&str, &str> = BTreeMap::new();
+                for part in details.split(';').filter(|p| !p.is_empty()) {
+                    let (k, v) = part.split_once('=').with_context(|| format!("storage location `{name}`: `{part}` should be key=value"))?;
+                    kv.insert(k, v);
+                }
+                let env = |suffix: &str| std::env::var(format!("MP_STORAGE_{}_{suffix}", name.to_uppercase().replace('-', "_"))).ok();
+                StorageConfig::S3 {
+                    bucket: kv.get("bucket").map(|s| s.to_string()).with_context(|| format!("storage location `{name}` needs bucket=…"))?,
+                    endpoint: kv.get("endpoint").map(|s| s.to_string()),
+                    region: kv.get("region").map(|s| s.to_string()),
+                    prefix: kv.get("prefix").map(|s| s.to_string()),
+                    access_key: env("ACCESS_KEY_ID").zip(env("SECRET_ACCESS_KEY")),
+                }
+            }
+            other => anyhow::bail!("storage location `{name}`: kind must be local, mount or s3, not {other}"),
+        };
+        out.push((name, cfg));
+    }
+    Ok(out)
+}
+
+/// Every configured location, opened.
+pub struct Locations {
+    stores: BTreeMap<String, BlobStore>,
+}
+
+impl Locations {
+    pub async fn open(list: &[(String, StorageConfig)]) -> Result<Self> {
+        let mut stores = BTreeMap::new();
+        for (name, cfg) in list {
+            let s = BlobStore::open(cfg).await.with_context(|| format!("opening storage location `{name}`"))?;
+            stores.insert(name.clone(), s);
+        }
+        Ok(Locations { stores })
+    }
+
+    pub fn get(&self, name: &str) -> Option<&BlobStore> {
+        self.stores.get(name)
+    }
+
+    pub fn main(&self) -> &BlobStore {
+        &self.stores[MAIN]
+    }
+
+    pub fn names(&self) -> impl Iterator<Item = &String> {
+        self.stores.keys()
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = (&String, &BlobStore)> {
+        self.stores.iter()
+    }
 }
 
 impl StorageConfig {
@@ -34,6 +123,7 @@ impl StorageConfig {
                 endpoint: std::env::var("MP_S3_ENDPOINT").ok(),
                 region: std::env::var("MP_S3_REGION").ok(),
                 prefix: std::env::var("MP_S3_PREFIX").ok(),
+                access_key: None,
             }),
             other => anyhow::bail!("MP_STORAGE must be local, mount or s3, not {other}"),
         }
@@ -55,6 +145,8 @@ pub struct BlobStore {
     inner: Arc<dyn ObjectStore>,
     prefix: String,
     pub description: String,
+    /// "local", "mount" or "s3".
+    pub kind: &'static str,
 }
 
 impl BlobStore {
@@ -72,8 +164,11 @@ impl BlobStore {
                 }
                 (Arc::new(LocalFileSystem::new_with_prefix(path)?), String::new())
             }
-            StorageConfig::S3 { bucket, endpoint, region, prefix } => {
+            StorageConfig::S3 { bucket, endpoint, region, prefix, access_key } => {
                 let mut b = AmazonS3Builder::from_env().with_bucket_name(bucket);
+                if let Some((id, secret)) = access_key {
+                    b = b.with_access_key_id(id).with_secret_access_key(secret);
+                }
                 if let Some(e) = endpoint {
                     b = b.with_endpoint(e).with_allow_http(e.starts_with("http://")).with_virtual_hosted_style_request(false);
                 }
@@ -81,7 +176,12 @@ impl BlobStore {
                 (Arc::new(b.build()?), prefix.clone().unwrap_or_default().trim_matches('/').to_string())
             }
         };
-        Ok(BlobStore { inner, prefix, description: cfg.describe() })
+        let kind = match cfg {
+            StorageConfig::Local { mounted: false, .. } => "local",
+            StorageConfig::Local { mounted: true, .. } => "mount",
+            StorageConfig::S3 { .. } => "s3",
+        };
+        Ok(BlobStore { inner, prefix, description: cfg.describe(), kind })
     }
 
     fn chunk_path(&self, hash: &str) -> ObjPath {

@@ -4,6 +4,7 @@
 pub mod access;
 pub mod auth;
 pub mod branches;
+pub mod chunks;
 pub mod error;
 pub mod events;
 pub mod limits;
@@ -24,12 +25,13 @@ use tower_http::services::{ServeDir, ServeFile};
 use tower_http::trace::TraceLayer;
 
 use crate::events::EventBus;
-use crate::store::{BlobStore, StorageConfig};
+use crate::store::{Locations, StorageConfig};
 
 #[derive(Clone)]
 pub struct AppState {
     pub db: PgPool,
-    pub store: BlobStore,
+    /// Every storage location; each project uses one (`chunks::store`).
+    pub stores: Arc<Locations>,
     pub events: EventBus,
     pub config: Arc<Config>,
     pub sign_in: Arc<limits::SignInGuard>,
@@ -42,7 +44,8 @@ pub struct Config {
     /// Public URL used in invite links, e.g. `https://mp.studio.example`.
     pub public_url: String,
     pub web_dir: Option<String>,
-    pub storage: StorageConfig,
+    /// Named storage locations: `main` (from `MP_STORAGE`) first, then `MP_STORAGE_LOCATIONS`.
+    pub storage: Vec<(String, StorageConfig)>,
     pub admin_email: Option<String>,
     pub admin_password: Option<String>,
     pub default_org: String,
@@ -58,7 +61,7 @@ impl Config {
             database_url: std::env::var("DATABASE_URL").context("DATABASE_URL is required")?,
             public_url: std::env::var("MP_PUBLIC_URL").unwrap_or_else(|_| "http://localhost:18500".into()),
             web_dir: std::env::var("MP_WEB_DIR").ok().filter(|d| std::path::Path::new(d).join("index.html").exists()),
-            storage: StorageConfig::from_env()?,
+            storage: store::locations_from_env(StorageConfig::from_env()?)?,
             admin_email: std::env::var("MP_ADMIN_EMAIL").ok().filter(|s| !s.is_empty()),
             admin_password: std::env::var("MP_ADMIN_PASSWORD").ok().filter(|s| !s.is_empty()),
             default_org: std::env::var("MP_DEFAULT_ORG").unwrap_or_else(|_| "My Studio".into()),
@@ -81,9 +84,10 @@ pub async fn connect(config: &Config) -> Result<PgPool> {
 
 pub async fn build_app(config: Config) -> Result<(Router, AppState)> {
     let db = connect(&config).await?;
-    let store = BlobStore::open(&config.storage).await?;
-    let state = AppState { db, store, events: EventBus::new(), config: Arc::new(config), sign_in: Arc::new(limits::SignInGuard::default()) };
+    let stores = Arc::new(Locations::open(&config.storage).await?);
+    let state = AppState { db, stores, events: EventBus::new(), config: Arc::new(config), sign_in: Arc::new(limits::SignInGuard::default()) };
     auth::bootstrap(&state).await?;
+    routes::storage::resume_after_restart(&state).await?;
 
     let api = routes::router();
     let mut app = Router::new()
@@ -103,7 +107,8 @@ pub async fn build_app(config: Config) -> Result<(Router, AppState)> {
 pub async fn serve(config: Config) -> Result<()> {
     let listen = config.listen.clone();
     let (app, state) = build_app(config).await?;
-    tracing::info!(storage = %state.store.description, web = ?state.config.web_dir, "MultiParity server listening on {listen}");
+    let storage: Vec<String> = state.stores.iter().map(|(n, s)| format!("{n}: {}", s.description)).collect();
+    tracing::info!(storage = %storage.join("; "), web = ?state.config.web_dir, "MultiParity server listening on {listen}");
     let listener = tokio::net::TcpListener::bind(&listen).await.with_context(|| format!("binding {listen}"))?;
     axum::serve(listener, app.into_make_service_with_connect_info::<std::net::SocketAddr>()).with_graceful_shutdown(shutdown()).await?;
     Ok(())

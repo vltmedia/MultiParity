@@ -23,6 +23,9 @@ services:
       # MP_BIND=127.0.0.1 keeps the plain-HTTP port off the network (when Caddy or a tunnel
       # on this machine is the way in).
       - "${MP_BIND:-0.0.0.0}:${MP_PORT:-18500}:18500"
+    # Everything in .env reaches the server too, so extra storage locations and their
+    # credentials (MP_STORAGE_LOCATIONS, MP_STORAGE_<NAME>_ACCESS_KEY_ID ...) need no edits here.
+    env_file: .env
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:-multiparity}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:-multiparity}
       MP_PUBLIC_URL: ${MP_PUBLIC_URL:-http://localhost:18500}

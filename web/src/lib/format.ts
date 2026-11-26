@@ -129,6 +129,37 @@ export const KIND_LABEL: Record<string, string> = {
   other: 'Other',
 };
 
+/** Storage location kinds in plain words. */
+export const STORAGE_KIND_LABEL: Record<string, string> = {
+  local: 'Folder on the server',
+  mount: 'Network share',
+  s3: 'S3 bucket',
+};
+
+/** How far a move of file data has got, 0 to 100, or null when the total is not known yet. */
+export function movePercent(m: { total_chunks: number; copied_chunks: number }): number | null {
+  if (!m.total_chunks) return null;
+  return Math.min(100, Math.floor((m.copied_chunks / m.total_chunks) * 100));
+}
+
+/** A move's status in words, for example "Moving… 40%". */
+export function moveStatus(m: { status: string; total_chunks: number; copied_chunks: number; error: string | null }): string {
+  switch (m.status) {
+    case 'running': {
+      const pc = movePercent(m);
+      return pc === null ? 'Moving…' : `Moving… ${pc}%`;
+    }
+    case 'done':
+      return 'Done';
+    case 'failed':
+      return m.error ? `Failed: ${m.error}` : 'Failed';
+    case 'interrupted':
+      return 'Stopped by a restart — start it again to finish';
+    default:
+      return m.status;
+  }
+}
+
 /** Binary kinds are claimed; text merges. */
 export const isLockable = (kind: string) => !['code', 'text'].includes(kind);
 

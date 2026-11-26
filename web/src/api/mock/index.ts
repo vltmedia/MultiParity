@@ -12,6 +12,7 @@ import type {
   Project,
   ProjectSummary,
   Role,
+  StorageMove,
 } from '../types';
 import {
   CINDER,
@@ -26,6 +27,8 @@ import {
   hash,
   invites,
   kindOf,
+  leftovers,
+  locations,
   members,
   orgs,
   pathTags,
@@ -35,6 +38,7 @@ import {
   scopeOf,
   serverCheckpoints,
   sessions,
+  storageMoves,
   tags,
   uid,
   userById,
@@ -42,6 +46,7 @@ import {
   users,
   workspaces,
   type MChange,
+  type MMove,
   type MProject,
   type MUser,
   type MWorkspace,
@@ -140,7 +145,63 @@ function summary(p: MProject, u: MUser): ProjectSummary {
     checkpoint_setting: p.checkpoints,
     auto_checkpoints: !!p.auto_checkpoints,
     checkpoint_storage: p.checkpoints === 'auto' ? (bytes >= 20 * GB ? 'server' : 'local') : p.checkpoints,
+    storage: p.storage,
+    storage_moving: advanceMoves().some((x) => x.project_id === p.id && x.status === 'running'),
   };
+}
+
+// ---------- storage locations ----------
+
+const MOVE_MS = 10_000;
+/** Play running moves forward to now. */
+function advanceMoves() {
+  for (const mv of storageMoves) {
+    if (mv.status !== 'running') continue;
+    const f = Math.min(1, (Date.now() - mv.ms) / MOVE_MS);
+    mv.copied_chunks = Math.max(mv.copied_chunks, Math.round(mv.total_chunks * f));
+    mv.copied_bytes = Math.max(mv.copied_bytes, Math.round(mv.total_bytes * f));
+    if (f >= 1) {
+      mv.status = 'done';
+      mv.finished_at = new Date().toISOString();
+      const p = projectById(mv.project_id);
+      if (p) p.storage_previous = null;
+      const left = leftovers.get(mv.from) || { chunks: 0, bytes: 0 };
+      leftovers.set(mv.from, { chunks: left.chunks + mv.total_chunks, bytes: left.bytes + mv.total_bytes });
+    }
+  }
+  return storageMoves;
+}
+const latestMove = (pid: string) => storageMoves.find((mv) => mv.project_id === pid);
+const projectChunks = (p: MProject) => filesOf(p, p.branches[0].id).length * 37;
+const projectStored = (p: MProject) => Math.round(filesOf(p, p.branches[0].id).reduce((b, f) => b + f.size * 1.6, 0));
+const moveOut = ({ ms: _m, total_bytes: _t, ...mv }: MMove): StorageMove => (void _m, void _t, { ...mv });
+
+function locationsOut(u: MUser) {
+  advanceMoves();
+  return locations.map((l) => {
+    const here = projects.filter((p) => p.storage === l.name);
+    // a project part-way through a move still has file data in the old place
+    const open = storageMoves.filter((mv) => mv.status !== 'done' && mv === latestMove(mv.project_id));
+    const halfway = open.filter((mv) => mv.from === l.name && projectById(mv.project_id)?.storage_previous === l.name);
+    const copying = open.filter((mv) => mv.to === l.name);
+    const left = leftovers.get(l.name) || { chunks: 0, bytes: 0 };
+    let chunks = left.chunks;
+    let bytes = left.bytes;
+    for (const p of here) {
+      const mv = copying.find((x) => x.project_id === p.id);
+      chunks += mv ? mv.copied_chunks : projectChunks(p);
+      bytes += mv ? mv.copied_bytes : projectStored(p);
+    }
+    for (const mv of halfway) {
+      const p = projectById(mv.project_id)!;
+      chunks += projectChunks(p);
+      bytes += projectStored(p);
+    }
+    return {
+      name: l.name, kind: l.kind, main: l.main, description: u.is_server_admin ? l.description : null, chunks, stored_bytes: bytes,
+      projects: here.map((p) => ({ id: p.id, name: p.name, org: orgs.find((o) => o.id === p.org_id)!.name })),
+    };
+  });
 }
 function fullProject(p: MProject, u: MUser): Project {
   return { ...summary(p, u), branches_list: p.branches, my_role: roleIn(u, p.org_id) || 'admin' };
@@ -365,9 +426,12 @@ on('POST', '/api/orgs/:org/projects', ({ headers, m, body }) => {
   if (!canAdminOrg(u, o.id)) throw new Fail(403, 'forbidden', 'Only organization admins can create projects.');
   const name = String(body?.name || '').trim();
   if (!name) throw new Fail(422, 'invalid', 'Give the project a name.');
+  const storage = String(body?.storage || 'main');
+  if (!locations.some((l) => l.name === storage)) throw new Fail(422, 'invalid', `The server has no storage location called ${storage}.`);
   const id = uid('pr000009');
   const p: MProject = {
     id, slug: body?.slug || name.toLowerCase().replace(/[^a-z0-9]+/g, '-'), name, org_id: o.id, archived: false, checkpoints: 'auto',
+    storage, storage_previous: null,
     created_at: new Date().toISOString(), head: 0, files: new Map(), changes: [], merge: new Map(),
     branches: [{ id: uid('brn00009'), name: 'Main', parent_id: null, shares_claims: true, protected: false, archived: false, head_change: 0, created_at: new Date().toISOString(), created_by: userRef(u), ahead: 0, behind: 0 }],
   };
@@ -865,16 +929,82 @@ let gcBytes = Math.round(3.7 * 1024 * MB);
 on('GET', '/api/admin/storage/gc', async ({ headers }) => {
   needAdmin(who(headers), CINDER.id);
   await wait(500);
-  return { unreferenced_chunks: gcBytes ? 2318 : 0, bytes: gcBytes };
+  advanceMoves();
+  const by_location = locations
+    .map((l) => {
+      const left = leftovers.get(l.name) || { chunks: 0, bytes: 0 };
+      return { location: l.name, chunks: left.chunks + (l.main && gcBytes ? 2318 : 0), bytes: left.bytes + (l.main ? gcBytes : 0) };
+    })
+    .filter((x) => x.bytes > 0);
+  return {
+    unreferenced_chunks: by_location.reduce((a, x) => a + x.chunks, 0),
+    bytes: by_location.reduce((a, x) => a + x.bytes, 0),
+    by_location,
+  };
 });
 on('POST', '/api/admin/storage/gc', async ({ headers }) => {
   const u = who(headers);
   if (!u.is_server_admin) throw new Fail(403, 'forbidden', 'Only server admins can reclaim space.');
   await wait(1500);
-  const out = { deleted: gcBytes ? 2318 : 0, bytes: gcBytes };
+  advanceMoves();
+  let deleted = gcBytes ? 2318 : 0;
+  let bytes = gcBytes;
+  for (const left of leftovers.values()) {
+    deleted += left.chunks;
+    bytes += left.bytes;
+  }
+  leftovers.clear();
+  const out = { deleted, bytes };
   gcBytes = 0;
   emit({ kind: 'admin.storage.gc', actor: userRef(u), data: out });
   return out;
+});
+on('GET', '/api/admin/storage', ({ headers }) => {
+  const u = who(headers);
+  needAdmin(u, u.is_server_admin ? null : adminOrgIds(u)[0]);
+  const ids = adminOrgIds(u);
+  const mine = (pid: string) => u.is_server_admin || ids.includes(projectById(pid)?.org_id || '');
+  return {
+    locations: locationsOut(u).map((l) => ({ ...l, projects: l.projects.filter((p) => mine(p.id)) })),
+    unavailable: [],
+    moves: advanceMoves().filter((mv) => mine(mv.project_id)).slice(0, 20).map(moveOut),
+  };
+});
+on('GET', '/api/admin/projects/:p/storage', ({ headers, m }) => {
+  const u = who(headers);
+  const p = projectById(m[1]);
+  if (!p) throw new Fail(404, 'not_found', 'That project does not exist.');
+  needAdmin(u, p.org_id);
+  advanceMoves();
+  const mv = latestMove(p.id);
+  return { storage: p.storage, previous: p.storage_previous, move: mv ? moveOut(mv) : null };
+});
+on('POST', '/api/admin/projects/:p/storage', ({ headers, m, body }) => {
+  const u = who(headers);
+  const p = projectById(m[1]);
+  if (!p) throw new Fail(404, 'not_found', 'That project does not exist.');
+  if (!u.is_server_admin) throw new Fail(403, 'forbidden', 'Only server admins can move file data.');
+  advanceMoves();
+  const to = String(body?.to || '');
+  if (!locations.some((l) => l.name === to)) throw new Fail(422, 'invalid', `The server has no storage location called ${to}.`);
+  const last = latestMove(p.id);
+  if (last?.status === 'running') throw new Fail(409, 'conflict', `${p.name} is already being moved to ${last.to}.`);
+  const finishing = p.storage_previous !== null && p.storage === to;
+  if (p.storage === to && !finishing) throw new Fail(422, 'invalid', `${p.name} is already stored in ${to}.`);
+  const from = finishing ? p.storage_previous! : p.storage;
+  const total_chunks = projectChunks(p);
+  const total_bytes = projectStored(p);
+  const resumed = finishing && last && last.to === to ? last : undefined;
+  const mv: MMove = {
+    id: uid('mov00009'), project_id: p.id, project_name: p.name, from, to, status: 'running', total_chunks,
+    copied_chunks: resumed ? Math.min(total_chunks, resumed.copied_chunks) : 0, copied_bytes: resumed ? Math.min(total_bytes, resumed.copied_bytes) : 0,
+    error: null, started_at: new Date().toISOString(), finished_at: null, ms: Date.now(), total_bytes,
+  };
+  storageMoves.unshift(mv);
+  p.storage = to;
+  p.storage_previous = from;
+  emit({ kind: 'admin.project.storage_moved', org_id: p.org_id, project_id: p.id, actor: userRef(u), data: { project: p.name, from, to } });
+  return moveOut(mv);
 });
 on('GET', '/api/admin/checkpoints', ({ headers, q }) => {
   const u = who(headers);

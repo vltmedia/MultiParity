@@ -58,6 +58,10 @@ export type ProjectSummary = {
   checkpoint_storage: CheckpointStorage;
   /** take checkpoints automatically every few minutes while people work; off unless turned on */
   auto_checkpoints: boolean;
+  /** name of the storage location that holds this project's file data; "main" is the default */
+  storage: string;
+  /** file data is being moved to another storage location right now */
+  storage_moving: boolean;
 };
 
 export type CheckpointSetting = 'auto' | 'server' | 'local';
@@ -296,7 +300,12 @@ export type StorageCheckReport = {
   ok: boolean;
 };
 
-export type GcDryRun = { unreferenced_chunks: number; bytes: number };
+export type GcDryRun = {
+  unreferenced_chunks: number;
+  bytes: number;
+  /** the same amounts, split by storage location */
+  by_location?: Array<{ location: string; chunks: number; bytes: number }>;
+};
 export type GcResult = { deleted: number; bytes: number };
 
 /** One person's checkpoints kept on the server for one project. Sizes only, never contents. */
@@ -315,7 +324,50 @@ export type CheckpointUsage = {
   newest: Time;
 };
 
-export type ClearCheckpoints = { user: Id; project: Id; only_automatic?: boolean; older_than_days?: number };
+// ---------- Storage locations ----------
+
+export type StorageKind = 'local' | 'mount' | 's3';
+
+/** A named place where the server keeps project file data. "main" is the default. */
+export type StorageLocation = {
+  name: string;
+  kind: StorageKind;
+  main: boolean;
+  /** path or bucket; only server admins get it, otherwise null */
+  description: string | null;
+  chunks: number;
+  stored_bytes: number;
+  projects: Array<{ id: Id; name: string; org: string }>;
+};
+
+export type StorageMoveStatus = 'running' | 'done' | 'failed' | 'interrupted';
+
+export type StorageMove = {
+  id: Id;
+  project_id: Id;
+  project_name: string;
+  from: string;
+  to: string;
+  status: StorageMoveStatus;
+  total_chunks: number;
+  copied_chunks: number;
+  copied_bytes: number;
+  error: string | null;
+  started_at: Time;
+  finished_at: Time | null;
+};
+
+export type StorageOverview = {
+  locations: StorageLocation[];
+  /** projects whose location is no longer configured on the server */
+  unavailable: Array<{ id: Id; name: string; storage: string }>;
+  /** the 20 most recent moves, newest first */
+  moves: StorageMove[];
+};
+
+export type ProjectStorage = { storage: string; previous: string | null; move: StorageMove | null };
+
+export type ClearCheckpoints ={ user: Id; project: Id; only_automatic?: boolean; older_than_days?: number };
 
 // ---------- Local daemon ----------
 

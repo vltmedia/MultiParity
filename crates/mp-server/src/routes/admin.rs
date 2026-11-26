@@ -80,7 +80,8 @@ pub async fn overview(State(s): State<AppState>, user: CurrentUser) -> ApiResult
         "chunks": if all { json!(r.get::<i64,_>("chunks")) } else { Value::Null },
         "storage_bytes": if all { json!(r.get::<i64,_>("storage_bytes")) } else { Value::Null },
         "content_bytes": if all { json!(r.get::<i64,_>("content_bytes")) } else { Value::Null },
-        "storage": if all { json!(s.store.description) } else { Value::Null },
+        "storage": if all { json!(s.stores.main().description) } else { Value::Null },
+        "storage_locations": s.stores.names().count(),
         "is_server_admin": all,
     })))
 }
@@ -710,28 +711,39 @@ pub async fn storage_check(State(s): State<AppState>, user: CurrentUser, Json(b)
     }
     let rows = sqlx::query(
         "WITH refm AS (
-           SELECT DISTINCT manifest_hash AS h FROM change_files WHERE manifest_hash IS NOT NULL AND ($1::uuid IS NULL OR project_id = $1)
-           UNION SELECT DISTINCT t.manifest_hash FROM tree_entries t JOIN branches b ON b.id = t.branch_id WHERE t.manifest_hash IS NOT NULL AND ($1::uuid IS NULL OR b.project_id = $1))
-         SELECT DISTINCT jsonb_array_elements(m.chunks)->>0 AS chunk FROM manifests m JOIN refm ON refm.h = m.hash",
+           SELECT DISTINCT project_id AS p, manifest_hash AS h FROM change_files WHERE manifest_hash IS NOT NULL AND ($1::uuid IS NULL OR project_id = $1)
+           UNION SELECT DISTINCT b.project_id, t.manifest_hash FROM tree_entries t JOIN branches b ON b.id = t.branch_id WHERE t.manifest_hash IS NOT NULL AND ($1::uuid IS NULL OR b.project_id = $1))
+         SELECT DISTINCT pr.storage AS loc, pr.storage_previous AS prev, jsonb_array_elements(m.chunks)->>0 AS chunk
+         FROM manifests m JOIN refm ON refm.h = m.hash JOIN projects pr ON pr.id = refm.p",
     )
     .bind(b.project)
     .fetch_all(&s.db)
     .await?;
-    let chunks: Vec<String> = rows.iter().map(|r| r.get::<String, _>("chunk")).collect();
+    let chunks: Vec<(String, Option<String>, String)> = rows.iter().map(|r| (r.get("loc"), r.get("prev"), r.get("chunk"))).collect();
     let checked = chunks.len();
-    let store = s.store.clone();
+    let state = s.clone();
     let results: Vec<(String, bool)> = futures::stream::iter(chunks)
-        .map(|h| {
-            let store = store.clone();
+        .map(|(loc, prev, h)| {
+            let state = state.clone();
             async move {
-                let ok = store.has_chunk(&h).await.unwrap_or(false);
+                let mut ok = false;
+                for l in std::iter::once(loc).chain(prev) {
+                    if let Some(st) = state.stores.get(&l) {
+                        if st.has_chunk(&h).await.unwrap_or(false) {
+                            ok = true;
+                            break;
+                        }
+                    }
+                }
                 (h, ok)
             }
         })
         .buffer_unordered(32)
         .collect()
         .await;
-    let missing: Vec<String> = results.into_iter().filter(|(_, ok)| !ok).map(|(h, _)| h).collect();
+    let mut missing: Vec<String> = results.into_iter().filter(|(_, ok)| !ok).map(|(h, _)| h).collect();
+    missing.sort();
+    missing.dedup();
     let mut details = Vec::new();
     for h in missing.iter().take(200) {
         let changes: Vec<(Uuid, i32, String)> = sqlx::query_as(
@@ -748,14 +760,20 @@ pub async fn storage_check(State(s): State<AppState>, user: CurrentUser, Json(b)
     Ok(Json(json!({ "checked": checked, "missing": details, "missing_count": missing.len(), "ok": missing.is_empty() })))
 }
 
+/// Copies of chunks nothing needs: in a location where no project stored there (or still being
+/// moved out of it) uses them, and older than a day so uploads in progress are kept. After a
+/// project moves, its old copies show up here.
 const UNREFERENCED: &str = "WITH refm AS (
-      SELECT manifest_hash AS h FROM tree_entries WHERE manifest_hash IS NOT NULL
-      UNION SELECT manifest_hash FROM change_files WHERE manifest_hash IS NOT NULL
-      UNION SELECT e->'manifest'->>'hash' FROM drafts d, jsonb_array_elements(d.entries) e WHERE e ? 'manifest' AND jsonb_typeof(e->'manifest') = 'object'
-      UNION SELECT e->'manifest'->>'hash' FROM checkpoints k, jsonb_array_elements(k.entries) e WHERE e ? 'manifest' AND jsonb_typeof(e->'manifest') = 'object'),
-    refc AS (SELECT DISTINCT jsonb_array_elements(m.chunks)->>0 AS h FROM manifests m JOIN refm ON refm.h = m.hash)
-    SELECT c.hash, c.stored_size FROM chunks c
-    WHERE c.created_at < now() - interval '1 day' AND NOT EXISTS (SELECT 1 FROM refc WHERE refc.h = c.hash)";
+      SELECT b.project_id AS p, t.manifest_hash AS h FROM tree_entries t JOIN branches b ON b.id = t.branch_id WHERE t.manifest_hash IS NOT NULL
+      UNION SELECT project_id, manifest_hash FROM change_files WHERE manifest_hash IS NOT NULL
+      UNION SELECT d.project_id, e->'manifest'->>'hash' FROM drafts d, jsonb_array_elements(d.entries) e WHERE e ? 'manifest' AND jsonb_typeof(e->'manifest') = 'object'
+      UNION SELECT k.project_id, e->'manifest'->>'hash' FROM checkpoints k, jsonb_array_elements(k.entries) e WHERE e ? 'manifest' AND jsonb_typeof(e->'manifest') = 'object'),
+    locs AS (SELECT id, storage AS loc FROM projects UNION SELECT id, storage_previous FROM projects WHERE storage_previous IS NOT NULL),
+    refc AS (SELECT DISTINCT locs.loc, jsonb_array_elements(m.chunks)->>0 AS h FROM refm JOIN manifests m ON m.hash = refm.h JOIN locs ON locs.id = refm.p)
+    SELECT c.location, c.hash, c.stored_size FROM chunks c
+    WHERE c.created_at < now() - interval '1 day'
+      AND NOT EXISTS (SELECT 1 FROM refc WHERE refc.loc = c.location AND refc.h = c.hash)
+      AND NOT EXISTS (SELECT 1 FROM storage_moves sm WHERE sm.status = 'running' AND (sm.from_location = c.location OR sm.to_location = c.location))";
 
 /// Dry run: how much space unreferenced chunks use. Chunks younger than a day are kept, so
 /// uploads that are still in progress are never collected.
@@ -763,7 +781,14 @@ pub async fn gc_preview(State(s): State<AppState>, user: CurrentUser) -> ApiResu
     access::server_admin(&user)?;
     let rows = sqlx::query(UNREFERENCED).fetch_all(&s.db).await?;
     let bytes: i64 = rows.iter().map(|r| r.get::<i64, _>("stored_size")).sum();
-    Ok(Json(json!({ "unreferenced_chunks": rows.len(), "bytes": bytes })))
+    let mut by_location: std::collections::BTreeMap<String, (usize, i64)> = Default::default();
+    for r in &rows {
+        let e = by_location.entry(r.get("location")).or_default();
+        e.0 += 1;
+        e.1 += r.get::<i64, _>("stored_size");
+    }
+    let by: Vec<Value> = by_location.into_iter().map(|(l, (n, b))| json!({ "location": l, "chunks": n, "bytes": b })).collect();
+    Ok(Json(json!({ "unreferenced_chunks": rows.len(), "bytes": bytes, "by_location": by })))
 }
 
 pub async fn gc_run(State(s): State<AppState>, user: CurrentUser) -> ApiResult<Json<Value>> {
@@ -773,8 +798,11 @@ pub async fn gc_run(State(s): State<AppState>, user: CurrentUser) -> ApiResult<J
     let mut bytes = 0i64;
     for r in &rows {
         let h: String = r.get("hash");
-        s.store.delete_chunk(&h).await?;
-        sqlx::query("DELETE FROM chunks WHERE hash = $1").bind(&h).execute(&s.db).await?;
+        let loc: String = r.get("location");
+        // A location no longer configured cannot be cleaned; leave its rows for when it returns.
+        let Some(store) = s.stores.get(&loc) else { continue };
+        store.delete_chunk(&h).await?;
+        sqlx::query("DELETE FROM chunks WHERE location = $1 AND hash = $2").bind(&loc).bind(&h).execute(&s.db).await?;
         deleted += 1;
         bytes += r.get::<i64, _>("stored_size");
     }

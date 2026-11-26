@@ -11,6 +11,7 @@ use uuid::Uuid;
 
 use crate::access::{self, Level};
 use crate::auth::CurrentUser;
+use crate::chunks;
 use crate::branches::{self, claim_scope, load_branch, lock_project, record_change_file, take_change_number, upsert_entry, Entry};
 use crate::error::{ApiError, ApiResult};
 use crate::events;
@@ -25,13 +26,13 @@ pub struct MissingBody {
 }
 
 pub async fn missing_chunks(State(s): State<AppState>, user: CurrentUser, Path(p): Path<Uuid>, Json(b): Json<MissingBody>) -> ApiResult<Json<Value>> {
-    access::project(&s, &user, p, Level::Write).await?;
+    let acc = access::project(&s, &user, p, Level::Write).await?;
     if b.hashes.len() > 100_000 {
         return Err(ApiError::invalid("Ask about at most 100,000 chunks at a time."));
     }
     let hashes: Vec<String> = b.hashes.into_iter().filter(|h| is_hash(h)).collect();
-    let present: Vec<String> = sqlx::query_scalar("SELECT hash FROM chunks WHERE hash = ANY($1)").bind(&hashes).fetch_all(&s.db).await?;
-    let present: std::collections::HashSet<_> = present.into_iter().collect();
+    let mut conn = s.db.acquire().await?;
+    let present = chunks::present(&mut conn, &acc.storage, &hashes).await?;
     let mut missing: Vec<&String> = hashes.iter().filter(|h| !present.contains(*h)).collect();
     missing.dedup();
     Ok(Json(json!({ "missing": missing })))
@@ -39,7 +40,7 @@ pub async fn missing_chunks(State(s): State<AppState>, user: CurrentUser, Path(p
 
 /// Upload one zstd-compressed chunk. The server decompresses and checks the hash before storing.
 pub async fn put_chunk(State(s): State<AppState>, user: CurrentUser, Path((p, hash)): Path<(Uuid, String)>, body: Bytes) -> ApiResult<Json<Value>> {
-    access::project(&s, &user, p, Level::Write).await?;
+    let acc = access::project(&s, &user, p, Level::Write).await?;
     if !is_hash(&hash) {
         return Err(ApiError::invalid("That is not a valid chunk hash."));
     }
@@ -47,23 +48,17 @@ pub async fn put_chunk(State(s): State<AppState>, user: CurrentUser, Path((p, ha
     if mp_core::hash_bytes(&raw) != hash {
         return Err(ApiError::invalid("The chunk's content does not match its hash. The upload may have been corrupted; try again."));
     }
-    let stored = body.len() as i64;
-    s.store.put_chunk(&hash, body).await?;
-    sqlx::query("INSERT INTO chunks (hash, size, stored_size) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING")
-        .bind(&hash)
-        .bind(raw.len() as i64)
-        .bind(stored)
-        .execute(&s.db)
-        .await?;
+    let mut conn = s.db.acquire().await?;
+    chunks::put(&s, &mut conn, &acc.storage, &hash, body, raw.len()).await?;
     Ok(Json(json!({})))
 }
 
 pub async fn get_chunk(State(s): State<AppState>, user: CurrentUser, Path((p, hash)): Path<(Uuid, String)>) -> ApiResult<impl IntoResponse> {
-    access::project(&s, &user, p, Level::Read).await?;
+    let acc = access::project(&s, &user, p, Level::Read).await?;
     if !is_hash(&hash) {
         return Err(ApiError::invalid("That is not a valid chunk hash."));
     }
-    let data = s.store.get_chunk(&hash).await?;
+    let data = chunks::get(&s, &acc.storage, &hash).await?;
     Ok(([(header::CONTENT_TYPE, "application/zstd"), (header::CACHE_CONTROL, "private, max-age=31536000, immutable")], data))
 }
 
@@ -77,9 +72,10 @@ pub async fn get_manifest(State(s): State<AppState>, user: CurrentUser, Path((p,
     Ok(Json(json!({ "hash": r.get::<String,_>("hash"), "size": r.get::<i64,_>("size"), "file_hash": r.get::<String,_>("file_hash"), "chunks": r.get::<Value,_>("chunks") })))
 }
 
-/// Validate entries' manifests and that every chunk they name is stored. Returns entries ready
-/// to write.
-pub async fn check_entries(s: &AppState, db: &mut sqlx::PgConnection, entries: &[PublishEntry]) -> ApiResult<Vec<(String, Entry)>> {
+/// Validate entries' manifests and that every chunk they name is stored in the project's
+/// location (copying any that are still only in its previous one, during a move). Returns entries
+/// ready to write.
+pub async fn check_entries(s: &AppState, db: &mut sqlx::PgConnection, ps: &chunks::ProjectStore, entries: &[PublishEntry]) -> ApiResult<Vec<(String, Entry)>> {
     let mut out = Vec::with_capacity(entries.len());
     let mut seen = std::collections::HashSet::new();
     let mut all_chunks: Vec<String> = Vec::new();
@@ -105,11 +101,10 @@ pub async fn check_entries(s: &AppState, db: &mut sqlx::PgConnection, entries: &
     }
     all_chunks.sort();
     all_chunks.dedup();
-    let present: i64 = sqlx::query_scalar("SELECT count(*) FROM chunks WHERE hash = ANY($1)").bind(&all_chunks).fetch_one(&mut *db).await?;
-    if present as usize != all_chunks.len() {
+    let missing = chunks::ensure_current(s, db, ps, &all_chunks).await?;
+    if !missing.is_empty() {
         return Err(ApiError::new(axum::http::StatusCode::UNPROCESSABLE_ENTITY, "missing_chunks", "Some file data has not been uploaded yet. Upload the missing chunks and publish again."));
     }
-    let _ = s;
     Ok(out)
 }
 
@@ -137,7 +132,7 @@ pub async fn publish(State(s): State<AppState>, user: CurrentUser, Path((p, b)):
     if branch.protected && acc.level < Level::Admin {
         return Err(ApiError::forbidden(format!("{} is protected: work arrives by merging a branch into it.", branch.name)));
     }
-    let entries = check_entries(&s, &mut tx, &body.entries).await?;
+    let entries = check_entries(&s, &mut tx, &acc.storage, &body.entries).await?;
     let paths: Vec<String> = entries.iter().map(|(p, _)| p.clone()).collect();
 
     // Stale: the server's version moved on since the client last got it.

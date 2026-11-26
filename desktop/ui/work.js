@@ -116,6 +116,7 @@ function renderWork() {
       <div class="head-acts">
         <button class="btn ${st && st.behind ? "pri" : ""}" data-w="latest" ${work.busy ? "disabled" : ""}>${work.busy === "latest" ? "Getting latest…" : st && st.behind ? `Get latest (${st.behind} newer)` : "Get latest"}</button>
         <button class="btn" data-w="web">Open on the web</button>
+        <button class="btn" data-w="move-folder">Move folder…</button>
       </div>
     </header>
     ${work.error ? `<div class="notice bad">${esc(work.error)}</div>` : ""}
@@ -417,6 +418,7 @@ $("#v-work").addEventListener("click", (e) => {
   if (what === "discard") return discardDialog(ticked().map((f) => f.path));
   if (what === "rewind") return rewindDialog(el.dataset.cp);
   if (what === "space") return spaceDialog();
+  if (what === "move-folder") return moveFolderDialog(work.ws, { project: work.project });
 });
 
 $("#v-work").addEventListener("contextmenu", (e) => {

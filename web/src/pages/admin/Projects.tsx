@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../api/client';
-import type { CheckpointSetting, ProjectSummary } from '../../api/types';
+import type { CheckpointSetting, ProjectStorage, ProjectSummary, StorageLocation } from '../../api/types';
 import { useAsync } from '../../lib/useAsync';
-import { plural, since, size } from '../../lib/format';
-import { Dialog, Empty, ErrorNote, Loading, useAction, useUi } from '../../components/ui';
+import { STORAGE_KIND_LABEL, movePercent, moveStatus, plural, since, size } from '../../lib/format';
+import { Dialog, Empty, ErrorNote, Loading, Parity, useAction, useUi } from '../../components/ui';
 import { AdminHead, useAdmin } from './AdminLayout';
 
 const KEEP: Array<[CheckpointSetting, string]> = [
@@ -17,21 +17,27 @@ const KEPT = { server: 'on the server', local: 'on each computer' };
 type Edit = { kind: 'rename' | 'move'; p: ProjectSummary } | { kind: 'create' };
 
 export default function AdminProjects() {
-  const { scope, orgs, scopeName } = useAdmin();
+  const { scope, orgs, scopeName, isServerAdmin } = useAdmin();
   const list = useAsync(() => api.admin.projects(scope || undefined), [scope]);
+  // Storage locations, for where new projects go and for moving file data. If this fails the choices are simply not offered.
+  const storage = useAsync(() => api.admin.storage(), []);
+  const locations = storage.data?.locations || [];
   const { confirm, toast } = useUi();
   const { run, busy } = useAction();
   const [edit, setEdit] = useState<Edit | null>(null);
   const [name, setName] = useState('');
   const [org, setOrg] = useState('');
+  const [where, setWhere] = useState('');
   const [err, setErr] = useState('');
   const [showArchived, setShowArchived] = useState(false);
+  const [stor, setStor] = useState<ProjectSummary | null>(null);
 
   const open = (e: Edit) => {
     setErr('');
     setEdit(e);
     setName(e.kind === 'rename' ? e.p.name : '');
     setOrg(e.kind === 'move' ? '' : e.kind === 'create' ? scope || orgs[0]?.id || '' : '');
+    setWhere(locations.find((l) => l.main)?.name || '');
   };
 
   async function save() {
@@ -40,7 +46,8 @@ export default function AdminProjects() {
     if (edit.kind === 'create') {
       if (!name.trim()) return setErr('Give the project a name.');
       if (!org) return setErr('Choose which organization owns it.');
-      const r = await run('save', 'make the project', () => api.createProject(org, name.trim()));
+      const storeIn = locations.length > 1 ? where || undefined : undefined;
+      const r = await run('save', 'make the project', () => api.createProject(org, name.trim(), undefined, storeIn));
       if (r) toast(`Made ${r.name}. It starts with one branch, Main.`);
       if (!r) return;
     } else if (edit.kind === 'rename') {
@@ -132,7 +139,7 @@ export default function AdminProjects() {
         {rows.length > 0 && (
           <table className="t">
             <thead>
-              <tr><th>Project</th><th>Organization</th><th className="r">Size</th><th className="r">Files</th><th className="r">Change</th><th>Last change</th><th>Keep checkpoints</th><th /></tr>
+              <tr><th>Project</th><th>Organization</th><th className="r">Size</th><th className="r">Files</th><th className="r">Change</th><th>Last change</th><th>Stored in</th><th>Keep checkpoints</th><th /></tr>
             </thead>
             <tbody>
               {rows.map((p) => (
@@ -146,6 +153,10 @@ export default function AdminProjects() {
                   <td className="r">{p.file_count.toLocaleString()}</td>
                   <td className="r">{p.head_change}</td>
                   <td>{p.last_change ? since(p.last_change.created_at) : <span className="mute">Never</span>}</td>
+                  <td>
+                    {p.storage}
+                    {p.storage_moving && <span className="badge hold" style={{ marginLeft: 8 }}>Moving…</span>}
+                  </td>
                   <td>
                     <select className="select sm" aria-label={`Keep checkpoints for ${p.name}`} value={p.checkpoint_setting} disabled={busy === 'keep:' + p.id} onChange={(e) => keep(p, e.target.value as CheckpointSetting)}>
                       {KEEP.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
@@ -161,6 +172,7 @@ export default function AdminProjects() {
                     <span className="row" style={{ justifyContent: 'flex-end', flexWrap: 'nowrap' }}>
                       <button className="btn sm" onClick={() => open({ kind: 'rename', p })}>Rename</button>
                       {orgs.length > 1 && <button className="btn sm" onClick={() => open({ kind: 'move', p })}>Move</button>}
+                      {isServerAdmin && locations.length > 1 && <button className="btn sm" onClick={() => setStor(p)}>Change storage…</button>}
                       {p.archived ? (
                         <button className="btn sm" disabled={busy === 'arch:' + p.id} onClick={() => restore(p)}>Restore</button>
                       ) : (
@@ -194,6 +206,19 @@ export default function AdminProjects() {
               </select>
             </label>
           )}
+          {edit.kind === 'create' && locations.length > 1 && (
+            <label className="field">
+              <span>Store file data in</span>
+              <select className="select" value={where} onChange={(e) => setWhere(e.target.value)}>
+                {locations.map((l) => (
+                  <option key={l.name} value={l.name}>
+                    {l.name} ({STORAGE_KIND_LABEL[l.kind] || l.kind}{l.main ? ', default' : ''})
+                  </option>
+                ))}
+              </select>
+              <small>A server admin can move it to another location later.</small>
+            </label>
+          )}
           {edit.kind === 'create' && <p className="fine">The project starts with one branch, Main, and the starter ignore rules for OS junk, autosaves and engine caches.</p>}
           {err && <div className="notice bad">{err}</div>}
           <div className="actions">
@@ -204,6 +229,142 @@ export default function AdminProjects() {
           </div>
         </Dialog>
       )}
+      {stor && (
+        <StorageDialog
+          p={stor}
+          locations={locations}
+          onClose={() => setStor(null)}
+          onChanged={() => {
+            list.reload();
+            storage.reload();
+          }}
+        />
+      )}
     </>
+  );
+}
+
+/** Move a project's file data to another storage location, and follow the move while it runs. */
+function StorageDialog({ p, locations, onClose, onChanged }: { p: ProjectSummary; locations: StorageLocation[]; onClose: () => void; onChanged: () => void }) {
+  const { toast } = useUi();
+  const { run, busy } = useAction();
+  const info = useAsync(() => api.admin.projectStorage(p.id), [p.id]);
+  const [to, setTo] = useState('');
+  const [err, setErr] = useState('');
+  const d: ProjectStorage | undefined = info.data;
+  const move = d?.move || null;
+  const running = move?.status === 'running';
+  const wasRunning = useRef(false);
+  const [finished, setFinished] = useState(false);
+  const changed = useRef(onChanged);
+  changed.current = onChanged;
+
+  // Poll while the move runs; when it stops, say so and refresh the page behind the dialog.
+  useEffect(() => {
+    if (running) {
+      wasRunning.current = true;
+      setFinished(false);
+      const t = setTimeout(info.reload, 3000);
+      return () => clearTimeout(t);
+    }
+    if (wasRunning.current && move) {
+      wasRunning.current = false;
+      setFinished(true);
+      changed.current();
+    }
+  }, [running, move, info.data, info.reload]);
+
+  const current = d?.storage || p.storage;
+  const others = locations.filter((l) => l.name !== current);
+  const unfinished = !!move && (move.status === 'interrupted' || move.status === 'failed') && !!d?.previous;
+
+  async function start(target: string, finishing: boolean) {
+    setErr('');
+    if (!target) return setErr('Choose where to move the file data.');
+    const r = await run('move', finishing ? 'finish the move' : 'move the file data', () => api.admin.moveProjectStorage(p.id, target));
+    if (!r) return;
+    toast(finishing ? `Finishing the move of ${p.name} to ${target}. People can keep working.` : `Moving ${p.name} to ${target}. People can keep working.`);
+    info.setData((x) => (x ? { ...x, move: r } : x));
+    onChanged();
+  }
+
+  const pc = move ? movePercent(move) : null;
+
+  return (
+    <Dialog title={`Change where ${p.name} is stored`} onClose={onClose}>
+      {info.loading && !d && <Loading what="Looking at storage" />}
+      {info.error !== undefined && <ErrorNote error={info.error} doing="load where this project is stored" retry={info.reload} />}
+      {d && (
+        <>
+          {!running && (
+            <p>
+              {p.name} is stored in <b>{current}</b>.
+            </p>
+          )}
+          {move && move.status === 'running' && (
+            <div className="result">
+              <b className="big">{moveStatus(move)}</b>
+              {pc !== null && <Parity total={20} done={Math.floor(pc / 5)} />}
+              <p>
+                Moving from {move.from} to {move.to}. {size(move.copied_bytes)} copied so far. People can keep working, and you can close this.
+              </p>
+            </div>
+          )}
+          {finished && move && move.status === 'done' && (
+            <div className="result good">
+              <b className="big">Moved to {move.to}</b>
+              <p>The old copy in {move.from} stays until you reclaim space on the Fixing page.</p>
+            </div>
+          )}
+          {finished && move && move.status === 'failed' && !d.previous && (
+            <div className="result bad">
+              <b className="big">The move to {move.to} did not finish</b>
+              <p>{moveStatus(move)}</p>
+            </div>
+          )}
+          {unfinished && move && (
+            <div className="result bad">
+              <b className="big">The move to {move.to} did not finish</b>
+              <p>{moveStatus(move)}</p>
+              <button className="btn sm pri" style={{ alignSelf: 'flex-start' }} disabled={busy === 'move'} onClick={() => start(move.to, true)}>
+                {busy === 'move' ? 'Starting' : 'Finish the move'}
+              </button>
+            </div>
+          )}
+          {!running && !unfinished && (
+            <>
+              {others.length ? (
+                <div className="field" role="radiogroup" aria-label="Move to">
+                  <span>Move to</span>
+                  {others.map((l) => (
+                    <label key={l.name} className="check-label">
+                      <input type="radio" name="storage-to" value={l.name} checked={to === l.name} onChange={() => setTo(l.name)} />
+                      <span>
+                        {l.name}
+                        {l.main && <span className="badge mute" style={{ marginLeft: 8 }}>Default</span>}
+                        <br />
+                        <span className="fine">{STORAGE_KIND_LABEL[l.kind] || l.kind}{l.description ? `: ${l.description}` : ''}</span>
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              ) : (
+                <p className="fine">There is no other storage location on this server.</p>
+              )}
+              <p className="fine">People can keep working while the file data is copied. The old copy is kept until you reclaim space on the Fixing page.</p>
+            </>
+          )}
+          {err && <div className="notice bad">{err}</div>}
+        </>
+      )}
+      <div className="actions">
+        <button className="btn" onClick={onClose}>{running || unfinished ? 'Close' : 'Cancel'}</button>
+        {d && !running && !unfinished && others.length > 0 && (
+          <button className="btn pri" onClick={() => start(to, false)} disabled={busy === 'move'}>
+            Move file data
+          </button>
+        )}
+      </div>
+    </Dialog>
   );
 }

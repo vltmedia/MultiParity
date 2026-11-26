@@ -156,6 +156,7 @@ function detail(g, p, ws) {
       <button class="btn" data-act="save-folders">Save folder choices</button>
       <button class="btn" data-act="latest">Get latest</button>
       <button class="btn" data-act="web">Open project</button>
+      <button class="btn" data-act="move">Move folder…</button>
       <button class="btn" data-act="disconnect">Stop syncing</button>
       <p>${esc(ws.root)}</p>
       <p>Branch ${esc(ws.branch_name)} · as ${esc(ws.account_email)}</p>
@@ -261,6 +262,7 @@ async function onAction(act, key, el) {
   if (act === "switch") return ws ? confirmDisconnect(ws, p) : connectDialog(g, p);
   if (act === "connect") return connectDialog(g, p);
   if (act === "work") return openWork(ws.id);
+  if (act === "move") return moveFolderDialog(ws, p);
   if (act === "disconnect") return confirmDisconnect(ws, p);
   if (act === "web") return invoke("open_server_page", { accountId: g.account.id, path: `/p/${p.project.id}/today` }) ?? window.open(`${g.account.server}/p/${p.project.id}/today`);
   if (act === "latest") {
@@ -334,6 +336,44 @@ async function connectDialog(g, p) {
         await load();
       } catch (e) {
         $("#cprev", body).innerHTML = `<p class="err">${esc(e.message)}</p>`;
+      }
+    });
+}
+
+/** Move a synced folder elsewhere on this computer. Same drive: a rename. Another drive: a copy
+ *  with times kept, then the old folder is removed. Nothing is downloaded again. */
+async function moveFolderDialog(ws, p) {
+  const sep = ws.root.includes("\\") ? "\\" : "/";
+  const parent = ws.root.split(sep).slice(0, -1).join(sep);
+  const size = human(ws.local_bytes);
+  dialog(`<h2>Move ${esc(p.project.name)}</h2>
+    <p class="note">Now at <b>${esc(ws.root)}</b> (${size}). Choose a new or empty folder. On the same drive this is instant; to another drive everything is copied, checked, and then the old folder is removed. Nothing is downloaded again.</p>
+    <div class="pathrow"><input id="mfolder" value="${esc(ws.root)}" aria-label="New folder"><button class="btn" value="pick">Choose…</button></div>
+    <p class="note">Close apps that have files from this folder open first.</p>
+    <p class="err" id="merr" role="alert"></p>
+    <div class="dlg-acts"><button class="btn" value="cancel">Cancel</button><button class="btn pri" value="move">Move folder</button></div>`,
+    async (what, body, dlg) => {
+      const input = $("#mfolder", body);
+      if (what === "pick") {
+        const f = await invoke("pick_folder", { start: parent || null });
+        if (f) input.value = `${f}${sep}${p.project.name}`;
+        return;
+      }
+      const to = input.value.trim();
+      if (!to || to === ws.root) { $("#merr", body).textContent = "Choose a different folder."; return; }
+      const btn = body.querySelector('button[value="move"]');
+      btn.disabled = true; btn.textContent = "Moving…";
+      try {
+        const r = await api(`/workspaces/${ws.id}/move`, { method: "POST", body: JSON.stringify({ to }) });
+        dlg.close();
+        if (window.toast) toast(r.method === "renamed" ? `Moved to ${r.to}.` : `Copied ${human(r.bytes)} to ${r.to}.${r.old_folder_left ? " The old folder could not be fully removed." : ""}`, !!r.old_folder_left);
+        if (r.old_folder_left) alert(r.old_folder_left);
+        delete state.trees[ws.id];
+        await load();
+        if (window.work && work.wsId === ws.id && $("#v-work").classList.contains("on")) openWork(ws.id);
+      } catch (e) {
+        $("#merr", body).textContent = e.message;
+        btn.disabled = false; btn.textContent = "Move folder";
       }
     });
 }

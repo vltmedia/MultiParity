@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../api/client';
 import type { CheckpointUsage, ClaimWithProject, GcDryRun, StorageCheckReport } from '../../api/types';
 import { useAsync } from '../../lib/useAsync';
-import { baseName, firstName, held, plural, since, size } from '../../lib/format';
+import { STORAGE_KIND_LABEL, baseName, firstName, held, moveStatus, plural, since, size } from '../../lib/format';
 import { Empty, ErrorNote, Loading, Who, useAction, useUi } from '../../components/ui';
 import { AdminHead, useAdmin } from './AdminLayout';
 
@@ -29,6 +29,14 @@ export default function AdminFixing() {
   const [gcDone, setGcDone] = useState<{ deleted: number; bytes: number } | null>(null);
   const kept = useAsync(() => api.admin.checkpoints(scope || undefined), [scope]);
   const [cleared, setCleared] = useState<number | null>(null);
+  const storage = useAsync(() => api.admin.storage(), []);
+  const moving = !!storage.data?.moves.some((m) => m.status === 'running');
+  // While a move runs, look again every few seconds; stop once none do.
+  useEffect(() => {
+    if (!moving) return;
+    const t = setTimeout(storage.reload, 3000);
+    return () => clearTimeout(t);
+  }, [moving, storage.data, storage.reload]);
 
   const suspended = new Set((users.data || []).map((u) => u.id));
   const key = (c: ClaimWithProject) => `${c.project.id}:${c.branch_id}:${c.path}`;
@@ -223,6 +231,16 @@ export default function AdminFixing() {
                 <div className="result">
                   <b className="big">{size(gc.bytes)}</b>
                   <p>in {plural(gc.unreferenced_chunks, 'unused chunk')}.</p>
+                  {!!gc.by_location?.length && (
+                    <ul className="links">
+                      {gc.by_location.map((l) => (
+                        <li key={l.location}>
+                          <span style={{ flex: 1 }}>In {l.location}</span>
+                          <span>{size(l.bytes)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                   {gc.bytes > 0 ? (
                     isServerAdmin ? (
                       <button className="btn sm danger solid" style={{ alignSelf: 'flex-start' }} onClick={reclaim} disabled={busy === 'gcrun'}>{busy === 'gcrun' ? 'Reclaiming' : `Reclaim ${size(gc.bytes)}`}</button>
@@ -242,6 +260,83 @@ export default function AdminFixing() {
               )}
             </section>
           </div>
+
+          <section className="section">
+            <h2>Where file data is kept</h2>
+            <p>The places this server keeps project file data, and which projects use each one. Server admins set them up in the server's settings.</p>
+            {storage.loading && !storage.data && <Loading what="Looking at storage" />}
+            {storage.error !== undefined && <ErrorNote error={storage.error} doing="load storage locations" retry={storage.reload} />}
+            {storage.data && storage.data.unavailable.length > 0 && (
+              <div className="notice bad" role="alert">
+                <p>
+                  <b>The server is not configured with the location these projects use. Ask the server admin to add it back.</b>
+                </p>
+                <ul className="links">
+                  {storage.data.unavailable.map((p) => (
+                    <li key={p.id}>
+                      <span style={{ flex: 1 }}>{p.name}</span>
+                      <span className="fine">Stored in {p.storage}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {storage.data && (
+              <table className="t">
+                <thead>
+                  <tr>
+                    <th>Location</th>
+                    <th>Kind</th>
+                    {storage.data.locations.some((l) => l.description) && <th>Where</th>}
+                    <th>Projects stored there</th>
+                    <th className="r">Space used</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {storage.data.locations.map((l) => (
+                    <tr key={l.name}>
+                      <td>
+                        {l.name}
+                        {l.main && <span className="badge mute" style={{ marginLeft: 8 }}>Default</span>}
+                      </td>
+                      <td>{STORAGE_KIND_LABEL[l.kind] || l.kind}</td>
+                      {storage.data!.locations.some((x) => x.description) && <td><span className="fine">{l.description}</span></td>}
+                      <td>{l.projects.length ? l.projects.map((p) => p.name).join(', ') : <span className="mute">None</span>}</td>
+                      <td className="r">{size(l.stored_bytes)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+            {storage.data && storage.data.moves.length > 0 && (
+              <>
+                <h3 style={{ fontSize: 16 }}>Recent moves</h3>
+                <table className="t">
+                  <thead>
+                    <tr>
+                      <th>Project</th>
+                      <th>Moved</th>
+                      <th>Status</th>
+                      <th>Started</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {storage.data.moves.map((m) => (
+                      <tr key={m.id}>
+                        <td>{m.project_name}</td>
+                        <td>from {m.from} to {m.to}</td>
+                        <td>
+                          {m.status === 'failed' || m.status === 'interrupted' ? <span className="badge bad" style={{ whiteSpace: 'normal' }}>{moveStatus(m)}</span> : moveStatus(m)}
+                        </td>
+                        <td>{since(m.started_at)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </>
+            )}
+            {storage.data && <p className="fine">Old copies stay until you reclaim space, so you can check a move first.</p>}
+          </section>
 
           <section className="section">
             <h2>Checkpoint space</h2>

@@ -52,6 +52,15 @@ is missing, rather than filling the container's disk. `MP_STORAGE=s3` uses any S
 service (AWS, MinIO, R2, Backblaze, Wasabi); `docker compose --profile s3 up -d` also starts a
 bundled MinIO.
 
+**More than one storage location.** `MP_STORAGE_LOCATIONS` adds named locations next to the main
+one (see `.env.example`), for example a NAS for active projects and an S3 bucket for finished ones.
+Each project keeps its data in one location, chosen when it is created; a server admin can move
+it later from Admin > Projects. The move copies in the background while people keep working, and
+the old copy stays until Reclaim space removes it. On each computer, a synced folder can be moved
+anywhere (the desktop app's Move folder…, or `mp move-folder <new place>`): on the same drive
+it is renamed instantly, to another drive it is copied with its timestamps, and nothing is
+downloaded again.
+
 **Working remotely.** [docs/REMOTE.md](docs/REMOTE.md) covers reaching the server from outside the
 office: Tailscale, a Cloudflare tunnel, or built-in HTTPS with Caddy
 (`docker compose --profile https up -d`, with `MP_DOMAIN` and `MP_TLS` set). Sign-in protection

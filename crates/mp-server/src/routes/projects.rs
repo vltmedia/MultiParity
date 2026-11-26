@@ -64,6 +64,8 @@ pub async fn create_org(State(s): State<AppState>, user: CurrentUser, Json(b): J
 pub struct CreateProject {
     name: String,
     slug: Option<String>,
+    /// Storage location for its file data (`main` unless given).
+    storage: Option<String>,
 }
 
 pub async fn create_project(State(s): State<AppState>, user: CurrentUser, Path(org): Path<Uuid>, Json(b): Json<CreateProject>) -> ApiResult<Json<Value>> {
@@ -73,11 +75,16 @@ pub async fn create_project(State(s): State<AppState>, user: CurrentUser, Path(o
         return Err(ApiError::invalid("Give the project a name."));
     }
     let slug = slugify(b.slug.as_deref().unwrap_or(name));
+    let storage = b.storage.as_deref().map(|l| l.trim().to_lowercase()).filter(|l| !l.is_empty()).unwrap_or_else(|| crate::store::MAIN.to_string());
+    if s.stores.get(&storage).is_none() {
+        return Err(ApiError::invalid(format!("There is no storage location called {storage} on this server.")));
+    }
     let mut tx = s.db.begin().await?;
-    let pid: Uuid = sqlx::query_scalar("INSERT INTO projects (org_id, slug, name) VALUES ($1,$2,$3) RETURNING id")
+    let pid: Uuid = sqlx::query_scalar("INSERT INTO projects (org_id, slug, name, storage) VALUES ($1,$2,$3,$4) RETURNING id")
         .bind(org)
         .bind(&slug)
         .bind(name)
+        .bind(&storage)
         .fetch_one(&mut *tx)
         .await
         .map_err(|e| match ApiError::from(e) {
@@ -85,7 +92,7 @@ pub async fn create_project(State(s): State<AppState>, user: CurrentUser, Path(o
             err => err,
         })?;
     sqlx::query("INSERT INTO branches (project_id, name, created_by) VALUES ($1,'Main',$2)").bind(pid).bind(user.id).execute(&mut *tx).await?;
-    let ev = events::record(&mut *tx, Some(org), Some(pid), Some(user.id), "project.created", json!({ "name": name })).await?;
+    let ev = events::record(&mut *tx, Some(org), Some(pid), Some(user.id), "project.created", json!({ "name": name, "storage": storage })).await?;
     tx.commit().await?;
     events::publish_saved(&s.db, &s.events, ev).await;
     project_detail(&s, &user, pid).await.map(Json)
@@ -95,7 +102,7 @@ pub async fn create_project(State(s): State<AppState>, user: CurrentUser, Path(o
 /// empty; used by admin listings). `where_sql` filters alias `p`.
 pub fn summary_sql(where_sql: &str) -> String {
     format!(
-        "SELECT p.id, p.slug, p.name, p.archived_at IS NOT NULL AS archived, p.next_change - 1 AS head_change, p.checkpoints_on_server, p.auto_checkpoints,
+        "SELECT p.id, p.slug, p.name, p.archived_at IS NOT NULL AS archived, p.next_change - 1 AS head_change, p.checkpoints_on_server, p.auto_checkpoints, p.storage, p.storage_previous,
            o.id AS o_id, o.slug AS o_slug, o.name AS o_name, o.created_at AS o_created_at,
            COALESCE(st.size, 0)::BIGINT AS size, COALESCE(st.files, 0)::BIGINT AS file_count,
            (SELECT count(*) FROM claims c WHERE c.project_id = p.id) AS claims,
@@ -132,6 +139,8 @@ pub fn summary_json(r: &PgRow) -> Value {
         "checkpoint_setting": match setting { None => "auto", Some(true) => "server", Some(false) => "local" },
         "checkpoint_storage": if on_server { "server" } else { "local" },
         "auto_checkpoints": r.get::<bool,_>("auto_checkpoints"),
+        "storage": r.get::<String,_>("storage"),
+        "storage_moving": r.get::<Option<String>,_>("storage_previous").is_some(),
         "id": r.get::<Uuid,_>("id"), "slug": r.get::<String,_>("slug"), "name": r.get::<String,_>("name"),
         "org": { "id": r.get::<Uuid,_>("o_id"), "slug": r.get::<String,_>("o_slug"), "name": r.get::<String,_>("o_name"), "created_at": r.get::<DateTime<Utc>,_>("o_created_at") },
         "archived": r.get::<bool,_>("archived"), "head_change": r.get::<i32,_>("head_change"),
