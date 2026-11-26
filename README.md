@@ -54,8 +54,9 @@ bundled MinIO.
 
 **More than one storage location.** `MP_STORAGE_LOCATIONS` adds named locations next to the main
 one (see `.env.example`), for example a NAS for active projects and an S3 bucket for finished ones.
-Each project keeps its data in one location, chosen when it is created; a server admin can move
-it later from Admin > Projects. The move copies in the background while people keep working, and
+Each project keeps its data in one location, chosen when it is created (`MP_DEFAULT_STORAGE` sets
+the default; `deploy/docker-compose.override.example.yml` shows an extra drive); a server admin
+can move it later from Admin > Projects. The move copies in the background while people keep working, and
 the old copy stays until Reclaim space removes it. On each computer, a synced folder can be moved
 anywhere (the desktop app's Move folder…, or `mp move-folder <new place>`): on the same drive
 it is renamed instantly, to another drive it is copied with its timestamps, and nothing is

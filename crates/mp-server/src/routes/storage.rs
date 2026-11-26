@@ -73,7 +73,8 @@ pub async fn locations(State(s): State<AppState>, user: CurrentUser) -> ApiResul
                 .map(|p| json!({ "id": p.get::<Uuid,_>("id"), "name": p.get::<String,_>("name"), "org": p.get::<String,_>("org") }))
                 .collect();
             json!({
-                "name": name, "kind": st.kind, "main": name == crate::store::MAIN,
+                // `main` marks the default for new projects (what the admin pages badge as Default).
+                "name": name, "kind": st.kind, "main": *name == s.config.default_storage, "is_main_store": name == crate::store::MAIN,
                 // Paths and buckets are server details: only server admins see them.
                 "description": if sc.is_none() { json!(st.description) } else { Value::Null },
                 "chunks": u.map(|r| r.get::<i64,_>("chunks")).unwrap_or(0), "stored_bytes": u.map(|r| r.get::<i64,_>("bytes")).unwrap_or(0),

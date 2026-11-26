@@ -46,6 +46,8 @@ pub struct Config {
     pub web_dir: Option<String>,
     /// Named storage locations: `main` (from `MP_STORAGE`) first, then `MP_STORAGE_LOCATIONS`.
     pub storage: Vec<(String, StorageConfig)>,
+    /// Where new projects keep their data unless told otherwise (`MP_DEFAULT_STORAGE`, `main`).
+    pub default_storage: String,
     pub admin_email: Option<String>,
     pub admin_password: Option<String>,
     pub default_org: String,
@@ -62,6 +64,7 @@ impl Config {
             public_url: std::env::var("MP_PUBLIC_URL").unwrap_or_else(|_| "http://localhost:18500".into()),
             web_dir: std::env::var("MP_WEB_DIR").ok().filter(|d| std::path::Path::new(d).join("index.html").exists()),
             storage: store::locations_from_env(StorageConfig::from_env()?)?,
+            default_storage: std::env::var("MP_DEFAULT_STORAGE").ok().map(|s| s.trim().to_lowercase()).filter(|s| !s.is_empty()).unwrap_or_else(|| store::MAIN.to_string()),
             admin_email: std::env::var("MP_ADMIN_EMAIL").ok().filter(|s| !s.is_empty()),
             admin_password: std::env::var("MP_ADMIN_PASSWORD").ok().filter(|s| !s.is_empty()),
             default_org: std::env::var("MP_DEFAULT_ORG").unwrap_or_else(|_| "My Studio".into()),
@@ -84,6 +87,11 @@ pub async fn connect(config: &Config) -> Result<PgPool> {
 
 pub async fn build_app(config: Config) -> Result<(Router, AppState)> {
     let db = connect(&config).await?;
+    anyhow::ensure!(
+        config.storage.iter().any(|(n, _)| *n == config.default_storage),
+        "MP_DEFAULT_STORAGE is {}, but there is no storage location by that name (check MP_STORAGE_LOCATIONS)",
+        config.default_storage
+    );
     let stores = Arc::new(Locations::open(&config.storage).await?);
     let state = AppState { db, stores, events: EventBus::new(), config: Arc::new(config), sign_in: Arc::new(limits::SignInGuard::default()) };
     auth::bootstrap(&state).await?;

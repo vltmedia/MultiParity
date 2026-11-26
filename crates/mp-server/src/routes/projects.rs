@@ -75,7 +75,7 @@ pub async fn create_project(State(s): State<AppState>, user: CurrentUser, Path(o
         return Err(ApiError::invalid("Give the project a name."));
     }
     let slug = slugify(b.slug.as_deref().unwrap_or(name));
-    let storage = b.storage.as_deref().map(|l| l.trim().to_lowercase()).filter(|l| !l.is_empty()).unwrap_or_else(|| crate::store::MAIN.to_string());
+    let storage = b.storage.as_deref().map(|l| l.trim().to_lowercase()).filter(|l| !l.is_empty()).unwrap_or_else(|| s.config.default_storage.clone());
     if s.stores.get(&storage).is_none() {
         return Err(ApiError::invalid(format!("There is no storage location called {storage} on this server.")));
     }

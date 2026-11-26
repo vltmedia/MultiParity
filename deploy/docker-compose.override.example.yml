@@ -1,0 +1,26 @@
+# Example: keep project file data on an extra drive (here mounted on the host at /mnt/UAIVCA).
+# Copy to docker-compose.override.yml next to docker-compose.yml, then in .env:
+#
+#   MP_STORAGE_LOCATIONS="uaivca=mount:/data/uaivca-drive/MultiParity"
+#   MP_DEFAULT_STORAGE=uaivca        # new projects go there
+#
+# and create the folder on the drive (mkdir /mnt/UAIVCA/MultiParity). Move existing projects in
+# Admin > Projects > Change storage.
+#
+# The whole drive is mounted, not just its MultiParity folder: if the drive is not plugged in,
+# the folder is missing and the server refuses to start with a clear message, instead of
+# quietly writing to the internal disk. rslave lets the container see the drive when it is
+# mounted after the server started.
+services:
+  server:
+    # Drives without Unix owners (exFAT, NTFS, many NAS shares) are mounted on the host as one
+    # user and group (here uid/gid 1000, group-writable). The server runs as its own user, so give
+    # it that group to be able to write there.
+    group_add:
+      - "1000"
+    volumes:
+      - type: bind
+        source: /mnt/UAIVCA
+        target: /data/uaivca-drive
+        bind:
+          propagation: rslave
