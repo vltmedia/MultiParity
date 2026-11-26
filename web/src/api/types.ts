@@ -365,6 +365,18 @@ export type StorageOverview = {
   moves: StorageMove[];
 };
 
+export type BackupRun = {
+  id: string; started_at: string; finished_at: string | null; status: 'running' | 'done' | 'failed'; error: string | null;
+  snapshot: string | null; db_bytes: number | null; new_chunks: number | null; new_chunk_bytes: number | null; total_chunks: number | null;
+};
+export type BackupSnapshot = { id: string; created_at: string; server_version: string; tables: number; rows: number; chunks: number; db_bytes: number; new_chunks: number; new_chunk_bytes: number };
+/** Backup status for Admin > Fixing. `configured: false` when the server has no backup target. */
+export type BackupStatus =
+  | { configured: false }
+  | {
+      configured: true; target: string; target_error: string | null; schedule: string; next_run: string;
+      keep_daily: number; keep_weekly: number; running: boolean; runs: BackupRun[]; snapshots: BackupSnapshot[];
+    };
 export type ProjectStorage = { storage: string; previous: string | null; move: StorageMove | null };
 
 export type ClearCheckpoints ={ user: Id; project: Id; only_automatic?: boolean; older_than_days?: number };

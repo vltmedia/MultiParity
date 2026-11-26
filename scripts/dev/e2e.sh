@@ -38,7 +38,7 @@ else
   echo "psql not found; install postgresql-client" >&2; exit 2
 fi
 export DATABASE_URL="${psql_url}/$DBNAME"
-MP_STORAGE_LOCATIONS="second=local:$WORK/blobs2" MP_LISTEN="127.0.0.1:$PORT" MP_PUBLIC_URL="$SERVER" MP_STORAGE="${E2E_STORAGE:-local}" MP_STORAGE_PATH="${E2E_STORAGE_PATH:-$WORK/blobs}" \
+MP_BACKUP_TARGET="local:$WORK/backups" MP_STORAGE_LOCATIONS="second=local:$WORK/blobs2" MP_LISTEN="127.0.0.1:$PORT" MP_PUBLIC_URL="$SERVER" MP_STORAGE="${E2E_STORAGE:-local}" MP_STORAGE_PATH="${E2E_STORAGE_PATH:-$WORK/blobs}" \
   MP_ADMIN_EMAIL=alice@example.com MP_ADMIN_PASSWORD="$PASS_A" MP_DEFAULT_ORG="Cinder Works" \
   RUST_LOG=info,tower_http=warn "$BIN/mp-server" > "$WORK/server.log" 2>&1 &
 SPID=$!
@@ -427,6 +427,41 @@ R=$(curl -fs -X POST "$D/workspaces/$WID/publish" -H 'content-type: application/
 check "publish through the daemon" test "$(echo "$R" | jq '.change.number')" -gt 0
 check "suggest ignore choices through the daemon" test "$(curl -fs "$D/workspaces/$WID/ignore/suggest?path=Art/Hero/hero_body.fbx" | jq length)" -ge 3
 kill $DPID 2>/dev/null || true
+
+step "Backups: back up, restore into a fresh database and storage, and serve from it"
+AUTH=(-H "authorization: Bearer $TOKEN" -H 'content-type: application/json')
+wait_backup() { for i in $(seq 1 240); do B=$(curl -fs "$SERVER/api/admin/backups" "${AUTH[@]}"); [ "$(echo "$B" | jq .running)" = false ] && [ "$(echo "$B" | jq -r '.runs[0].status // "none"')" != running ] && return 0; sleep 0.5; done; return 1; }
+wait_backup || true
+curl -s -o /dev/null -X POST "$SERVER/api/admin/backups/run" "${AUTH[@]}"
+sleep 1; wait_backup
+B=$(curl -fs "$SERVER/api/admin/backups" "${AUTH[@]}")
+echo "   last run: $(echo "$B" | jq -c '.runs[0] | {status, snapshot, total_chunks, new_chunks, db_bytes, error}')"
+check "the backup finished" test "$(echo "$B" | jq -r '.runs[0].status')" = done
+check "a complete backup is on the target" test -e "$WORK/backups/db/$(echo "$B" | jq -r '.runs[0].snapshot')/manifest.json"
+check "file data was copied" test "$(find "$WORK/backups/chunks" -type f | wc -l)" -gt 0
+curl -s -o /dev/null -X POST "$SERVER/api/admin/backups/run" "${AUTH[@]}"
+sleep 1; wait_backup
+B=$(curl -fs "$SERVER/api/admin/backups" "${AUTH[@]}")
+check "a second backup copies no file data again" test "$(echo "$B" | jq '.runs[0].new_chunks')" = 0
+check "only server admins see backups" test "$(curl -s -o /dev/null -w '%{http_code}' "$SERVER/api/admin/backups" -H "authorization: Bearer $(jq -r '.accounts[0].token' "$WORK/cfg-bob/accounts.json")")" = 403
+RDB="mp_e2e_restore_$(date +%s)"
+psql "$DB_ADMIN" -qc "CREATE DATABASE $RDB" >/dev/null
+R_ENV=(env DATABASE_URL="${psql_url}/$RDB" MP_STORAGE=local MP_STORAGE_PATH="$WORK/restored" MP_STORAGE_LOCATIONS="second=local:$WORK/restored2" MP_BACKUP_TARGET= RUST_LOG=warn)
+"${R_ENV[@]}" "$BIN/mp-server" restore --from "local:$WORK/backups" > "$WORK/restore.txt" 2>&1 || { cat "$WORK/restore.txt"; fail "restore failed"; }
+sed 's/^/   | /' "$WORK/restore.txt"
+check "restoring into a database with people in it is refused" bash -c "! env DATABASE_URL='${psql_url}/$RDB' MP_STORAGE=local MP_STORAGE_PATH='$WORK/restored' RUST_LOG=warn '$BIN/mp-server' restore --from 'local:$WORK/backups' >/dev/null 2>&1"
+RPORT=$((PORT+5))
+"${R_ENV[@]}" MP_LISTEN="127.0.0.1:$RPORT" "$BIN/mp-server" > "$WORK/restored-server.log" 2>&1 &
+RPID=$!
+for i in $(seq 1 50); do curl -fs "http://127.0.0.1:$RPORT/api/health" >/dev/null && break; sleep 0.2; done
+RTOK=$(curl -fs -X POST "http://127.0.0.1:$RPORT/api/auth/login" -H 'content-type: application/json' -d "{\"email\":\"alice@example.com\",\"password\":\"$PASS_A\"}" | jq -r .token)
+check "alice signs in to the restored server" test -n "$RTOK" -a "$RTOK" != null
+check "it has the same history" test "$(curl -fs "http://127.0.0.1:$RPORT/api/projects/$PID/changes" -H "authorization: Bearer $RTOK" | jq length)" = "$(curl -fs "$SERVER/api/projects/$PID/changes" -H "authorization: Bearer $TOKEN" | jq length)"
+check "its storage check passes" test "$(curl -fs -X POST "http://127.0.0.1:$RPORT/api/admin/storage/check" -H "authorization: Bearer $RTOK" -H 'content-type: application/json' -d '{}' | jq .ok)" = true
+curl -fs "http://127.0.0.1:$RPORT/api/projects/$PID/download?branch=$MAIN&path=Art/Hero/hero_body.fbx" -H "authorization: Bearer $RTOK" -o "$WORK/restored.fbx"
+curl -fs "$SERVER/api/projects/$PID/download?branch=$MAIN&path=Art/Hero/hero_body.fbx" -H "authorization: Bearer $TOKEN" -o "$WORK/original.fbx"
+check "a file downloads byte for byte from the restored copy" same "$WORK/restored.fbx" "$WORK/original.fbx"
+kill $RPID 2>/dev/null || true
 
 echo
 echo "All $STEP steps passed."

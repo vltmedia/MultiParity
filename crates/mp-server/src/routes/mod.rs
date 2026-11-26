@@ -5,6 +5,7 @@ use crate::AppState;
 
 mod account;
 mod admin;
+mod backups;
 mod branches;
 mod checkpoints;
 mod claims;
@@ -88,6 +89,8 @@ pub fn router() -> Router<AppState> {
         .route("/admin/claims/release", post(admin::release_claims))
         .route("/admin/checkpoints", get(checkpoints::admin_usage))
         .route("/admin/checkpoints/clear", post(checkpoints::admin_clear))
+        .route("/admin/backups", get(backups::status))
+        .route("/admin/backups/run", post(backups::run_now))
         .route("/admin/storage", get(storage::locations))
         .route("/admin/projects/:p/storage", get(storage::project_storage).post(storage::start_move))
         .route("/admin/storage/check", post(admin::storage_check))

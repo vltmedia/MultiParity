@@ -959,6 +959,37 @@ on('POST', '/api/admin/storage/gc', async ({ headers }) => {
   emit({ kind: 'admin.storage.gc', actor: userRef(u), data: out });
   return out;
 });
+// Backups: a few nights of history; "Back up now" finishes after a few seconds.
+let backupStartedAt: number | null = null;
+const backupNights = [1, 2, 3, 4, 5].map((d) => {
+  const t = new Date(Date.now() - d * 86400000);
+  t.setUTCHours(3, 0, 12, 0);
+  return { id: t.toISOString().slice(0, 19).replace(/[-:]/g, '').replace('T', '-'), created_at: t.toISOString(), server_version: '0.1.0', tables: 23, rows: 18412, chunks: 9120 - d * 40, db_bytes: 2_400_000 - d * 20_000, new_chunks: 40, new_chunk_bytes: 180_000_000 };
+});
+on('GET', '/api/admin/backups', ({ headers }) => {
+  const u = who(headers);
+  if (!u.is_server_admin) throw new Fail(403, 'forbidden', 'Only server admins can do that.');
+  const running = backupStartedAt !== null && Date.now() - backupStartedAt < 5000;
+  if (backupStartedAt !== null && !running) {
+    const t = new Date(backupStartedAt);
+    backupNights.unshift({ ...backupNights[0], id: t.toISOString().slice(0, 19).replace(/[-:]/g, '').replace('T', '-'), created_at: t.toISOString(), new_chunks: 6, new_chunk_bytes: 31_000_000 });
+    backupStartedAt = null;
+  }
+  return {
+    configured: true, target: 'mounted path /data/uaivca-drive/MultiParity-backups', target_error: null, schedule: '03:00 UTC',
+    next_run: new Date(Date.now() + 6 * 3600000).toISOString(), keep_daily: 7, keep_weekly: 4, running,
+    runs: running ? [{ id: 'run-now', started_at: new Date(backupStartedAt!).toISOString(), finished_at: null, status: 'running', error: null, snapshot: null, db_bytes: null, new_chunks: null, new_chunk_bytes: null, total_chunks: null }] :
+      backupNights.map((n) => ({ id: n.id, started_at: n.created_at, finished_at: n.created_at, status: 'done', error: null, snapshot: n.id, db_bytes: n.db_bytes, new_chunks: n.new_chunks, new_chunk_bytes: n.new_chunk_bytes, total_chunks: n.chunks })),
+    snapshots: backupNights.slice(0, 8),
+  };
+});
+on('POST', '/api/admin/backups/run', ({ headers }) => {
+  const u = who(headers);
+  if (!u.is_server_admin) throw new Fail(403, 'forbidden', 'Only server admins can do that.');
+  if (backupStartedAt !== null) throw new Fail(409, 'conflict', 'A backup is already running.');
+  backupStartedAt = Date.now();
+  return { started: true };
+});
 on('GET', '/api/admin/storage', ({ headers }) => {
   const u = who(headers);
   needAdmin(u, u.is_server_admin ? null : adminOrgIds(u)[0]);

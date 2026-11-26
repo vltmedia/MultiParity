@@ -6,6 +6,7 @@ import { useAsync } from '../../lib/useAsync';
 import { STORAGE_KIND_LABEL, baseName, firstName, held, moveStatus, plural, since, size } from '../../lib/format';
 import { Empty, ErrorNote, Loading, Who, useAction, useUi } from '../../components/ui';
 import { AdminHead, useAdmin } from './AdminLayout';
+import BackupsSection from './Backups';
 
 const AGES: Array<[number, string]> = [
   [24, 'More than a day'],
@@ -260,6 +261,8 @@ export default function AdminFixing() {
               )}
             </section>
           </div>
+
+          {isServerAdmin && <BackupsSection />}
 
           <section className="section">
             <h2>Where file data is kept</h2>

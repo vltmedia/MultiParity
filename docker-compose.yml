@@ -45,6 +45,8 @@ services:
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
     volumes:
       - ${MP_BLOB_DIR:-blobs}:/data/blobs
+      # Backups (MP_BACKUP_TARGET=local:/data/backups). Better: a second drive or S3, see docs/BACKUP.md.
+      - ${MP_BACKUP_DIR:-backups}:/data/backups
 
   db:
     image: postgres:17-alpine
@@ -106,6 +108,7 @@ services:
 volumes:
   db:
   blobs:
+  backups:
   minio:
   caddy-data:
   caddy-config:

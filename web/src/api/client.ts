@@ -33,6 +33,7 @@ import type {
   StorageCheckReport,
   StorageMove,
   StorageOverview,
+  BackupStatus,
   Tag,
 } from './types';
 
@@ -283,6 +284,8 @@ export const api = {
     gcDryRun: () => request<GcDryRun>('GET', '/admin/storage/gc'),
     gcRun: () => request<GcResult>('POST', '/admin/storage/gc'),
     storage: () => request<StorageOverview>('GET', '/admin/storage'),
+    backups: () => request<BackupStatus>('GET', '/admin/backups'),
+    backupNow: () => request<{ started: boolean }>('POST', '/admin/backups/run'),
     projectStorage: (pid: string) => request<ProjectStorage>('GET', `/admin/projects/${enc(pid)}/storage`),
     moveProjectStorage: (pid: string, to: string) =>
       request<StorageMove>('POST', `/admin/projects/${enc(pid)}/storage`, { to }),

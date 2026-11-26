@@ -3,6 +3,7 @@
 
 pub mod access;
 pub mod auth;
+pub mod backup;
 pub mod branches;
 pub mod chunks;
 pub mod error;
@@ -35,6 +36,7 @@ pub struct AppState {
     pub events: EventBus,
     pub config: Arc<Config>,
     pub sign_in: Arc<limits::SignInGuard>,
+    pub backup_running: Arc<std::sync::atomic::AtomicBool>,
 }
 
 #[derive(Debug, Clone)]
@@ -54,6 +56,8 @@ pub struct Config {
     /// Header a trusted proxy puts the real client address in (`MP_CLIENT_IP_HEADER`), for
     /// sign-in protection behind Caddy or a Cloudflare tunnel.
     pub client_ip_header: Option<String>,
+    /// Nightly backups (`MP_BACKUP_TARGET`); none when unset.
+    pub backup: Option<backup::BackupConfig>,
 }
 
 impl Config {
@@ -68,6 +72,7 @@ impl Config {
             admin_email: std::env::var("MP_ADMIN_EMAIL").ok().filter(|s| !s.is_empty()),
             admin_password: std::env::var("MP_ADMIN_PASSWORD").ok().filter(|s| !s.is_empty()),
             default_org: std::env::var("MP_DEFAULT_ORG").unwrap_or_else(|_| "My Studio".into()),
+            backup: backup::BackupConfig::from_env()?,
             client_ip_header: std::env::var("MP_CLIENT_IP_HEADER").ok().map(|h| h.trim().to_string()).filter(|h| !h.is_empty()),
             listen,
         })
@@ -93,7 +98,7 @@ pub async fn build_app(config: Config) -> Result<(Router, AppState)> {
         config.default_storage
     );
     let stores = Arc::new(Locations::open(&config.storage).await?);
-    let state = AppState { db, stores, events: EventBus::new(), config: Arc::new(config), sign_in: Arc::new(limits::SignInGuard::default()) };
+    let state = AppState { db, stores, events: EventBus::new(), config: Arc::new(config), sign_in: Arc::new(limits::SignInGuard::default()), backup_running: Arc::new(std::sync::atomic::AtomicBool::new(false)) };
     auth::bootstrap(&state).await?;
     routes::storage::resume_after_restart(&state).await?;
 
@@ -117,6 +122,10 @@ pub async fn serve(config: Config) -> Result<()> {
     let (app, state) = build_app(config).await?;
     let storage: Vec<String> = state.stores.iter().map(|(n, s)| format!("{n}: {}", s.description)).collect();
     tracing::info!(storage = %storage.join("; "), web = ?state.config.web_dir, "MultiParity server listening on {listen}");
+    if let Some(b) = state.config.backup.clone() {
+        tracing::info!(target = %b.target.describe(), at = %format!("{:02}:{:02} UTC", b.at.0, b.at.1), "nightly backups on");
+        backup::spawn_scheduler(state.clone(), b);
+    }
     let listener = tokio::net::TcpListener::bind(&listen).await.with_context(|| format!("binding {listen}"))?;
     axum::serve(listener, app.into_make_service_with_connect_info::<std::net::SocketAddr>()).with_graceful_shutdown(shutdown()).await?;
     Ok(())

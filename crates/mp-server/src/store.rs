@@ -51,29 +51,35 @@ pub fn locations_from_env(main: StorageConfig) -> Result<Vec<(String, StorageCon
             "storage location name `{name}` may use letters, digits, - and _ (up to 40)"
         );
         anyhow::ensure!(!out.iter().any(|(n, _)| *n == name), "storage location `{name}` is defined twice");
-        let (kind, details) = rest.split_once(':').with_context(|| format!("storage location `{name}` should be name=kind:details"))?;
-        let cfg = match kind {
-            "local" | "mount" => StorageConfig::Local { path: details.to_string(), mounted: kind == "mount" },
-            "s3" => {
-                let mut kv: BTreeMap<&str, &str> = BTreeMap::new();
-                for part in details.split(';').filter(|p| !p.is_empty()) {
-                    let (k, v) = part.split_once('=').with_context(|| format!("storage location `{name}`: `{part}` should be key=value"))?;
-                    kv.insert(k, v);
-                }
-                let env = |suffix: &str| std::env::var(format!("MP_STORAGE_{}_{suffix}", name.to_uppercase().replace('-', "_"))).ok();
-                StorageConfig::S3 {
-                    bucket: kv.get("bucket").map(|s| s.to_string()).with_context(|| format!("storage location `{name}` needs bucket=…"))?,
-                    endpoint: kv.get("endpoint").map(|s| s.to_string()),
-                    region: kv.get("region").map(|s| s.to_string()),
-                    prefix: kv.get("prefix").map(|s| s.to_string()),
-                    access_key: env("ACCESS_KEY_ID").zip(env("SECRET_ACCESS_KEY")),
-                }
-            }
-            other => anyhow::bail!("storage location `{name}`: kind must be local, mount or s3, not {other}"),
-        };
-        out.push((name, cfg));
+        out.push((name.clone(), parse_spec(&name, rest)?));
     }
     Ok(out)
+}
+
+/// One storage spec, `kind:details`: `local:/path`, `mount:/path`, or
+/// `s3:bucket=...;endpoint=...;region=...;prefix=...` (credentials from
+/// `MP_STORAGE_<NAME>_ACCESS_KEY_ID` / `_SECRET_ACCESS_KEY`, else the `AWS_*` variables).
+pub fn parse_spec(name: &str, spec: &str) -> Result<StorageConfig> {
+    let (kind, details) = spec.split_once(':').with_context(|| format!("storage `{name}` should be kind:details, like mount:/data/nas"))?;
+    Ok(match kind {
+        "local" | "mount" => StorageConfig::Local { path: details.to_string(), mounted: kind == "mount" },
+        "s3" => {
+            let mut kv: BTreeMap<&str, &str> = BTreeMap::new();
+            for part in details.split(';').filter(|p| !p.is_empty()) {
+                let (k, v) = part.split_once('=').with_context(|| format!("storage `{name}`: `{part}` should be key=value"))?;
+                kv.insert(k, v);
+            }
+            let env = |suffix: &str| std::env::var(format!("MP_STORAGE_{}_{suffix}", name.to_uppercase().replace('-', "_"))).ok();
+            StorageConfig::S3 {
+                bucket: kv.get("bucket").map(|s| s.to_string()).with_context(|| format!("storage `{name}` needs bucket=…"))?,
+                endpoint: kv.get("endpoint").map(|s| s.to_string()),
+                region: kv.get("region").map(|s| s.to_string()),
+                prefix: kv.get("prefix").map(|s| s.to_string()),
+                access_key: env("ACCESS_KEY_ID").zip(env("SECRET_ACCESS_KEY")),
+            }
+        }
+        other => anyhow::bail!("storage `{name}`: kind must be local, mount or s3, not {other}"),
+    })
 }
 
 /// Every configured location, opened.
@@ -214,6 +220,38 @@ impl BlobStore {
             Ok(()) | Err(object_store::Error::NotFound { .. }) => Ok(()),
             Err(e) => Err(e),
         }
+    }
+
+    fn raw_path(&self, rel: &str) -> ObjPath {
+        if self.prefix.is_empty() {
+            ObjPath::from(rel)
+        } else {
+            ObjPath::from(format!("{}/{}", self.prefix, rel))
+        }
+    }
+
+    /// Plain objects by relative path (backups use these alongside chunk copies).
+    pub async fn put_raw(&self, rel: &str, data: Bytes) -> Result<(), object_store::Error> {
+        self.inner.put(&self.raw_path(rel), PutPayload::from(data)).await.map(|_| ())
+    }
+
+    pub async fn get_raw(&self, rel: &str) -> Result<Bytes, object_store::Error> {
+        self.inner.get(&self.raw_path(rel)).await?.bytes().await
+    }
+
+    pub async fn delete_raw(&self, rel: &str) -> Result<(), object_store::Error> {
+        match self.inner.delete(&self.raw_path(rel)).await {
+            Ok(()) | Err(object_store::Error::NotFound { .. }) => Ok(()),
+            Err(e) => Err(e),
+        }
+    }
+
+    /// Every object under `rel` (relative path, size).
+    pub async fn list_raw(&self, rel: &str) -> Result<Vec<(String, u64)>, object_store::Error> {
+        let base = self.raw_path(rel);
+        let strip = if self.prefix.is_empty() { String::new() } else { format!("{}/", self.prefix) };
+        let items: Vec<_> = self.inner.list(Some(&base)).try_collect().await?;
+        Ok(items.into_iter().map(|m| (m.location.as_ref().trim_start_matches(strip.as_str()).to_string(), m.size as u64)).collect())
     }
 
     /// Total bytes stored under chunks/ (for the admin overview). Lists every object, so it is
