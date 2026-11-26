@@ -121,5 +121,6 @@ cd desktop && pnpm install && pnpm tauri build
 
 ## Licence
 
-Server, apps and command line: AGPL-3.0. `mp-core`, `mp-client` and `mp-daemon` (the pieces other
-tools embed): Apache-2.0.
+Server, apps and command line: AGPL-3.0, see [LICENSE](LICENSE). `mp-core`, `mp-client` and
+`mp-daemon` (the pieces other tools embed): Apache-2.0, see the `LICENSE` file in each of those
+crates, so tools that are not open source can build on them.
