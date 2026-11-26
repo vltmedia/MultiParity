@@ -15,6 +15,7 @@
       <button data-view="projects" aria-current="page">Projects</button>
       <button data-view="accounts">Accounts</button>
     </nav>
+    <nav class="here" id="here" aria-label="Projects on this computer"></nav>
     <div class="totals" id="totals"></div>
     <div class="conn" id="conn">Starting…</div>
   </aside>
@@ -36,6 +37,8 @@
       </div>
       <div id="list"></div>
     </section>
+
+    <section class="view" id="v-work" aria-live="polite"></section>
 
     <section class="view" id="v-accounts">
       <header class="head"><div><h1>Accounts</h1><p>Sign in to as many servers and accounts as you need. Each project remembers which one it uses.</p></div></header>
@@ -59,6 +62,9 @@
 </div>
 
 <dialog id="dlg"><form method="dialog" id="dlg-body"></form></dialog>
+<ul class="ctx" id="ctx" role="menu" hidden></ul>
+<div class="toast" id="toast" role="status" hidden></div>
 <script src="app.js"></script>
+<script src="work.js"></script>
 </body>
 </html>

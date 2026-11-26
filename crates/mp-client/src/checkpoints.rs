@@ -508,7 +508,7 @@ pub async fn refresh_project_settings(api: &Api, ws: &mut Workspace) -> Result<b
 
 /// A checkpoint by id: from this folder, or (after a disk loss, or from another computer) from
 /// the server.
-async fn load_checkpoint(api: &Api, ws: &Workspace, id: &str) -> Result<Checkpoint> {
+pub async fn load_checkpoint(api: &Api, ws: &Workspace, id: &str) -> Result<Checkpoint> {
     if let Some(cp) = crate::workspace::read_json::<Checkpoint>(&checkpoints_dir(ws).join(format!("{id}.json")))? {
         return Ok(cp);
     }
@@ -535,7 +535,12 @@ async fn load_checkpoint(api: &Api, ws: &Workspace, id: &str) -> Result<Checkpoi
 pub async fn rewind(api: &Api, ws: &Workspace, id: &str, only: &[String]) -> Result<(Option<Checkpoint>, usize)> {
     let cp = load_checkpoint(api, ws, id).await?;
     let changed = scan::status(ws, &[])?.changed_paths();
-    let note = format!("Before rewinding to {id}");
+    // Named after what was rewound to, as people see it.
+    let note = match cp.note.as_deref() {
+        Some(n) if !cp.system => format!("Before rewinding to \u{201c}{n}\u{201d}"),
+        _ if cp.auto => "Before rewinding to an automatic checkpoint".to_string(),
+        _ => format!("Before rewinding to {id}"),
+    };
     let before = checkpoint(Some(api), ws, CheckpointOptions::undo(&note)).await?;
     let unprotected = before.unprotected(&changed);
     let s = stamp();

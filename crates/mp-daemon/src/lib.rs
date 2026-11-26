@@ -136,6 +136,9 @@ pub async fn run(listen: &str, interval: u64) -> Result<()> {
         .route("/local/workspaces/:id/space", get(space))
         .route("/local/workspaces/:id/disconnect", post(disconnect))
         .route("/local/workspaces/:id/draft", post(save_draft))
+        .route("/local/workspaces/:id/checkpoints/:cp", get(checkpoint_detail))
+        .route("/local/workspaces/:id/rewind", post(rewind))
+        .route("/local/workspaces/:id/discard", post(discard))
         .route("/local/accounts", get(accounts))
         .route("/local/accounts/login", post(account_login))
         .route("/local/accounts/:id", axum::routing::delete(account_logout))
@@ -305,11 +308,17 @@ async fn health() -> Json<Value> {
     Json(json!({ "version": env!("CARGO_PKG_VERSION"), "workspaces": n }))
 }
 
+/// A folder path as people write it: without the `\\?\` prefix Windows adds to full paths.
+fn display_path(p: &std::path::Path) -> String {
+    let s = p.display().to_string();
+    s.strip_prefix(r"\\?\").map(str::to_string).unwrap_or(s)
+}
+
 fn ws_json(ws: &Workspace) -> Value {
     let total: u64 = ws.remote.files.values().map(|r| r.size).sum();
     let local: u64 = ws.index.files.values().map(|i| i.size).sum();
     json!({
-        "id": ws.config.id, "root": ws.root.display().to_string(), "server": ws.config.server, "account_email": ws.config.account_email,
+        "id": ws.config.id, "root": display_path(&ws.root), "server": ws.config.server, "account_email": ws.config.account_email,
         "project_id": ws.config.project_id, "project_name": ws.config.project_name, "org_name": ws.config.org_name,
         "branch_id": ws.config.branch_id, "branch_name": ws.config.branch_name, "synced_change": ws.config.synced_change,
         "include": ws.config.include, "exclude": ws.config.exclude, "local_bytes": local, "total_bytes": total,
@@ -631,11 +640,64 @@ async fn save_draft(State(s): State<DState>, Path(id): Path<String>, Json(b): Js
     Ok(Json(ops::save_draft(&api, &ws, &b.title).await?))
 }
 
+/// One checkpoint with its files, for the rewind screen. Works for checkpoints kept on the
+/// server too, from any computer.
+async fn checkpoint_detail(Path((id, cp)): Path<(String, String)>) -> DResult<Json<Value>> {
+    let ws = find_ws(&id)?;
+    let api = ops::api_for(&ws)?;
+    let c = checkpoints::load_checkpoint(&api, &ws, &cp).await.map_err(|e| DErr(StatusCode::NOT_FOUND, e.to_string()))?;
+    let mut v = checkpoint_json(&c);
+    v["files"] = json!(c
+        .files
+        .iter()
+        .map(|f| json!({ "path": f.path, "deleted": f.manifest.is_none(), "size": f.manifest.as_ref().map(|m| m.size).unwrap_or(0) }))
+        .collect::<Vec<_>>());
+    Ok(Json(v))
+}
+
+#[derive(Deserialize)]
+struct RewindBody {
+    checkpoint: String,
+    /// Only these files or folders; all of the checkpoint's files when empty.
+    #[serde(default)]
+    paths: Vec<String>,
+}
+
+/// Put files back as they were at a checkpoint. The current state is checkpointed first, so the
+/// answer names the checkpoint that undoes it.
+async fn rewind(State(s): State<DState>, Path(id): Path<String>, Json(b): Json<RewindBody>) -> DResult<Json<Value>> {
+    let ws = find_ws(&id)?;
+    let lock = s.lock_for(&ws.config.id).await;
+    let _g = lock.lock().await;
+    let api = ops::api_for(&ws)?;
+    let (undo, n) = checkpoints::rewind(&api, &ws, &b.checkpoint, &b.paths).await?;
+    Ok(Json(json!({ "files": n, "undo": undo.map(|c| c.id) })))
+}
+
+#[derive(Deserialize)]
+struct DiscardBody {
+    paths: Vec<String>,
+}
+
+/// Throw away edits to these files: they go back to the server's version. The current state is
+/// checkpointed first (or moved aside, for files checkpoints leave out).
+async fn discard(State(s): State<DState>, Path(id): Path<String>, Json(b): Json<DiscardBody>) -> DResult<Json<Value>> {
+    if b.paths.is_empty() {
+        return Err(DErr(StatusCode::UNPROCESSABLE_ENTITY, "Choose the files to discard.".into()));
+    }
+    let mut ws = find_ws(&id)?;
+    let lock = s.lock_for(&ws.config.id).await;
+    let _g = lock.lock().await;
+    let api = ops::api_for(&ws)?;
+    let (undo, n) = ops::discard(&api, &mut ws, &b.paths).await?;
+    Ok(Json(json!({ "files": n, "undo": undo.map(|c| c.id) })))
+}
+
 /// Stop syncing a folder on this computer. Files stay where they are.
 async fn disconnect(Path(id): Path<String>) -> DResult<Json<Value>> {
     let ws = find_ws(&id)?;
     Registry::remove(&ws.root)?;
-    Ok(Json(json!({ "root": ws.root.display().to_string() })))
+    Ok(Json(json!({ "root": display_path(&ws.root) })))
 }
 
 async fn ignore_add(Path(id): Path<String>, Json(b): Json<IgnoreBody>) -> DResult<Json<Value>> {

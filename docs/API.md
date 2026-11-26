@@ -245,13 +245,16 @@ web UI origin and from the desktop app. No auth: it is bound to loopback only.
 | GET | `/local/workspaces/{id}/folders` | | `FolderNode` (tree with sizes, included flag) |
 | PUT | `/local/workspaces/{id}/sync` | `{include: string[], exclude: string[]}` | `Workspace` |
 | POST | `/local/workspaces/{id}/get-latest` | | `{downloaded, bytes}` |
-| POST | `/local/workspaces/{id}/publish` | `{message, paths?: string[]}` | `{change}` |
+| POST | `/local/workspaces/{id}/publish` | `{message, paths?: string[], keep_mine?: string[]}` | `{change}`; `409` with `details: {stale, claimed}` |
 | POST | `/local/workspaces/{id}/checkpoint` | `{note?, all?}` | `Checkpoint & {left_out, left_out_bytes}`; `409` when it would not fit or only render output changed |
 | POST | `/local/workspaces/{id}/no-checkpoint` | `{pattern, personal?}` | `{file}` |
 | GET | `/local/workspaces/{id}/space` | | `CacheReport` (trims, then reports checkpoint space, limit, free disk) |
 | GET | `/local/workspaces/{id}/ignore/suggest` | `path` | `IgnoreChoice[]` |
 | POST | `/local/workspaces/{id}/ignore` | `{pattern, personal?}` | `{file}` |
 | GET | `/local/workspaces/{id}/checkpoints` | | `Checkpoint[]` |
+| GET | `/local/workspaces/{id}/checkpoints/{cp}` | | `Checkpoint & {files: Array<{path, size, deleted}>}` (also ones kept on the server) |
+| POST | `/local/workspaces/{id}/rewind` | `{checkpoint, paths?: string[]}` | `{files, undo}`: `undo` is the checkpoint taken first |
+| POST | `/local/workspaces/{id}/discard` | `{paths: string[]}` | `{files, undo}` |
 | POST | `/local/workspaces/{id}/draft` | `{title}` | `Draft` |
 | POST | `/local/workspaces/{id}/disconnect` | | `{root}` (files stay) |
 | GET | `/local/accounts` | | `Array<{id, server, email, name, label?}>` |

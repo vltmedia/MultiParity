@@ -17,7 +17,12 @@ const state = { accounts: [], groups: [], filter: "all", q: "", open: null, tree
 async function api(path, opts = {}) {
   const res = await fetch(DAEMON + path, { ...opts, headers: { "content-type": "application/json", ...(opts.headers || {}) } });
   const body = await res.json().catch(() => ({}));
-  if (!res.ok || body.error) throw new Error((body.error && body.error.message) || `The app answered ${res.status}.`);
+  if (!res.ok || body.error) {
+    const err = new Error((body.error && body.error.message) || `The app answered ${res.status}.`);
+    err.status = res.status;
+    err.details = body.error && body.error.details;
+    throw err;
+  }
   return body;
 }
 
@@ -49,6 +54,19 @@ async function load() {
   }
   renderAccounts();
   renderProjects();
+  renderHere();
+}
+
+/** The sidebar list of projects synced to this computer, each opening its Your work view. */
+function renderHere() {
+  const items = [];
+  for (const g of state.groups) for (const p of g.projects) for (const w of p.workspaces) {
+    const st = state.statuses[w.id];
+    const n = st ? st.new.length + st.edited.length + st.deleted.length : 0;
+    items.push(`<button data-ws="${esc(w.id)}" ${window.work && work.wsId === w.id && $("#v-work").classList.contains("on") ? 'aria-current="page"' : ""}>
+      <span>${esc(p.project.name)}</span>${n ? `<b title="${n} unpublished">${n}</b>` : ""}</button>`);
+  }
+  $("#here").innerHTML = items.length ? `<h3>On this computer</h3>${items.join("")}` : "";
 }
 
 // ------------------------------------------------------------------ projects
@@ -134,7 +152,8 @@ function detail(g, p, ws) {
     <div><h3>Folders on this computer</h3>${tree ? treeHtml(ws.id, tree) : `<p class="note">Loading folders…</p>`}
       <p class="note" id="sel-${esc(ws.id)}"></p></div>
     <div class="side-acts">
-      <button class="btn pri" data-act="save-folders">Save folder choices</button>
+      <button class="btn pri" data-act="work">Your work and checkpoints</button>
+      <button class="btn" data-act="save-folders">Save folder choices</button>
       <button class="btn" data-act="latest">Get latest</button>
       <button class="btn" data-act="web">Open project</button>
       <button class="btn" data-act="disconnect">Stop syncing</button>
@@ -241,6 +260,7 @@ async function onAction(act, key, el) {
   }
   if (act === "switch") return ws ? confirmDisconnect(ws, p) : connectDialog(g, p);
   if (act === "connect") return connectDialog(g, p);
+  if (act === "work") return openWork(ws.id);
   if (act === "disconnect") return confirmDisconnect(ws, p);
   if (act === "web") return invoke("open_server_page", { accountId: g.account.id, path: `/p/${p.project.id}/today` }) ?? window.open(`${g.account.server}/p/${p.project.id}/today`);
   if (act === "latest") {
@@ -270,7 +290,7 @@ async function onAction(act, key, el) {
 }
 
 async function loadStatus(ws) {
-  try { state.statuses[ws.id] = await api(`/workspaces/${ws.id}/status`); renderProjects(); updateSelectionNote(ws.id); } catch (_) {}
+  try { state.statuses[ws.id] = await api(`/workspaces/${ws.id}/status`); renderProjects(); renderHere(); updateSelectionNote(ws.id); } catch (_) {}
 }
 
 function dialog(html, onSubmit) {
@@ -360,9 +380,12 @@ $("#accts").addEventListener("click", async (e) => {
 function showView(v) {
   document.querySelectorAll(".nav button").forEach((b) => b.dataset.view === v ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current"));
   document.querySelectorAll(".view").forEach((s) => s.classList.toggle("on", s.id === `v-${v}`));
+  if (v !== "work" && window.work) work.close();
+  renderHere();
 }
 
 $(".nav").addEventListener("click", (e) => { const v = e.target.dataset.view; if (v) showView(v); });
+$("#here").addEventListener("click", (e) => { const b = e.target.closest("[data-ws]"); if (b) openWork(b.dataset.ws); });
 $("#filters").addEventListener("click", (e) => {
   const f = e.target.dataset.f; if (!f) return;
   state.filter = f;
@@ -396,4 +419,13 @@ $("#list").addEventListener("keydown", (e) => {
 });
 
 load();
-setInterval(() => { if (!document.hidden && !$("#dlg").open) load(); }, 30000);
+setInterval(() => { if (!document.hidden && !$("#dlg").open && !$("#v-work").classList.contains("on")) load(); }, 30000);
+// Unpublished counts in the sidebar, for every synced folder.
+async function loadAllStatuses() {
+  for (const g of state.groups) for (const p of g.projects) for (const w of p.workspaces) {
+    try { state.statuses[w.id] = await api(`/workspaces/${w.id}/status`); } catch (_) {}
+  }
+  renderHere();
+}
+setInterval(() => { if (!document.hidden) loadAllStatuses(); }, 60000);
+setTimeout(loadAllStatuses, 1500);
