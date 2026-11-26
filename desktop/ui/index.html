@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MultiParity</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="drag"></div>
+    <div class="logo">MultiParity</div>
+    <nav class="nav" aria-label="Sections">
+      <button data-view="projects" aria-current="page">Projects</button>
+      <button data-view="accounts">Accounts</button>
+    </nav>
+    <div class="totals" id="totals"></div>
+    <div class="conn" id="conn">Starting…</div>
+  </aside>
+
+  <main class="main">
+    <section class="view on" id="v-projects">
+      <header class="head">
+        <div>
+          <h1>Projects</h1>
+          <p id="sub">Everything you can reach, from every account and organization.</p>
+        </div>
+        <label class="search"><span class="sr">Search projects</span><input id="q" type="search" placeholder="Search projects and organizations"></label>
+      </header>
+      <div class="filters" id="filters" role="toolbar" aria-label="Filter projects">
+        <button data-f="all" aria-pressed="true">All</button>
+        <button data-f="here" aria-pressed="false">On this computer</button>
+        <button data-f="not" aria-pressed="false">Not on this computer</button>
+        <button data-f="mine" aria-pressed="false">Has my work</button>
+      </div>
+      <div id="list"></div>
+    </section>
+
+    <section class="view" id="v-accounts">
+      <header class="head"><div><h1>Accounts</h1><p>Sign in to as many servers and accounts as you need. Each project remembers which one it uses.</p></div></header>
+      <div class="cols">
+        <div class="panel">
+          <h2>Signed in on this computer</h2>
+          <ul class="accts" id="accts"></ul>
+        </div>
+        <form class="panel" id="login">
+          <h2>Add an account</h2>
+          <label>Server address<input name="server" required placeholder="mp.studio.example" autocomplete="url"></label>
+          <label>Email<input name="email" type="email" required autocomplete="username"></label>
+          <label>Password<input name="password" type="password" required autocomplete="current-password"></label>
+          <label>Name for this account (optional)<input name="label" placeholder="work, freelance …"></label>
+          <p class="err" id="login-err" role="alert"></p>
+          <button class="btn pri" type="submit">Sign in</button>
+        </form>
+      </div>
+    </section>
+  </main>
+</div>
+
+<dialog id="dlg"><form method="dialog" id="dlg-body"></form></dialog>
+<script src="app.js"></script>
+</body>
+</html>

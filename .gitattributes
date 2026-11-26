@@ -1,0 +1,8 @@
+# Unix line endings everywhere: scripts run on Linux and macOS build machines.
+* text=auto eol=lf
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+*.png binary
+*.ico binary
+*.icns binary
+*.woff2 binary

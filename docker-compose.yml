@@ -1,0 +1,108 @@
+# MultiParity: self-hosted version control for game and art teams.
+#
+#   cp .env.example .env      # then set at least MP_ADMIN_PASSWORD and POSTGRES_PASSWORD
+#   docker compose up -d
+#
+# Storage points (MP_STORAGE in .env):
+#   local  a Docker volume (default)
+#   mount  a folder or network share on the host, bound at /data/blobs (set MP_BLOB_DIR)
+#   s3     any S3-compatible service; `docker compose --profile s3 up -d` also starts MinIO
+#
+# Reaching it from outside the office: see docs/REMOTE.md. With a domain name and ports 80 and
+# 443 free, `docker compose --profile https up -d` adds Caddy for HTTPS (set MP_DOMAIN, MP_TLS).
+
+services:
+  server:
+    build: .
+    image: multiparity:latest
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      # MP_BIND=127.0.0.1 keeps the plain-HTTP port off the network (when Caddy or a tunnel
+      # on this machine is the way in).
+      - "${MP_BIND:-0.0.0.0}:${MP_PORT:-18500}:18500"
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-multiparity}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:-multiparity}
+      MP_PUBLIC_URL: ${MP_PUBLIC_URL:-http://localhost:18500}
+      MP_ADMIN_EMAIL: ${MP_ADMIN_EMAIL:-}
+      MP_ADMIN_PASSWORD: ${MP_ADMIN_PASSWORD:-}
+      MP_DEFAULT_ORG: ${MP_DEFAULT_ORG:-My Studio}
+      MP_STORAGE: ${MP_STORAGE:-local}
+      MP_STORAGE_PATH: /data/blobs
+      MP_SERVER_CHECKPOINTS_FROM_GB: ${MP_SERVER_CHECKPOINTS_FROM_GB:-20}
+      # Behind Caddy: X-Forwarded-For. Behind a Cloudflare tunnel: CF-Connecting-IP.
+      MP_CLIENT_IP_HEADER: ${MP_CLIENT_IP_HEADER:-}
+      MP_S3_BUCKET: ${MP_S3_BUCKET:-}
+      MP_S3_ENDPOINT: ${MP_S3_ENDPOINT:-}
+      MP_S3_REGION: ${MP_S3_REGION:-}
+      MP_S3_PREFIX: ${MP_S3_PREFIX:-}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+    volumes:
+      - ${MP_BLOB_DIR:-blobs}:/data/blobs
+
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-multiparity}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-multiparity}
+    volumes:
+      - db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  caddy:
+    profiles: ["https"]
+    image: caddy:2.8.4-alpine
+    restart: unless-stopped
+    depends_on: [server]
+    ports:
+      - "${MP_HTTP_PORT:-80}:80"
+      - "${MP_HTTPS_PORT:-443}:443"
+      - "${MP_HTTPS_PORT:-443}:443/udp"
+    environment:
+      MP_DOMAIN: ${MP_DOMAIN:-localhost}
+      MP_TLS: ${MP_TLS:-internal}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+  minio:
+    profiles: ["s3"]
+    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    restart: unless-stopped
+    command: server /data --console-address :9001
+    environment:
+      MINIO_ROOT_USER: ${AWS_ACCESS_KEY_ID:-multiparity}
+      MINIO_ROOT_PASSWORD: ${AWS_SECRET_ACCESS_KEY:-change-me-please}
+    volumes:
+      - minio:/data
+    ports:
+      - "${MP_MINIO_CONSOLE_PORT:-18509}:9001"
+
+  minio-setup:
+    profiles: ["s3"]
+    image: minio/mc:RELEASE.2025-04-16T18-13-26Z
+    depends_on: [minio]
+    entrypoint: >
+      sh -c "until mc alias set mp http://minio:9000 $${AWS_ACCESS_KEY_ID} $${AWS_SECRET_ACCESS_KEY}; do sleep 1; done;
+             mc mb --ignore-existing mp/$${MP_S3_BUCKET}"
+    environment:
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-multiparity}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-change-me-please}
+      MP_S3_BUCKET: ${MP_S3_BUCKET:-multiparity}
+
+volumes:
+  db:
+  blobs:
+  minio:
+  caddy-data:
+  caddy-config:

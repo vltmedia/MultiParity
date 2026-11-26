@@ -1,0 +1,385 @@
+// Shapes from docs/API.md (v1). Keep these in step with the server.
+// Untyped fields in API.md (ids, names, times, paths) are strings; sizes and numbers are numbers.
+
+export type Id = string;
+/** RFC 3339 */
+export type Time = string;
+
+export type ApiErrorBody = {
+  error: { code: string; message: string; details?: unknown };
+};
+
+// ---------- Auth ----------
+
+export type Role = 'owner' | 'admin' | 'member' | 'guest';
+
+export type Org = {
+  id: Id;
+  slug: string;
+  name: string;
+  created_at: Time;
+  member_count?: number;
+  project_count?: number;
+};
+
+export type Me = {
+  id: Id;
+  email: string;
+  name: string;
+  is_server_admin: boolean;
+  status: 'active' | 'suspended';
+  orgs: Array<{ org: Org; role: Role }>;
+};
+
+export type LoginResponse = { token: string; user: Me };
+
+export type InviteInfo = { org: Org; role: Role; email?: string; expires_at?: Time };
+
+// ---------- Organizations and projects ----------
+
+export type UserRef = { id: Id; name: string; email: string };
+
+export type ProjectSummary = {
+  id: Id;
+  slug: string;
+  name: string;
+  org: Org;
+  archived: boolean;
+  head_change: number;
+  size: number;
+  file_count: number;
+  my_claims: number;
+  claims: number;
+  last_change?: { number: number; message: string; author: UserRef; created_at: Time };
+  branches: number;
+  /** what the project is set to */
+  checkpoint_setting: CheckpointSetting;
+  /** where checkpoints are kept right now; "auto" uses the server once the project is 20 GB or larger */
+  checkpoint_storage: CheckpointStorage;
+  /** take checkpoints automatically every few minutes while people work; off unless turned on */
+  auto_checkpoints: boolean;
+};
+
+export type CheckpointSetting = 'auto' | 'server' | 'local';
+export type CheckpointStorage = 'server' | 'local';
+
+export type Project =ProjectSummary & { branches_list: Branch[]; my_role: Role };
+
+// ---------- Branches ----------
+
+export type Branch = {
+  id: Id;
+  name: string;
+  parent_id: string | null;
+  shares_claims: boolean;
+  protected: boolean;
+  archived: boolean;
+  head_change: number;
+  created_at: Time;
+  created_by: UserRef;
+  /** paths changed on this branch not yet in parent */
+  ahead: number;
+  /** paths changed on parent since last update */
+  behind: number;
+};
+
+export type MergeReport = {
+  up_to_date: boolean;
+  only_here: number;
+  only_parent: number;
+  auto_merged: string[];
+  conflicts: Array<{ path: string; kind: 'text' | 'binary' }>;
+};
+
+// ---------- Files, changes, history ----------
+
+export type FileKind =
+  | 'model'
+  | 'texture'
+  | 'image'
+  | 'audio'
+  | 'video'
+  | 'level'
+  | 'scene'
+  | 'code'
+  | 'text'
+  | 'cache'
+  | 'other';
+
+export type TagRef = { id: Id; name: string; color: string };
+
+export type FileEntry = {
+  path: string;
+  size: number;
+  file_hash: string;
+  change: number;
+  /** derived from the extension, see FileKind */
+  kind: string;
+  claim?: { user: UserRef; since: Time; device?: string };
+  tags: TagRef[];
+};
+
+export type Change = {
+  number: number;
+  branch_id: Id;
+  message: string;
+  author: UserRef;
+  created_at: Time;
+  kind: 'publish' | 'merge' | 'update';
+  file_count: number;
+  size: number;
+  merged_from?: number[];
+};
+
+export type ChangeFile = { path: string; op: 'add' | 'edit' | 'delete'; size: number };
+
+export type ChangeDetail = Change & { files: ChangeFile[] };
+
+export type History = { changes: number[]; files: Array<{ path: string; changes: number[] }> };
+
+// ---------- Claims ----------
+
+export type Claim = {
+  path: string;
+  branch_id: Id;
+  user: UserRef;
+  device?: string;
+  created_at: Time;
+};
+
+export type ClaimResponse = { claimed: string[]; held: Claim[] };
+
+// ---------- Tags ----------
+
+export type Tag = TagRef & { group?: string; org_id: Id; project_id?: string };
+
+// ---------- Drafts ----------
+
+export type Draft = {
+  id: Id;
+  title: string;
+  branch_id: Id;
+  created_at: Time;
+  file_count: number;
+  size: number;
+};
+
+export type DraftDetail = Draft & { entries: PublishEntry[] };
+
+// ---------- Sync protocol ----------
+
+export type Manifest = {
+  hash: string;
+  size: number;
+  file_hash: string;
+  chunks: Array<[hash: string, len: number]>;
+};
+
+export type PublishEntry = {
+  path: string;
+  op: 'put' | 'delete';
+  prev_file_hash: string | null;
+  manifest?: Manifest;
+};
+
+export type TreeDelta = {
+  head: number;
+  entries: Array<{
+    path: string;
+    file_hash: string | null;
+    manifest_hash: string | null;
+    size: number;
+    change: number;
+  }>;
+};
+
+export type PublishConflictDetails = { stale: string[]; claimed: Claim[] };
+
+// ---------- Events ----------
+
+export type EventKind =
+  | 'change.published'
+  | 'change.merged'
+  | 'claim.added'
+  | 'claim.released'
+  | 'claim.nudged'
+  | 'tag.applied'
+  | 'tag.removed'
+  | 'branch.created'
+  | 'branch.archived'
+  | 'draft.saved'
+  | 'member.added'
+  | 'member.suspended'
+  | 'member.reactivated'
+  | 'member.removed'
+  | 'project.created'
+  | 'project.archived'
+  | 'project.restored'
+  | `admin.${string}`;
+
+export type MpEvent = {
+  id: number;
+  kind: EventKind | string;
+  org_id?: Id;
+  project_id?: Id;
+  actor?: UserRef;
+  data: Record<string, unknown>;
+  created_at: Time;
+};
+
+// ---------- Admin ----------
+
+export type AdminOverview = {
+  users: number;
+  orgs: number;
+  projects: number;
+  storage_bytes: number;
+  chunks: number;
+  active_claims: number;
+  stale_claims: number;
+  suspended: number;
+};
+
+export type AdminUser = {
+  id: Id;
+  email: string;
+  name: string;
+  status: 'active' | 'suspended';
+  is_server_admin: boolean;
+  created_at: Time;
+  last_seen_at?: Time;
+  suspended_reason?: string;
+  orgs: Array<{ org: Org; role: Role }>;
+  claims: number;
+  sessions: number;
+};
+
+export type ClaimWithProject = Claim & { project: { id: Id; name: string } };
+
+/**
+ * API.md writes this as `AdminUser & {sessions: Session[], claims: Claim[]}`, but AdminUser already has
+ * numeric `claims` and `sessions` counts, so the intersection would be impossible. On the detail
+ * endpoint the arrays replace the counts.
+ */
+export type AdminUserDetail = Omit<AdminUser, 'claims' | 'sessions'> & { sessions: Session[]; claims: ClaimWithProject[] };
+
+export type Member = {
+  user: UserRef & { status: 'active' | 'suspended'; last_seen_at?: Time };
+  role: Role;
+  expires_at?: Time;
+  created_at: Time;
+};
+
+export type Invite = {
+  id: Id;
+  email?: string;
+  role: Role;
+  expires_at?: Time;
+  created_at: Time;
+  created_by: UserRef;
+  url: string;
+  accepted_at?: Time;
+};
+
+export type Session = {
+  id: Id;
+  kind: 'session' | 'token';
+  label?: string;
+  device?: string;
+  created_at: Time;
+  last_used_at?: Time;
+};
+
+export type StorageCheckReport = {
+  checked: number;
+  missing: Array<{ hash: string; changes: number[] }>;
+  ok: boolean;
+};
+
+export type GcDryRun = { unreferenced_chunks: number; bytes: number };
+export type GcResult = { deleted: number; bytes: number };
+
+/** One person's checkpoints kept on the server for one project. Sizes only, never contents. */
+export type CheckpointUsage = {
+  user: UserRef;
+  project: { id: Id; name: string };
+  org: { id: Id; name: string };
+  checkpoints: number;
+  /** how many of `checkpoints` were taken automatically */
+  automatic: number;
+  /** bytes uploaded only for these checkpoints */
+  stored: number;
+  /** bytes of the files as they were */
+  size: number;
+  oldest: Time;
+  newest: Time;
+};
+
+export type ClearCheckpoints = { user: Id; project: Id; only_automatic?: boolean; older_than_days?: number };
+
+// ---------- Local daemon ----------
+
+export type DaemonHealth = { version: string; workspaces: number };
+
+export type Workspace = {
+  id: Id;
+  root: string;
+  server: string;
+  account_email: string;
+  project_id: Id;
+  project_name: string;
+  org_name: string;
+  branch_id: Id;
+  branch_name: string;
+  synced_change: number;
+  include: string[];
+  exclude: string[];
+  local_bytes: number;
+  total_bytes: number;
+};
+
+export type LocalFile = { path: string; size: number; claimed: boolean };
+
+export type Checkpoint = {
+  id: Id;
+  note?: string;
+  auto: boolean;
+  created_at: Time;
+  files: number;
+  /** Kept on the server instead of this computer. */
+  on_server?: boolean;
+  /** Render output and cache files this checkpoint left out. */
+  left_out?: number;
+};
+
+export type LocalStatus = {
+  new: LocalFile[];
+  edited: LocalFile[];
+  deleted: LocalFile[];
+  behind: number;
+  ignored: number;
+  checkpoints: Checkpoint[];
+  /** Why the last automatic checkpoint was skipped, or what it left out. */
+  checkpoint_notice?: string | null;
+  /** Where this folder keeps checkpoints. */
+  checkpoint_storage?: 'server' | 'local';
+  /** Whether checkpoints are also taken automatically in this folder. */
+  auto_checkpoints?: boolean;
+};
+
+export type FolderNode = {
+  path: string;
+  name: string;
+  size: number;
+  local_size: number;
+  included: 'all' | 'some' | 'none';
+  children: FolderNode[];
+};
+
+export type IgnoreChoice = {
+  label: string;
+  pattern: string;
+  matches: number;
+  bytes: number;
+  tracked: number;
+};

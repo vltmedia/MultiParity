@@ -1,0 +1,19 @@
+[package]
+name = "mp-core"
+description = "MultiParity core: chunking, hashing, manifests, file kinds and ignore patterns"
+version.workspace = true
+edition.workspace = true
+license = "Apache-2.0"
+
+[dependencies]
+anyhow.workspace = true
+serde.workspace = true
+blake3.workspace = true
+fastcdc.workspace = true
+zstd.workspace = true
+hex.workspace = true
+globset.workspace = true
+diffy.workspace = true
+
+[dev-dependencies]
+rand.workspace = true

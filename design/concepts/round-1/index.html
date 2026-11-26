@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MultiParity concepts, round 1</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wdth,wght@75..100,400..700&family=Funnel+Display:wght@300..800&family=Funnel+Sans:wght@300..800&family=Martian+Mono:wght@300..600&family=Bricolage+Grotesque:opsz,wght@12..96,200..800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;border-radius:0}
+html,body{height:100%}
+body{background:#0c0c0d;color:#ddd;font:14px/1.4 "Instrument Sans",system-ui,sans-serif;overflow:hidden}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+button:focus-visible,[tabindex]:focus-visible{outline:2px solid currentColor;outline-offset:2px}
+ul{list-style:none}
+
+/* concept switcher: neutral, not part of any concept */
+.switch{height:46px;display:flex;align-items:stretch;background:#0c0c0d;border-bottom:1px solid #2a2a2c}
+.switch b{font-weight:600;padding:0 18px;display:flex;align-items:center;color:#fff}
+.switch button{padding:0 18px;color:#8b8b90;display:flex;gap:10px;align-items:center;border-left:1px solid #2a2a2c}
+.switch button span{color:#5e5e63;font-size:12px}
+.switch button[aria-pressed=true]{background:#fff;color:#000}
+.switch button[aria-pressed=true] span{color:#555}
+.switch i{margin-left:auto;font-style:normal;color:#5e5e63;font-size:12px;padding:0 18px;display:flex;align-items:center}
+.stage{height:calc(100% - 46px)}
+.concept{display:none;height:100%}
+.concept.on{display:grid}
+.concept>*{min-width:0;min-height:0}
+.switch button,.switch b,.switch i{white-space:nowrap}
+@media(max-width:1180px){.a{grid-template-columns:200px 1fr 280px!important}.b{grid-template-columns:210px 1fr 290px!important}.c{grid-template-columns:220px 1fr 290px!important}.c .main{padding:24px!important}.b td:nth-child(3),.b th:nth-child(3){display:none}.switch button span,.switch i{display:none}}
+
+/* shared bits */
+.thumb{position:relative;overflow:hidden;background:
+  linear-gradient(135deg,hsl(var(--h) 55% 46%),hsl(calc(var(--h) + 40) 60% 22%))}
+.thumb::after{content:"";position:absolute;inset:0;background:
+  radial-gradient(circle at 30% 25%,hsl(calc(var(--h) + 20) 90% 78% / .55),transparent 45%),
+  repeating-linear-gradient(115deg,transparent 0 14px,rgb(0 0 0 / .08) 14px 15px)}
+.parity{display:flex;gap:2px}
+.parity s{flex:1;height:10px;background:var(--p-off)}
+.parity s.d{background:var(--p-on)}
+.parity s.n{background:var(--p-now)}
+.who{display:inline-grid;place-items:center;width:22px;height:22px;font-size:11px;font-weight:700;flex:none}
+
+/* ───────── A · Lightbox ───────── */
+.a{--ink:#14181d;--mute:#606a76;--line:#d3d8de;--paper:#eef0f2;--panel:#f8f9fa;--acc:#2438e6;--claim:#c77700;--warn:#c2281d;
+  --p-off:#d3d8de;--p-on:#14181d;--p-now:#2438e6;
+  grid-template-columns:232px 1fr 320px;grid-template-rows:54px 1fr 60px;background:var(--paper);color:var(--ink);
+  font-family:"Instrument Sans",sans-serif}
+.a .side{grid-column:1;grid-row:1/4;background:rgb(226 229 233 / .8);backdrop-filter:blur(30px);border-right:1px solid var(--line);padding:16px 10px;display:flex;flex-direction:column;gap:22px}
+.a .lights{display:flex;gap:8px;padding:2px 8px 0}
+.a .lights u{width:12px;height:12px;border-radius:50%;background:#fe5f57}
+.a .lights u:nth-child(2){background:#febc2e}.a .lights u:nth-child(3){background:#28c840}
+.a .side h3{font-size:12px;font-weight:500;color:var(--mute);padding:0 8px 6px}
+.a .side li{padding:6px 8px;display:flex;justify-content:space-between;font-weight:500}
+.a .side li.sel{background:var(--ink);color:#fff}
+.a .side li em{font-style:normal;color:var(--mute);font-variant-numeric:tabular-nums}
+.a .side li.sel em{color:#aab}
+.a .me{margin-top:auto;padding:10px 8px;border-top:1px solid var(--line);font-size:13px;color:var(--mute)}
+.a .me strong{display:block;color:var(--ink);font-weight:600}
+.a .bar{grid-column:2/4;grid-row:1;display:flex;align-items:center;gap:14px;padding:0 20px;border-bottom:1px solid var(--line);background:var(--panel)}
+.a .bar h1{font-size:19px;font-weight:650;font-stretch:85%;letter-spacing:-.01em}
+.a .bar h1 small{font-weight:400;color:var(--mute);font-size:19px}
+.a .find{margin-left:auto;width:240px;border:1px solid var(--line);background:#fff;padding:7px 10px;color:var(--mute);font-size:13px}
+.a .btn{padding:8px 16px;font-weight:600;border:1px solid var(--ink)}
+.a .btn.pri{background:var(--acc);border-color:var(--acc);color:#fff}
+.a .grid{grid-column:2;grid-row:2;overflow:auto;padding:20px;display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:18px;align-content:start}
+.a .card{cursor:default}
+.a .card .thumb{aspect-ratio:4/3;outline:1px solid rgb(0 0 0 / .12)}
+.a .card.sel .thumb{outline:3px solid var(--acc);outline-offset:2px}
+.a .card p{margin-top:8px;font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.a .card small{display:flex;gap:6px;align-items:center;color:var(--mute);font-size:12px}
+.a .dot{width:8px;height:8px;flex:none;background:var(--line)}
+.a .mine .dot,.a .edited .dot{background:var(--acc)}
+.a .theirs .dot{background:var(--claim)}
+.a .behind .dot{background:var(--ink)}
+.a .flag{position:absolute;left:0;bottom:0;z-index:1;padding:3px 8px;font-size:11px;font-weight:600;color:#fff;background:var(--claim)}
+.a .mine .flag,.a .edited .flag{background:var(--acc)}
+.a .insp{grid-column:3;grid-row:2/4;background:var(--panel);border-left:1px solid var(--line);padding:20px;overflow:auto;display:flex;flex-direction:column;gap:18px}
+.a .insp .thumb{aspect-ratio:16/11}
+.a .insp h2{font-size:22px;font-weight:650;font-stretch:80%;letter-spacing:-.015em;line-height:1.15}
+.a .insp dl{display:grid;grid-template-columns:auto 1fr;gap:6px 16px;font-size:13px}
+.a .insp dt{color:var(--mute)}
+.a .insp h4{font-size:13px;font-weight:600;margin-bottom:8px}
+.a .hist li{display:grid;grid-template-columns:52px 1fr;gap:10px;padding:8px 0;border-top:1px solid var(--line);font-size:13px}
+.a .hist b{font-variant-numeric:tabular-nums;font-weight:600}
+.a .hist span{color:var(--mute);display:block;font-size:12px}
+.a .tray{grid-column:2;grid-row:3;white-space:nowrap;display:flex;align-items:center;gap:16px;padding:0 20px;background:var(--ink);color:#fff}
+.a .tray .parity{width:180px;--p-off:#3a4048;--p-on:#fff}
+.a .tray p{font-weight:500}.a .tray p span{color:#9aa3ad}
+.a .tray .btn{margin-left:auto;border-color:#5a626c}
+.a .tray .btn.pri{margin-left:0;border-color:var(--acc)}
+
+/* ───────── B · Depot ───────── */
+.b{--bg:#17181b;--raise:#1f2125;--line:#30333a;--ink:#eceae4;--mute:#8d9099;--acc:#93a4ff;--claim:#ff9d4d;--ok:#6fd3a8;
+  --p-off:#30333a;--p-on:#eceae4;--p-now:#93a4ff;
+  grid-template-columns:250px 1fr 340px;grid-template-rows:48px 1fr 30px;background:var(--bg);color:var(--ink);
+  font-family:"Funnel Sans",sans-serif;font-size:13.5px}
+.b .top{grid-column:1/4;display:flex;align-items:center;gap:18px;padding:0 16px;border-bottom:1px solid var(--line)}
+.b .mark{font-family:"Funnel Display",sans-serif;font-weight:700;font-size:17px;letter-spacing:-.02em}
+.b .mark i{font-style:normal;color:var(--acc)}
+.b .crumb{color:var(--mute)}.b .crumb b{color:var(--ink);font-weight:500}
+.b .top .k{margin-left:auto;border:1px solid var(--line);padding:5px 10px;color:var(--mute);width:280px;display:flex;justify-content:space-between}
+.b .btn{padding:6px 14px;border:1px solid var(--line);font-weight:500}
+.b .btn.pri{background:var(--acc);border-color:var(--acc);color:#11131c;font-weight:600}
+.b .tree{border-right:1px solid var(--line);padding:14px 0;overflow:auto}
+.b .tree h3{font-family:"Funnel Display",sans-serif;font-size:13px;font-weight:500;color:var(--mute);padding:0 16px 8px}
+.b .tree li{padding:5px 16px;display:flex;gap:8px;color:var(--mute)}
+.b .tree li.d1{padding-left:32px}.b .tree li.d2{padding-left:48px}
+.b .tree li.sel{color:var(--ink);background:var(--raise);box-shadow:inset 2px 0 var(--acc)}
+.b .tree li em{margin-left:auto;font-style:normal;font-family:"Martian Mono",monospace;font-size:10.5px}
+.b .tree hr{border:0;border-top:1px solid var(--line);margin:14px 0}
+.b .tree .p{padding:6px 16px;display:flex;gap:10px;align-items:center}
+.b .tree .p small{display:block;color:var(--mute);font-size:12px}
+.b table{width:100%;border-collapse:collapse}
+.b .list{overflow:auto}
+.b th{position:sticky;top:0;background:var(--bg);text-align:left;font-weight:500;color:var(--mute);padding:9px 12px;border-bottom:1px solid var(--line);font-size:12.5px}
+.b td{padding:0 12px;height:38px;border-bottom:1px solid #23252a;white-space:nowrap}
+.b td.num{font-family:"Martian Mono",monospace;font-size:11px;color:var(--mute);text-align:right}
+.b tr.sel td{background:var(--raise)}
+.b td .thumb{width:26px;height:26px;display:inline-block;vertical-align:middle;margin-right:10px}
+.b .st{display:inline-flex;align-items:center;gap:7px}
+.b .st::before{content:"";width:3px;height:16px;background:var(--line)}
+.b .mine .st,.b .edited .st{color:var(--acc)}.b .mine .st::before,.b .edited .st::before{background:var(--acc)}
+.b .theirs .st{color:var(--claim)}.b .theirs .st::before{background:var(--claim)}
+.b .behind .st{color:var(--ink)}.b .behind .st::before{background:var(--ink)}
+.b .ok .st{color:var(--mute)}
+.b .draft{border-left:1px solid var(--line);background:var(--raise);padding:18px;display:flex;flex-direction:column;gap:14px;overflow:auto}
+.b .draft h2{font-family:"Funnel Display",sans-serif;font-size:24px;font-weight:600;letter-spacing:-.025em;line-height:1.1}
+.b .draft h2 small{display:block;font-family:"Funnel Sans";font-size:13px;font-weight:400;color:var(--mute);letter-spacing:0;margin-top:6px}
+.b .msg{border:1px solid var(--line);background:var(--bg);padding:12px;min-height:96px;line-height:1.5}
+.b .msg u{text-decoration:none;border-right:2px solid var(--acc)}
+.b .draft li{display:flex;gap:10px;align-items:center;padding:7px 0;border-top:1px solid var(--line)}
+.b .draft li .thumb{width:34px;height:34px;flex:none}
+.b .draft li div{flex:1;min-width:0}
+.b .draft li small{color:var(--mute);display:block;font-size:12px}
+.b .draft li .parity{width:64px;flex:none}
+.b .acts{display:flex;gap:8px;margin-top:auto}
+.b .acts .pri{flex:1;padding:10px}
+.b .foot{grid-column:1/4;border-top:1px solid var(--line);display:flex;align-items:center;gap:20px;padding:0 16px;color:var(--mute);font-size:12px}
+.b .foot .parity{width:140px}.b .foot .parity s{height:6px}
+.b .foot span:last-child{margin-left:auto}
+
+/* ───────── C · Proof ───────── */
+.c{--side:#221433;--side2:#32204a;--paper:#f4f2f7;--card:#fff;--ink:#1b1324;--mute:#6d6378;--line:#ddd7e4;--acc:#ff6a13;--hold:#7a3cff;
+  --p-off:#ddd7e4;--p-on:#1b1324;--p-now:#ff6a13;
+  grid-template-columns:270px 1fr 330px;background:var(--paper);color:var(--ink);font-family:"Bricolage Grotesque",sans-serif;font-size:14.5px}
+.c .side{background:var(--side);color:#e9e2f2;padding:22px 18px;display:flex;flex-direction:column;gap:26px;overflow:auto}
+.c .logo{font-size:23px;font-weight:700;letter-spacing:-.03em;font-variation-settings:"opsz" 96}
+.c .proj{background:var(--side2);padding:12px 14px}
+.c .proj small{color:#a998c2;display:block;font-size:12.5px}
+.c .proj strong{font-size:18px;font-weight:600;letter-spacing:-.01em}
+.c .side h3{font-size:13px;font-weight:500;color:#a998c2;margin-bottom:10px}
+.c .side li{display:flex;gap:10px;padding:7px 0;align-items:flex-start}
+.c .side li p{line-height:1.25}.c .side li small{color:#a998c2;display:block;font-size:12.5px}
+.c .nav li{padding:6px 0;font-weight:500;font-size:15px;color:#c9bbdd}
+.c .nav li.sel{color:#fff;box-shadow:-18px 0 0 var(--side),-22px 0 0 var(--acc)}
+.c .main{overflow:auto;padding:30px 36px}
+.c .main h1{font-size:44px;font-weight:700;letter-spacing:-.035em;line-height:1;font-variation-settings:"opsz" 96}
+.c .main>p{color:var(--mute);margin:10px 0 28px;max-width:52ch}
+.c .day{font-size:13px;font-weight:600;color:var(--mute);margin:26px 0 10px}
+.c .chg{background:var(--card);border:1px solid var(--line);display:grid;grid-template-columns:86px 1fr;margin-bottom:12px}
+.c .chg .n{padding:16px 0 0 18px;font-size:22px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.c .chg .n small{display:block;font-size:12px;font-weight:400;color:var(--mute);letter-spacing:0}
+.c .chg .body{padding:16px 18px 16px 0;min-width:0}
+.c .chg h2{font-size:18px;font-weight:600;letter-spacing:-.015em;line-height:1.25}
+.c .chg .by{display:flex;gap:8px;align-items:center;color:var(--mute);font-size:13px;margin:6px 0 12px}
+.c .strip{display:flex;gap:6px;overflow:hidden}
+.c .strip>*{flex:none}
+.c .strip .thumb{width:92px;height:66px}
+.c .strip .more{width:92px;height:66px;border:1px solid var(--line);display:grid;place-items:center;color:var(--mute);font-size:13px}
+.c .chg.new{border-color:var(--ink);box-shadow:5px 5px 0 var(--ink)}
+.c .chg.new .n small{color:var(--acc);font-weight:600}
+.c .mine{background:var(--card);border-left:1px solid var(--line);padding:26px 22px;display:flex;flex-direction:column;gap:16px;overflow:auto}
+.c .mine h2{font-size:24px;font-weight:700;letter-spacing:-.025em}
+.c .mine h2+p{color:var(--mute);margin-top:-10px;font-size:13.5px}
+.c .mine li{display:grid;grid-template-columns:54px 1fr;gap:12px;padding:10px 0;border-top:1px solid var(--line)}
+.c .mine li .thumb{width:54px;height:54px}
+.c .mine li strong{font-weight:600;font-size:14px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.c .mine li small{color:var(--mute);font-size:12.5px}
+.c .mine li .parity{margin-top:6px}.c .mine li .parity s{height:5px}
+.c .note{border:1px solid var(--line);padding:12px;min-height:74px;color:var(--mute)}
+.c .btn{padding:12px 16px;font-weight:600;border:1.5px solid var(--ink);font-size:15px}
+.c .btn.pri{background:var(--acc);border-color:var(--acc);color:#1b0b00}
+.c .row{display:flex;gap:8px}.c .row .pri{flex:1}
+.c .nudge{background:#f1eaff;border-left:4px solid var(--hold);padding:12px 14px;font-size:13.5px;margin-top:auto}
+.c .nudge b{font-weight:600}
+.c .nudge .row{margin-top:10px}.c .nudge .btn{padding:6px 12px;font-size:13px}
+</style>
+</head>
+<body>
+<nav class="switch" aria-label="Concepts">
+  <b>MultiParity, round 1</b>
+  <button data-c="a" aria-pressed="true">A Lightbox <span>pictures first, light, Finder-like</span></button>
+  <button data-c="b" aria-pressed="false">B Depot <span>dense list, dark, keyboard-first</span></button>
+  <button data-c="c" aria-pressed="false">C Proof <span>people and changes first, bold</span></button>
+  <i>Keys 1, 2, 3 switch</i>
+</nav>
+
+<div class="stage">
+
+<!-- A -->
+<section class="concept a on" id="a">
+  <aside class="side">
+    <div class="lights"><u></u><u></u><u></u></div>
+    <div><h3>Emberfall</h3><ul id="a-folders"></ul></div>
+    <div><h3>Mine</h3><ul>
+      <li>Claimed by me <em>2</em></li><li>Edited <em>3</em></li><li>Parked <em>1</em></li></ul></div>
+    <div class="me"><strong>Justin</strong>Connected to studio.local</div>
+  </aside>
+  <header class="bar">
+    <h1>Characters <small>/ Hero</small></h1>
+    <div class="find">Search Emberfall</div>
+    <button class="btn">Get latest (2)</button>
+  </header>
+  <main class="grid" id="a-grid"></main>
+  <aside class="insp">
+    <div class="thumb" style="--h:265"></div>
+    <h2>hero_cape_sim.abc</h2>
+    <dl><dt>Status</dt><dd style="color:var(--claim);font-weight:600">Claimed by Mara, 40 min ago</dd>
+      <dt>Size</dt><dd>1.4 GB</dd><dt>Kind</dt><dd>Simulation cache</dd><dt>Last change</dt><dd>4809</dd></dl>
+    <div><button class="btn" style="width:100%">Ask Mara to release</button></div>
+    <div><h4>History</h4><ul class="hist">
+      <li><b>4809</b><div>Cape sim, longer settle<span>Mara, today 10:12</span></div></li>
+      <li><b>4771</b><div>Fix cape clipping on run cycle<span>Mara, Monday</span></div></li>
+      <li><b>4702</b><div>First cape sim pass<span>Teo, 12 Nov</span></div></li></ul></div>
+  </aside>
+  <footer class="tray">
+    <div class="parity" id="a-par"></div>
+    <p>3 edited files <span>71 MB to send</span></p>
+    <button class="btn">Park</button>
+    <button class="btn pri">Publish 3 files</button>
+  </footer>
+</section>
+
+<!-- B -->
+<section class="concept b" id="b">
+  <header class="top">
+    <div class="mark">multi<i>parity</i></div>
+    <div class="crumb">Emberfall / Characters / <b>Hero</b></div>
+    <div class="k"><span>Find a file or run a command</span><span>Ctrl K</span></div>
+    <button class="btn">Get latest (2)</button>
+  </header>
+  <nav class="tree">
+    <h3>Emberfall</h3>
+    <ul id="b-tree"></ul>
+    <hr>
+    <h3>Working now</h3>
+    <div class="p"><span class="who" style="background:#ff9d4d;color:#201000">M</span><div>Mara<small>hero_cape_sim.abc</small></div></div>
+    <div class="p"><span class="who" style="background:#6fd3a8;color:#00140c">T</span><div>Teo<small>forge_door_rust.png</small></div></div>
+    <div class="p"><span class="who" style="background:#e58cff;color:#1a0020">D</span><div>Dev<small>forge_interior.umap</small></div></div>
+  </nav>
+  <div class="list"><table>
+    <thead><tr><th>Name</th><th>Status</th><th>Kind</th><th style="text-align:right">Size</th><th style="text-align:right">Change</th></tr></thead>
+    <tbody id="b-rows"></tbody></table></div>
+  <aside class="draft">
+    <h2>Your next change<small>3 files, 71 MB. Will be change 4813.</small></h2>
+    <div class="msg">Hero body retopo and new diffuse. Wolf howl trimmed to loop cleanly.<u></u></div>
+    <ul id="b-draft"></ul>
+    <div class="acts"><button class="btn">Park</button><button class="btn pri">Publish 3 files</button></div>
+  </aside>
+  <footer class="foot">
+    <span>Up to date with change 4812</span>
+    <div class="parity" id="b-par"></div>
+    <span>Sending hero_body_diffuse.png, 14 of 22 MB</span>
+    <span>studio.local, 6 people online</span>
+  </footer>
+</section>
+
+<!-- C -->
+<section class="concept c" id="c">
+  <aside class="side">
+    <div class="logo">MultiParity</div>
+    <div class="proj"><small>Project</small><strong>Emberfall</strong></div>
+    <ul class="nav"><li class="sel">Today</li><li>Files</li><li>My work</li><li>Parked</li><li>People</li></ul>
+    <div><h3>Working right now</h3><ul>
+      <li><span class="who" style="background:#ff6a13;color:#1b0b00">M</span><p>Mara<small>Cape simulation, 40 min</small></p></li>
+      <li><span class="who" style="background:#7dffcf;color:#00241a">T</span><p>Teo<small>Forge door rust texture</small></p></li>
+      <li><span class="who" style="background:#c9a6ff;color:#1c0a36">D</span><p>Dev<small>Forge interior level</small></p></li></ul></div>
+  </aside>
+  <main class="main">
+    <h1>Today in Emberfall</h1>
+    <p>Four changes since you last got latest. Two of them touch folders you have on this computer.</p>
+    <div id="c-feed"></div>
+  </main>
+  <aside class="mine">
+    <h2>Your work</h2><p>Three edited files, not published yet.</p>
+    <ul id="c-mine"></ul>
+    <div class="note">Say what you changed</div>
+    <div class="row"><button class="btn">Park</button><button class="btn pri">Publish 3 files</button></div>
+    <div class="nudge"><b>Sana is waiting for hero_body.fbx.</b> You have held it since 9:40.
+      <div class="row"><button class="btn">Release it</button><button class="btn">Tell her 1 hour</button></div></div>
+  </aside>
+</section>
+</div>
+
+<script>
+const files=[
+ {n:'hero_body.fbx',k:'Model',s:'48.2 MB',st:'mine',c:4812,h:18},
+ {n:'hero_body_diffuse.png',k:'Texture',s:'22.1 MB',st:'edited',c:4812,h:32},
+ {n:'hero_cape_sim.abc',k:'Sim cache',s:'1.4 GB',st:'theirs',by:'Mara',c:4809,h:265},
+ {n:'ember_wolf.fbx',k:'Model',s:'31.7 MB',st:'behind',c:4806,h:200},
+ {n:'ember_wolf_normal.png',k:'Texture',s:'18.0 MB',st:'ok',c:4806,h:230},
+ {n:'forge_door.fbx',k:'Model',s:'9.3 MB',st:'ok',c:4790,h:40},
+ {n:'forge_door_rust.png',k:'Texture',s:'12.6 MB',st:'theirs',by:'Teo',c:4801,h:14},
+ {n:'ash_plains_sky.exr',k:'Image',s:'212 MB',st:'ok',c:4775,h:205},
+ {n:'campfire_loop.wav',k:'Audio',s:'6.1 MB',st:'ok',c:4760,h:48},
+ {n:'intro_cinematic.mov',k:'Video',s:'3.8 GB',st:'behind',c:4811,h:330},
+ {n:'wolf_howl_03.wav',k:'Audio',s:'2.2 MB',st:'edited',c:4812,h:120},
+ {n:'forge_interior.umap',k:'Level',s:'96.4 MB',st:'theirs',by:'Dev',c:4810,h:285}];
+const label=f=>({mine:'Claimed by you',edited:'Edited',theirs:'Claimed by '+f.by,behind:'Newer available',ok:'Up to date'})[f.st];
+const $=id=>document.getElementById(id);
+const par=(n,done,now=0)=>Array.from({length:n},(_,i)=>`<s class="${i<done?'d':i<done+now?'n':''}"></s>`).join('');
+const mine=files.filter(f=>f.st==='mine'||f.st==='edited');
+
+// A
+$('a-folders').innerHTML=[['Characters',38,1],['Environments',112],['Audio',64],['Cinematics',9],['Levels',21]]
+  .map(([n,c,s])=>`<li class="${s?'sel':''}">${n}<em>${c}</em></li>`).join('');
+$('a-grid').innerHTML=files.map((f,i)=>`<div class="card ${f.st} ${i===2?'sel':''}" tabindex="0">
+  <div class="thumb" style="--h:${f.h}">${f.st==='theirs'?`<span class="flag">${f.by}</span>`:f.st==='mine'||f.st==='edited'?'<span class="flag">You</span>':''}</div>
+  <p>${f.n}</p><small><span class="dot"></span>${label(f)}</small></div>`).join('');
+$('a-par').innerHTML=par(24,9,2);
+
+// B
+$('b-tree').innerHTML=[['Characters',0,38],['Hero',1,12,1],['Ember wolf',1,9],['Villagers',1,17],['Environments',0,112],['Forge',1,31],['Ash plains',1,44],['Audio',0,64],['Cinematics',0,9],['Levels',0,21]]
+  .map(([n,d,c,s])=>`<li class="d${d} ${s?'sel':''}">${n}<em>${c}</em></li>`).join('');
+$('b-rows').innerHTML=files.map((f,i)=>`<tr class="${f.st} ${i===1?'sel':''}"><td><span class="thumb" style="--h:${f.h}"></span>${f.n}</td>
+  <td><span class="st">${label(f)}</span></td><td style="color:var(--mute)">${f.k}</td><td class="num">${f.s}</td><td class="num">${f.c}</td></tr>`).join('');
+$('b-draft').innerHTML=mine.map((f,i)=>`<li><span class="thumb" style="--h:${f.h}"></span><div>${f.n}<small>${f.s}</small></div>
+  <div class="parity">${par(8,[8,5,0][i],[0,1,0][i])}</div></li>`).join('');
+$('b-par').innerHTML=par(30,17,2);
+
+// C
+const feed=[
+ ['Today',4812,'new','Hero body retopo, first pass','Sana','#ffd23f','#2a2000','9:02',[18,32,25],4],
+ ['',4811,'new','Intro cinematic, colour pass and new end card','Dev','#c9a6ff','#1c0a36','8:40',[330,345],0],
+ ['',4810,'','Forge interior lighting rebuilt after door change','Dev','#c9a6ff','#1c0a36','8:15',[285,40,14],11],
+ ['Yesterday',4809,'','Cape sim, longer settle so it stops popping','Mara','#ff6a13','#1b0b00','17:48',[265],0]];
+$('c-feed').innerHTML=feed.map(([d,n,nw,t,w,bg,fg,tm,hs,more])=>`${d?`<div class="day">${d}</div>`:''}
+ <article class="chg ${nw}"><div class="n">${n}<small>${nw?'New for you':'You have it'}</small></div><div class="body">
+ <h2>${t}</h2><div class="by"><span class="who" style="background:${bg};color:${fg}">${w[0]}</span>${w} at ${tm}</div>
+ <div class="strip">${hs.map(h=>`<div class="thumb" style="--h:${h}"></div>`).join('')}${more?`<div class="more">${more} more</div>`:''}</div></div></article>`).join('');
+$('c-mine').innerHTML=mine.map((f,i)=>`<li><div class="thumb" style="--h:${f.h}"></div><div><strong>${f.n}</strong>
+ <small>${f.st==='mine'?'Claimed, not edited yet':'Edited, '+f.s}</small><div class="parity">${par(12,[0,7,12][i],[0,1,0][i])}</div></div></li>`).join('');
+
+// switcher
+const btns=[...document.querySelectorAll('.switch button')];
+const show=c=>{btns.forEach(b=>b.setAttribute('aria-pressed',b.dataset.c===c));
+  document.querySelectorAll('.concept').forEach(s=>s.classList.toggle('on',s.id===c));location.hash=c};
+btns.forEach(b=>b.onclick=()=>show(b.dataset.c));
+addEventListener('keydown',e=>{const c={1:'a',2:'b',3:'c'}[e.key];if(c)show(c)});
+const fromHash=()=>{if(['#a','#b','#c'].includes(location.hash))show(location.hash.slice(1))};
+addEventListener('hashchange',fromHash);fromHash();
+</script>
+</body>
+</html>

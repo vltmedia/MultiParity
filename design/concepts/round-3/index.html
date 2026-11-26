@@ -1,0 +1,530 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MultiParity concepts, round 3</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&display=swap" rel="stylesheet">
+<style>
+:root{--side:#221433;--side2:#32204a;--sidemute:#a998c2;--paper:#f4f2f7;--card:#fff;--ink:#1b1324;--mute:#6d6378;--line:#ddd7e4;
+  --acc:#ff6a13;--accink:#1b0b00;--hold:#7a3cff;--new:#00806a;--p-off:#ddd7e4;--p-on:#1b1324;--p-now:#ff6a13}
+*{box-sizing:border-box;margin:0;padding:0;border-radius:0}
+html,body{height:100%}
+body{background:#0c0c0d;color:var(--ink);font:14.5px/1.4 "Bricolage Grotesque",system-ui,sans-serif;overflow:hidden;font-variant-numeric:tabular-nums}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;text-align:left}
+button:focus-visible,[tabindex]:focus-visible,input:focus-visible{outline:2px solid var(--hold);outline-offset:2px}
+ul{list-style:none}
+.el{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.switch{height:46px;display:flex;align-items:stretch;background:#0c0c0d;border-bottom:1px solid #2a2a2c;color:#8b8b90;font-size:13.5px;white-space:nowrap}
+.switch b{font-weight:600;padding:0 16px;display:flex;align-items:center;color:#fff}
+.switch button{padding:0 16px;border-left:1px solid #2a2a2c}
+.switch button[aria-pressed=true]{background:#fff;color:#000}
+.switch i{margin-left:auto;font-style:normal;padding:0 16px;display:flex;align-items:center}
+.stage{height:calc(100% - 46px);position:relative}
+.scene{display:none;height:100%}.scene.on{display:grid}
+.thumb{position:relative;overflow:hidden;flex:none;background:linear-gradient(135deg,hsl(var(--h) 55% 46%),hsl(calc(var(--h) + 40) 60% 22%))}
+.thumb::after{content:"";position:absolute;inset:0;background:
+  radial-gradient(circle at 30% 25%,hsl(calc(var(--h) + 20) 90% 78% / .55),transparent 45%),
+  repeating-linear-gradient(115deg,transparent 0 14px,rgb(0 0 0 / .08) 14px 15px)}
+.parity{display:flex;gap:2px}.parity s{flex:1;height:5px;background:var(--p-off)}
+.parity s.d{background:var(--p-on)}.parity s.n{background:var(--p-now)}
+.who{display:inline-grid;place-items:center;width:22px;height:22px;font-size:11px;font-weight:700;flex:none}
+.btn{padding:11px 16px;font-weight:600;border:1.5px solid var(--ink);font-size:15px;text-align:center;background:var(--card)}
+.btn.pri{background:var(--acc);border-color:var(--acc);color:var(--accink)}
+.btn.sm{padding:6px 12px;font-size:13px}
+.btn[disabled]{opacity:.4;cursor:default}
+
+/* app shell */
+.app{grid-template-columns:250px 1fr 340px;background:var(--paper)}
+.app>*{min-width:0;min-height:0}
+.side{background:var(--side);color:#e9e2f2;padding:22px 18px;display:flex;flex-direction:column;gap:24px;overflow:auto}
+.logo{font-size:23px;font-weight:700;letter-spacing:-.03em;font-variation-settings:"opsz" 96}
+.proj{background:var(--side2);padding:12px 14px;display:block;width:100%}
+.proj span{display:flex;gap:7px;align-items:center;font-size:12.5px;color:#e9e2f2;margin-top:6px}
+.proj span::before{content:"";width:8px;height:8px;background:#7dffcf}
+.proj small{color:var(--sidemute);display:block;font-size:12.5px}.proj strong{font-size:18px;font-weight:600}
+.nav button{display:flex;justify-content:space-between;width:100%;padding:6px 0;font-weight:500;font-size:15.5px;color:#c9bbdd}
+.nav button em{font-style:normal;font-size:13px;color:var(--sidemute)}
+.nav button[aria-current=page]{color:#fff;box-shadow:-18px 0 0 var(--side),-22px 0 0 var(--acc)}
+.side h3{font-size:13px;font-weight:500;color:var(--sidemute);margin-bottom:8px}
+.side li{display:flex;gap:10px;padding:6px 0}.side li p{line-height:1.25}.side li small{color:var(--sidemute);display:block;font-size:12.5px}
+.conn{margin-top:auto;font-size:12.5px;color:var(--sidemute)}
+
+.main{display:flex;flex-direction:column;overflow:hidden}
+.head{display:flex;align-items:flex-end;gap:20px;padding:28px 32px 18px}
+.head h1{font-size:40px;font-weight:700;letter-spacing:-.035em;line-height:1;font-variation-settings:"opsz" 96}
+.head p{color:var(--mute);margin-top:8px;max-width:54ch}
+.find{margin-left:auto;flex:none;display:flex;gap:26px;border:1.5px solid var(--ink);background:var(--card);padding:9px 12px;color:var(--mute);font-size:14px}
+.find kbd{font:inherit;font-weight:600;color:var(--ink)}
+.view{display:none;flex:1;overflow:auto;padding:0 32px 28px}.view.on{display:block}
+
+/* today */
+.day{font-size:13px;font-weight:600;color:var(--mute);margin:18px 0 10px}
+.chg{background:var(--card);border:1px solid var(--line);display:grid;grid-template-columns:86px 1fr;margin-bottom:12px;max-width:760px}
+.chg .n{padding:16px 0 0 18px;font-size:22px;font-weight:700;letter-spacing:-.02em}
+.chg .n small{display:block;font-size:12px;font-weight:400;color:var(--mute)}
+.chg .body{padding:16px 18px 16px 0;min-width:0}
+.chg h2{font-size:18px;font-weight:600;letter-spacing:-.015em;line-height:1.25}
+.chg .by{display:flex;gap:8px;align-items:center;color:var(--mute);font-size:13px;margin:6px 0 12px}
+.strip{display:flex;gap:6px;overflow:hidden}.strip>*{flex:none}
+.strip .thumb,.strip .more{width:92px;height:66px}
+.strip .more{border:1px solid var(--line);display:grid;place-items:center;color:var(--mute);font-size:13px}
+.chg.fresh{border-color:var(--ink);box-shadow:5px 5px 0 var(--ink)}
+.chg.fresh .n small{color:var(--acc);font-weight:600}
+
+/* files */
+.crumb{display:flex;gap:8px;align-items:center;margin-bottom:10px;font-weight:500}
+.crumb span{color:var(--mute)}
+table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line)}
+th{position:sticky;top:0;background:var(--card);text-align:left;font-weight:500;color:var(--mute);padding:9px 12px;border-bottom:1px solid var(--line);font-size:13px;z-index:1}
+td{padding:0 12px;height:40px;border-bottom:1px solid #ece8f1;white-space:nowrap}
+td.r,th.r{text-align:right}
+td .thumb{width:26px;height:26px;display:inline-block;vertical-align:middle;margin-right:10px}
+.st{display:inline-flex;align-items:center;gap:8px;font-weight:500}
+.st::before{content:"";width:4px;height:18px;background:var(--line)}
+.mine .st,.edited .st{color:#c44a00}.mine .st::before,.edited .st::before{background:var(--acc)}
+.theirs .st{color:var(--hold)}.theirs .st::before{background:var(--hold)}
+.behind .st::before{background:var(--ink)}
+.new .st{color:var(--new)}.new .st::before{background:var(--new)}
+.ok .st{color:var(--mute);font-weight:400}
+tr.new td{background:#eef8f5}
+.tagbar{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.tagf{padding:5px 11px 5px 9px;border:1.5px solid var(--line);background:var(--card);font-size:13px;font-weight:500;display:flex;gap:7px;align-items:center}
+.tagf[style]::before,.tag::before{content:"";width:9px;height:9px;background:var(--t);flex:none}
+.tagf[aria-pressed=true]{border-color:var(--ink);background:var(--ink);color:#fff}
+.tagf.add{border-style:dashed;color:var(--mute)}
+.tag{display:inline-flex;gap:6px;align-items:center;font-size:12.5px;font-weight:500;padding:2px 8px 2px 7px;border:1px solid var(--line);background:var(--card);margin-right:5px}
+.addtag{font-size:12.5px;color:var(--mute);opacity:0}tr:hover .addtag,.addtag:focus-visible{opacity:1}
+.drop{margin-top:12px;border:1.5px dashed #b9aecb;padding:16px;color:var(--mute);text-align:center}
+.drop b{color:var(--ink);font-weight:600}
+
+/* history */
+.tl{display:grid;grid-template-columns:250px 1fr;background:var(--card);border:1px solid var(--line)}
+.tl .hd{position:sticky;top:0;z-index:2;background:var(--card);border-bottom:1px solid var(--line);height:42px;display:flex;align-items:center}
+.tl .hd.l{padding:0 14px;color:var(--mute);font-size:13px}
+.tl .hd.ruler{display:grid;grid-template-columns:repeat(10,1fr);align-items:stretch}
+.ruler span{font-weight:600;font-size:13px;color:var(--mute);padding-left:6px;border-left:1px solid var(--line);height:42px;display:flex;align-items:center}
+.ruler span.now{background:var(--ink);color:#fff}.ruler span.next{color:#c44a00;border-left:2px dashed var(--acc)}
+.trk{height:42px;border-bottom:1px solid #ece8f1;display:flex;align-items:center;gap:10px;padding:0 14px}
+.trk .thumb{width:26px;height:26px}
+.lane{height:42px;border-bottom:1px solid #ece8f1;display:grid;grid-template-columns:repeat(10,1fr);align-items:center;
+  background:linear-gradient(90deg,transparent calc(90% - 1px),var(--ink) calc(90% - 1px) calc(90% + 1px),transparent calc(90% + 1px))}
+.tl>*{min-width:0}
+.lane i{height:20px;background:#c3b8d3;margin:0 3px;font-style:normal;font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;padding:1px 7px}
+.lane i.hold{background:repeating-linear-gradient(135deg,#c9b3ff 0 6px,#b497ff 6px 12px);color:#200a55}
+.lane i.mine{background:repeating-linear-gradient(135deg,#ffb48a 0 6px,#ff9a5e 6px 12px);color:#3a1500}
+.lane i.miss{background:none;border:1.5px solid var(--ink)}
+.lane i.new{background:var(--new);color:#fff}
+.key{display:flex;gap:8px 16px;flex-wrap:wrap;align-items:center;color:var(--mute);font-size:13px;margin-bottom:12px}
+.key u{width:16px;height:11px;display:inline-block;margin-right:6px;vertical-align:-1px}
+
+/* people */
+.wall{display:grid;grid-template-columns:repeat(5,1fr);min-height:100%;border:1px solid var(--line)}
+.p{min-width:0;background:var(--c);padding:18px 14px;display:flex;flex-direction:column;gap:10px}
+.p h2{font-size:26px;font-weight:700;letter-spacing:-.03em}
+.p h2+p{font-size:13px;margin-top:-8px;opacity:.75}
+.p li{background:rgb(255 255 255 / .78);padding:8px;display:grid;grid-template-columns:42px 1fr;gap:10px;align-items:center;margin-bottom:6px}
+.p li .thumb{width:42px;height:42px}
+.p li>div{min-width:0}
+.p li strong{font-weight:600;font-size:13.5px;display:block}.p li small{font-size:12.5px;opacity:.7;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.p .btn{margin-top:auto;background:none}
+.wait{font-size:13px;font-weight:600;border-left:4px solid var(--ink);padding:6px 10px;background:rgb(255 255 255 / .6)}
+
+/* your work */
+.work{background:var(--card);border-left:1px solid var(--line);padding:24px 20px;display:flex;flex-direction:column;gap:14px;overflow:auto}
+.work h2{font-size:24px;font-weight:700;letter-spacing:-.025em}
+.work h2+p{color:var(--mute);margin-top:-10px;font-size:13.5px}
+.work li{display:grid;grid-template-columns:18px 44px 1fr;gap:10px;padding:9px 0;border-top:1px solid var(--line);align-items:center}
+.work li .thumb{width:44px;height:44px}
+.work li strong{font-weight:600;font-size:14px;display:block}
+.work li small{color:var(--mute);font-size:12.5px}
+.work li small b{font-weight:600;color:var(--new)}
+.work li.off{opacity:.45}
+input[type=checkbox]{appearance:none;width:18px;height:18px;border:1.5px solid var(--ink);background:var(--card);cursor:pointer;display:grid;place-items:center}
+input[type=checkbox]:checked{background:var(--ink)}
+input[type=checkbox]:checked::after{content:"";width:9px;height:5px;border:2px solid #fff;border-top:0;border-right:0;transform:rotate(-45deg) translate(1px,-1px)}
+.hid{font-size:13px;color:var(--mute);display:flex;justify-content:space-between;gap:10px}
+.hid button{font-weight:600;color:var(--ink);text-decoration:underline}
+.note{border:1.5px solid var(--line);padding:11px;min-height:66px;color:var(--mute)}
+.row{display:flex;gap:8px}.row .pri{flex:1}
+.nudge{background:#f1eaff;border-left:4px solid var(--hold);padding:12px 14px;font-size:13.5px;margin-top:auto}
+.nudge b{font-weight:600}.nudge .row{margin-top:10px}
+
+/* palette */
+.veil{position:absolute;inset:0;background:rgb(27 19 36 / .55);display:none;justify-content:center;align-items:flex-start;padding-top:12vh;z-index:10}
+.veil.on{display:flex}
+.pal{width:min(680px,92%);box-shadow:8px 8px 0 var(--ink)}
+.pal .ask{background:#fff;display:flex;align-items:center;padding:0 18px;height:62px;font-size:22px;font-weight:500;border:1.5px solid var(--ink)}
+.pal .ask u{text-decoration:none;border-right:3px solid var(--acc);height:28px;margin-left:1px}
+.pal .ask span{margin-left:auto;font-size:13px;color:var(--mute)}
+.pal ul{background:var(--side);color:#e9e2f2}
+.pal li{display:grid;grid-template-columns:40px 1fr auto;gap:14px;align-items:center;padding:10px 18px;border-top:1px solid var(--side2)}
+.pal li.sel{background:var(--acc);color:var(--accink)}
+.pal li .thumb,.pal li .plus{width:40px;height:40px}
+.pal li .plus{border:1.5px dashed currentColor;display:grid;place-items:center;font-size:22px;font-weight:300}
+.pal li small{display:block;opacity:.75;font-size:13px}
+.pal li em{font-style:normal;font-weight:600;font-size:13.5px;padding:5px 11px;border:1.5px solid currentColor}
+
+/* accounts and folders */
+.setup{grid-template-columns:1fr 1fr;gap:24px;padding:32px;background:var(--paper);overflow:auto;align-items:start}
+.panel{background:var(--card);border:1px solid var(--ink);box-shadow:6px 6px 0 var(--ink);padding:26px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.panel h2{font-size:28px;font-weight:700;letter-spacing:-.03em;line-height:1.05}
+.panel h2+p{color:var(--mute);margin-top:-6px}.panel h2+p b{color:var(--ink);font-weight:600}
+.panel h3{font-size:15px;font-weight:600;margin-top:10px}
+.panel>.btn{align-self:flex-start}
+.accts li{display:grid;grid-template-columns:22px 1fr auto;gap:12px;align-items:start;padding:12px 0;border-top:1px solid var(--line)}
+.accts strong{font-weight:600;display:block}.accts small{color:var(--mute)}
+.orgs{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.orgs span{font-size:12.5px;border:1px solid var(--line);padding:2px 8px;color:var(--mute)}.orgs b{color:var(--ink);font-weight:600}
+.uses{border:0}.uses th,.uses td{padding:8px 10px 8px 0;height:auto;border-bottom:1px solid var(--line);white-space:normal;position:static}
+.uses i{display:inline-block;width:9px;height:9px;margin-right:7px}
+.uses button{font-weight:600;text-decoration:underline}
+.adopt li{display:grid;grid-template-columns:86px 1fr;gap:14px;padding:12px 0 12px 14px;border-top:1px solid var(--line);box-shadow:inset 4px 0 var(--k,var(--ink))}
+.adopt li>b{font-size:26px;font-weight:700;letter-spacing:-.02em;line-height:1.1}
+.adopt strong{font-weight:600;display:block}.adopt small{color:var(--mute)}
+.adopt label{display:flex;gap:8px;align-items:center;margin-top:6px;font-weight:500}
+.fine{font-size:13px;color:var(--mute)}
+@media(max-width:1000px){.setup{grid-template-columns:1fr;padding:18px}}
+.branch{display:flex;gap:8px;align-items:baseline;width:100%;padding:9px 14px;margin-top:2px;background:var(--side2);font-size:13px;color:var(--sidemute)}
+.branch b{color:#fff;font-weight:600;font-size:14.5px}.branch em{margin-left:auto;font-style:normal;text-decoration:underline}
+.brs li{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:start;padding:13px 0 13px 14px;border-top:1px solid var(--line);box-shadow:inset 4px 0 var(--line)}
+.brs li.here{box-shadow:inset 4px 0 var(--acc)}.brs li.gone{opacity:.6}
+.brs strong{font-weight:600;font-size:17px;display:block;letter-spacing:-.01em}.brs small{color:var(--mute)}
+.brs em{font-style:normal;font-weight:600;font-size:13px;color:#c44a00}
+.versus{display:grid;grid-template-columns:92px 1fr 92px;gap:14px;align-items:center;border:1px dashed #b9aecb;padding:12px}
+.versus .thumb{height:70px}.versus strong{font-weight:600;display:block}.versus small{color:var(--mute);font-size:13px;display:block;margin-bottom:8px}
+.pick li{display:grid;grid-template-columns:18px 1fr auto;gap:12px;align-items:center;padding:10px 0;border-top:1px solid var(--line);cursor:pointer}
+.pick li.on{box-shadow:inset 0 0 0 0 transparent;background:linear-gradient(90deg,#fff3ea,transparent)}
+.pick strong{font-weight:600;display:block}.pick code{font:inherit;font-weight:500;color:var(--hold);word-break:break-all}
+.pick em{font-style:normal;color:var(--mute);font-size:13px;white-space:nowrap;text-align:right}
+.pick em b{display:block;color:#c2185b;font-weight:600}
+input[type=radio]{appearance:none;width:18px;height:18px;border:1.5px solid var(--ink);background:var(--card);display:grid;place-items:center;cursor:pointer}
+input[type=radio]:checked::after{content:"";width:8px;height:8px;background:var(--acc)}
+.seg{display:flex}.seg button{padding:8px 14px;border:1.5px solid var(--ink);font-weight:600;font-size:13.5px}
+.seg button+button{border-left:0}.seg button[aria-pressed=true]{background:var(--ink);color:#fff}
+.check{display:flex;gap:12px;align-items:center;border:1.5px solid var(--ink);padding:9px 12px}
+.check span{color:var(--mute);font-size:13px}.check b{font-weight:600}.check em{margin-left:auto;font-style:normal;font-weight:600;color:#c44a00;font-size:13px}
+.rules td b{font-weight:600;color:var(--hold);margin-right:6px}.rules td small{display:block;color:var(--mute)}
+.rules tr.me td{background:#f1eaff}.rules th.r,.rules td.r{text-align:right}
+/* menu bar scene */
+.desk{position:relative;background:radial-gradient(120% 90% at 78% 0%,#ffb27a 0%,#ff6a13 22%,#a2379a 50%,#3a1d63 74%,#150b24 100%);font-size:13.5px}
+.menubar{position:absolute;inset:0 0 auto 0;height:28px;background:rgb(255 255 255 / .3);backdrop-filter:blur(20px);display:flex;align-items:center;gap:18px;padding:0 16px;font-weight:500;font-size:13px}
+.menubar b{font-weight:700}.menubar .r{margin-left:auto;display:flex;gap:14px;align-items:center}
+.menubar .ic{width:15px;height:15px;background:var(--ink);box-shadow:4px 4px 0 var(--acc)}
+.pop,.win,.ctx{position:absolute;box-shadow:0 24px 70px rgb(20 5 40 / .45),0 0 0 1px rgb(0 0 0 / .12)}
+.pop{top:36px;right:22px;width:380px;background:rgb(250 248 252 / .93);backdrop-filter:blur(40px);padding:16px;display:flex;flex-direction:column;gap:11px}
+.pop h2{font-size:19px;font-weight:700;letter-spacing:-.02em}
+.pop h2 small{display:block;font-weight:400;font-size:13px;color:var(--mute);letter-spacing:0}
+.rowb{display:flex;gap:8px;align-items:center;justify-content:space-between;background:#fff;padding:8px 10px;border:1px solid var(--line)}
+.pop li{display:grid;grid-template-columns:34px 1fr 64px;gap:10px;align-items:center;padding:6px 0;border-top:1px solid var(--line)}
+.pop li .thumb{width:34px;height:34px}.pop li small{color:var(--mute);display:block;font-size:12px}.pop li small b{color:var(--new);font-weight:600}
+.pop .note{min-height:0;background:#fff}
+.pop .nudge{margin-top:0}
+.pop .lnk{display:flex;justify-content:space-between;color:var(--mute);font-size:12.5px}
+.win{left:5%;top:84px;width:min(54%,640px);background:#fbfafc}
+.win header{height:40px;display:flex;align-items:center;gap:8px;padding:0 14px;background:#ebe8f0;font-weight:600}
+.win header u{width:12px;height:12px;border-radius:50%;background:#fe5f57}.win header u:nth-child(2){background:#febc2e}.win header u:nth-child(3){background:#28c840;margin-right:10px}
+.icons{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;padding:18px}
+.icons div{text-align:center;font-size:12px;position:relative;min-width:0}
+.icons .thumb{height:72px;margin-bottom:6px}
+.icons .hit .thumb{outline:3px solid var(--hold);outline-offset:2px}
+.bdg{position:absolute;left:0;top:54px;z-index:1;padding:1px 7px;font-size:11px;font-weight:700;color:#fff;background:var(--acc)}
+.icons .mine .bdg,.icons .edited .bdg{color:var(--accink)}
+.icons .theirs .bdg{background:var(--hold)}.icons .behind .bdg{background:var(--ink)}.icons .new .bdg{background:var(--new)}
+.ctx{left:calc(5% + min(27%,320px));top:262px;width:236px;background:rgb(248 246 251 / .96);backdrop-filter:blur(30px);padding:5px;z-index:3;box-shadow:0 14px 40px rgb(0 0 0 / .3),0 0 0 1px rgb(0 0 0 / .14)}
+.ctx li{padding:5px 10px}.ctx li.sel{background:var(--hold);color:#fff}.ctx hr{border:0;border-top:1px solid var(--line);margin:5px 0}
+.cap{position:absolute;left:5%;bottom:28px;color:#fff;max-width:46ch;font-size:15px;text-shadow:0 1px 12px rgb(0 0 0 / .5)}
+.cap b{display:block;font-size:22px;font-weight:700;letter-spacing:-.02em}
+@media(max-width:1500px){.kind{display:none}}
+@media(max-width:1180px){.app{grid-template-columns:200px 1fr 300px}.head{padding:22px 22px 14px}.view{padding:0 22px 22px}.head h1{font-size:32px}
+  .find span{display:none}.kind{display:none}.tl{grid-template-columns:190px 1fr}}
+</style>
+</head>
+<body>
+<nav class="switch" aria-label="Scenes"><b>Round 3</b>
+  <button data-s="app" aria-pressed="true">Main window</button>
+  <button data-s="desk" aria-pressed="false">Menu bar and file manager</button>
+  <button data-s="setup" aria-pressed="false">Accounts and folders</button>
+  <button data-s="branches" aria-pressed="false">Branches</button>
+  <button data-s="ignore" aria-pressed="false">Ignore list</button>
+  <i>Sidebar switches views. Ctrl K opens Find. Tick boxes and tag filters are live.</i></nav>
+
+<div class="stage">
+<section class="scene app on" id="app">
+  <aside class="side">
+    <div class="logo">MultiParity</div>
+    <div><button class="proj" id="acct"><small>Cinder Works</small><strong>Emberfall</strong><span>As Justin, work account</span></button>
+    <button class="branch" id="br">Branch <b>Main</b><em>3 more</em></button>
+    </div>
+    <div class="nav" id="nav"></div>
+    <div><h3>Working right now</h3><ul>
+      <li><span class="who" style="background:#c9a6ff;color:#1c0a36">M</span><p>Mara<small>Cape simulation, 40 min</small></p></li>
+      <li><span class="who" style="background:#7dffcf;color:#00241a">T</span><p>Teo<small>Forge door rust texture</small></p></li>
+      <li><span class="who" style="background:#ffd23f;color:#2a2000">D</span><p>Dev<small>Forge interior level</small></p></li></ul></div>
+    <div class="conn">Connected to studio.local<br>Up to date with change 4812</div>
+  </aside>
+  <main class="main">
+    <header class="head"><div><h1 id="title"></h1><p id="sub"></p></div>
+      <button class="find" id="find"><span>Find a file or do something</span><kbd>Ctrl K</kbd></button></header>
+    <div class="view" id="v-today"></div>
+    <div class="view" id="v-files"></div>
+    <div class="view" id="v-history"></div>
+    <div class="view" id="v-people"></div>
+    <div class="view" id="v-drafts"></div>
+  </main>
+  <aside class="work">
+    <h2>Your work</h2><p id="worksub"></p>
+    <ul id="worklist"></ul>
+    <div class="hid"><span>14 files ignored: autosaves and caches</span><button>Show</button></div>
+    <div class="note">Say what you changed</div>
+    <div class="hid"><span>Last checkpoint 6 min ago: before retopo</span><button>Save checkpoint</button></div>
+    <div class="row"><button class="btn">Save draft</button><button class="btn pri" id="pub"></button></div>
+    <div class="nudge"><b>Sana is waiting for hero_body.fbx.</b> You have held it since 9:40.
+      <div class="row"><button class="btn sm">Release it</button><button class="btn sm">Tell her 1 hour</button></div></div>
+  </aside>
+  <div class="veil" id="veil"><div class="pal">
+    <div class="ask">hero<u></u><span>Enter to do it, Esc to close</span></div>
+    <ul id="palres"></ul></div></div>
+</section>
+
+<section class="scene setup" id="setup">
+  <div class="panel">
+    <h2>Accounts on this computer</h2><p>You can be signed in to several at once. Each project uses one of them.</p>
+    <ul class="accts">
+      <li><span class="who" style="background:#ff6a13;color:#1b0b00">J</span><div><strong>Justin, work account</strong><small>studio.local</small>
+        <div class="orgs"><span><b>Cinder Works</b> Admin</span><span><b>Shared Library Guild</b> Member</span></div></div><button class="btn sm">Sign out</button></li>
+      <li><span class="who" style="background:#7a3cff;color:#fff">J</span><div><strong>Justin, freelance account</strong><small>mp.northlight.example</small>
+        <div class="orgs"><span><b>Northlight Games</b> Guest until 14 Dec</span></div></div><button class="btn sm">Sign out</button></li>
+    </ul>
+    <button class="btn sm">Add another account</button>
+    <h3>Which account each project uses</h3>
+    <table class="uses"><thead><tr><th>Project</th><th>Organization</th><th>Publishes as</th><th></th></tr></thead><tbody>
+      <tr><td><b>Emberfall</b></td><td>Cinder Works</td><td><i style="background:#ff6a13"></i>Justin, work</td><td class="r"><button>Change</button></td></tr>
+      <tr><td><b>Tidewrack</b></td><td>Cinder Works</td><td><i style="background:#ff6a13"></i>Justin, work</td><td class="r"><button>Change</button></td></tr>
+      <tr><td><b>Texture library</b></td><td>Shared Library Guild</td><td><i style="background:#ff6a13"></i>Justin, work</td><td class="r"><button>Change</button></td></tr>
+      <tr><td><b>Harbor DLC</b></td><td>Northlight Games</td><td><i style="background:#7a3cff"></i>Justin, freelance</td><td class="r"><button>Change</button></td></tr>
+    </tbody></table>
+  </div>
+  <div class="panel">
+    <h2>Connect Emberfall to a folder</h2><p>D:/Work/Emberfall already has 1,204 files in it. <b>Nothing in this folder will be deleted or replaced.</b></p>
+    <ul class="adopt">
+      <li><b>1,130</b><div><strong>Match the server</strong><small>Already up to date. Nothing to download.</small></div></li>
+      <li style="--k:var(--acc)"><b>38</b><div><strong>Different from the server</strong><small>Kept as they are and shown as Edited. Decide per file later.</small></div></li>
+      <li style="--k:var(--new)"><b>22</b><div><strong>Only on this computer</strong><small>Kept and shown as New.</small></div></li>
+      <li style="--k:var(--line)"><b>14</b><div><strong>Ignored</strong><small>Autosaves and caches, caught by the ignore list. Kept, never shared.</small></div></li>
+      <li style="--k:var(--hold)"><b>310</b><div><strong>On the server, not here yet</strong><small>6.2 GB.</small><label><input type="checkbox" checked> Download them now</label></div></li>
+    </ul>
+    <div class="row"><button class="btn">Choose another folder</button><button class="btn pri">Connect this folder</button></div>
+    <p class="fine">If you later take the server's version of a file, your copy goes to Safety copies on this computer for 30 days first.</p>
+  </div>
+</section>
+
+<section class="scene setup" id="branches">
+  <div class="panel">
+    <h2>Branches of Emberfall</h2><p>A branch is a copy that changes on its own until you merge it back. Making one takes a second and no extra space.</p>
+    <ul class="brs">
+      <li class="here"><div><strong>Main</strong><small>Where finished work lives. At change 4812.</small></div><em>You are here</em></li>
+      <li><div><strong>Wolf rework</strong><small>From Main at 4790. Teo and Mara.</small>
+        <div class="orgs"><span><b>6</b> changes to merge</span><span>Main has <b>3</b> new</span><span>Shares claims with Main</span></div></div><button class="btn sm">Switch</button></li>
+      <li><div><strong>Vertical slice demo</strong><small>From Main at 4760. Dev.</small>
+        <div class="orgs"><span><b>2</b> changes to merge</span><span>Own claims</span><span>Protected</span></div></div><button class="btn sm">Switch</button></li>
+      <li class="gone"><div><strong>Lighting test</strong><small>Merged into Main as change 4803. Archived.</small></div><button class="btn sm">Show</button></li>
+    </ul>
+    <button class="btn sm">New branch from Main</button>
+  </div>
+  <div class="panel">
+    <h2>Merge Wolf rework into Main</h2><p>This becomes one change on Main, 4813, listing the 6 changes it came from.</p>
+    <ul class="adopt">
+      <li style="--k:var(--new)"><b>Done</b><div><strong>Updated from Main</strong><small>3 new changes brought in, 41 files. A branch has to be up to date before it can merge.</small></div></li>
+      <li><b>27</b><div><strong>Changed only on this branch</strong><small>Go in as they are.</small></div></li>
+      <li><b>2</b><div><strong>Text files changed on both</strong><small>Merged automatically. Nothing overlapped.</small></div></li>
+      <li style="--k:var(--line)"><b>0</b><div><strong>Models and textures changed on both</strong><small>Cannot happen here: this branch shares claims with Main.</small></div></li>
+    </ul>
+    <div class="versus"><div class="thumb" style="--h:200"></div><div><strong>ember_wolf.fbx</strong><small>If a branch has its own claims and a file changed on both sides, you see both and pick one. The other stays in history.</small>
+      <div class="row"><button class="btn sm" disabled>Keep this branch's</button><button class="btn sm" disabled>Keep Main's</button></div></div><div class="thumb" style="--h:230"></div></div>
+    <div class="row"><button class="btn">Ask for review</button><button class="btn pri">Merge into Main</button></div>
+  </div>
+</section>
+
+<section class="scene setup" id="ignore">
+  <div class="panel">
+    <h2>Ignore hero_body_autosave_0142.blend1</h2><p>Right-click any file and choose Ignore. The choices come from its name and folder. Pick how wide the rule should be.</p>
+    <ul class="pick" id="pick"></ul>
+    <div class="seg" id="scope"><button aria-pressed="true">For everyone on Emberfall</button><button aria-pressed="false">Only for me</button></div>
+    <div class="row"><button class="btn">Cancel</button><button class="btn pri" id="ignbtn"></button></div>
+    <p class="fine" id="ignnote"></p>
+  </div>
+  <div class="panel">
+    <h2>Ignore list for Emberfall</h2><p>Files matching these stay on your computer and are never published.</p>
+    <div class="check"><span>Check a name</span><b>wolf_run_backup.fbx</b><em>Ignored by *_backup.*</em></div>
+    <table class="uses rules"><thead><tr><th>Pattern</th><th class="r">Matches here</th><th>Added by</th><th></th></tr></thead><tbody>
+      <tr><td><b>Saved/</b> <b>Intermediate/</b> <b>DerivedDataCache/</b></td><td class="r">2,310</td><td>Unreal starter list</td><td class="r"><button>Edit</button></td></tr>
+      <tr><td><b>.DS_Store</b> <b>Thumbs.db</b> <b>desktop.ini</b></td><td class="r">9</td><td>Starter list</td><td class="r"><button>Edit</button></td></tr>
+      <tr><td><b>*.tmp</b> <b>*~</b></td><td class="r">14</td><td>Starter list</td><td class="r"><button>Edit</button></td></tr>
+      <tr><td><b>*_backup.*</b></td><td class="r">22</td><td>Mara, 3 Nov</td><td class="r"><button>Edit</button></td></tr>
+      <tr><td><b>!Characters/Hero/hero_backup.fbx</b><small>Exception: this one is tracked</small></td><td class="r">1</td><td>Teo, 9 Nov</td><td class="r"><button>Edit</button></td></tr>
+      <tr class="me"><td><b>Characters/Hero/scratch/</b></td><td class="r">8</td><td>You, only for you</td><td class="r"><button>Edit</button></td></tr>
+    </tbody></table>
+    <div class="row"><button class="btn sm">Add a rule</button><button class="btn sm">Add a starter list</button><button class="btn sm">Show the 2,364 ignored files</button></div>
+    <p class="fine">Shared rules are saved in the project as .mpignore, so changes to this list are published and can be rewound like any file. Patterns work the same as .gitignore.</p>
+  </div>
+</section>
+
+<section class="scene desk" id="desk">
+  <div class="menubar"><b>Finder</b><span>File</span><span>Edit</span><span>View</span><span>Go</span><div class="r"><span class="ic"></span><span>Thu 10:52</span></div></div>
+  <div class="win"><header><u></u><u></u><u></u>Emberfall / Characters / Hero</header><div class="icons" id="icons"></div></div>
+  <ul class="ctx"><li>Open</li><li>Quick Look</li><hr><li class="sel">Publish this file</li><li>Leave out of this change</li><li>Ignore, with choices</li><hr><li>Copy link</li></ul>
+  <div class="pop"><h2>Emberfall<small>Up to date with change 4812</small></h2>
+    <div class="rowb"><span>2 newer files, 3.8 GB</span><button class="btn sm">Get latest</button></div>
+    <ul id="poplist"></ul>
+    <div class="note">Say what you changed</div>
+    <div class="row"><button class="btn sm">Save draft</button><button class="btn pri sm" style="padding:9px">Publish 5 files</button></div>
+    <div class="nudge"><b>Sana is waiting for hero_body.fbx.</b><div class="row"><button class="btn sm">Release it</button><button class="btn sm">Tell her 1 hour</button></div></div>
+    <div class="lnk"><span>Open MultiParity</span><span>Pause syncing</span></div></div>
+  <p class="cap"><b>Most days this is the whole app.</b>Badges and right-click actions in the file manager, and a panel in the menu bar. A file you just saved shows as New and is already in your next change.</p>
+</section>
+</div>
+
+<script>
+const files=[
+ {n:'hero_body.fbx',k:'Model',mb:48.2,st:'mine',c:4812,h:18},
+ {n:'hero_body_diffuse.png',k:'Texture',mb:22.1,st:'edited',c:4812,h:32},
+ {n:'hero_body_normal.png',k:'Texture',mb:19.4,st:'new',h:215},
+ {n:'hero_turnaround.mov',k:'Video',mb:88,st:'new',h:350},
+ {n:'hero_cape_sim.abc',k:'Sim cache',mb:1434,st:'theirs',by:'Mara',c:4809,h:265},
+ {n:'ember_wolf.fbx',k:'Model',mb:31.7,st:'behind',c:4806,h:200},
+ {n:'ember_wolf_normal.png',k:'Texture',mb:18,st:'ok',c:4806,h:230},
+ {n:'forge_door.fbx',k:'Model',mb:9.3,st:'ok',c:4790,h:40},
+ {n:'forge_door_rust.png',k:'Texture',mb:12.6,st:'theirs',by:'Teo',c:4801,h:14},
+ {n:'ash_plains_sky.exr',k:'Image',mb:212,st:'ok',c:4775,h:205},
+ {n:'intro_cinematic.mov',k:'Video',mb:3891,st:'behind',c:4811,h:330},
+ {n:'wolf_howl_03.wav',k:'Audio',mb:2.2,st:'edited',c:4812,h:120},
+ {n:'forge_interior.umap',k:'Level',mb:96.4,st:'theirs',by:'Dev',c:4810,h:285}];
+const size=mb=>mb>=1000?(mb/1024).toFixed(1)+' GB':(mb>=100?Math.round(mb):mb.toFixed(1))+' MB';
+const label=f=>({mine:'Claimed by you',edited:'Edited',new:'New',theirs:'Claimed by '+f.by,behind:'Newer available',ok:'Up to date'})[f.st];
+const short=f=>({mine:'Yours',edited:'Edited',new:'New',theirs:f.by,behind:'Newer'})[f.st];
+const $=id=>document.getElementById(id);
+const T=h=>`<div class="thumb" style="--h:${h}"></div>`;
+const par=(n,done,now=0)=>`<div class="parity">${Array.from({length:n},(_,i)=>`<s class="${i<done?'d':i<done+now?'n':''}"></s>`).join('')}</div>`;
+const W=(l,bg,fg)=>`<span class="who" style="background:${bg};color:${fg}">${l}</span>`;
+const mine=files.filter(f=>['mine','edited','new'].includes(f.st));
+const picked=new Set(mine.map(f=>f.n));
+
+// your work
+function work(){
+  $('worklist').innerHTML=mine.map(f=>`<li class="${picked.has(f.n)?'':'off'}"><input type="checkbox" aria-label="Include ${f.n}" data-n="${f.n}" ${picked.has(f.n)?'checked':''}>${T(f.h)}
+   <div><strong class="el">${f.n}</strong><small>${f.st==='new'?'<b>New</b>, ':f.st==='mine'?'Claimed, not edited, ':'Edited, '}${size(f.mb)}</small></div></li>`).join('');
+  const on=mine.filter(f=>picked.has(f.n)),mb=on.reduce((a,f)=>a+f.mb,0),nw=on.filter(f=>f.st==='new').length;
+  $('worksub').textContent=on.length?`${on.length} of ${mine.length} files going into change 4813${nw?', '+nw+' of them new':''}. ${size(mb)} to send.`:'Nothing ticked. Tick the files you want to publish.';
+  $('pub').textContent=on.length?`Publish ${on.length} file${on.length>1?'s':''}`:'Publish';$('pub').disabled=!on.length}
+$('worklist').onchange=e=>{const n=e.target.dataset.n;e.target.checked?picked.add(n):picked.delete(n);work()};
+work();
+
+// today
+const feed=[
+ ['Today',4812,1,'Hero body retopo, first pass','Sana','#ffd23f','#2a2000','9:02',[18,32,25],4],
+ ['',4811,1,'Intro cinematic, colour pass and new end card','Dev','#ffd23f','#2a2000','8:40',[330,345],0],
+ ['',4810,0,'Forge interior lighting rebuilt after door change','Dev','#ffd23f','#2a2000','8:15',[285,40,14],11],
+ ['Yesterday',4809,0,'Cape sim, longer settle so it stops popping','Mara','#c9a6ff','#1c0a36','17:48',[265],0]];
+$('v-today').innerHTML=feed.map(([d,n,nw,t,w,bg,fg,tm,hs,more])=>`${d?`<div class="day">${d}</div>`:''}
+ <article class="chg ${nw?'fresh':''}"><div class="n">${n}<small>${nw?'New for you':'You have it'}</small></div><div class="body">
+ <h2>${t}</h2><div class="by">${W(w[0],bg,fg)}${w} at ${tm}</div>
+ <div class="strip">${hs.map(T).join('')}${more?`<div class="more">${more} more</div>`:''}</div></div></article>`).join('');
+
+// files
+const tagc={'Approved':'#00806a','Needs review':'#ff6a13','Hero asset':'#7a3cff','HDRI':'#1b1324','Blocked':'#c2185b'};
+const tags={'hero_body.fbx':['Hero asset','Needs review'],'hero_body_diffuse.png':['Hero asset'],'hero_cape_sim.abc':['Hero asset','Blocked'],'ash_plains_sky.exr':['HDRI','Approved'],'intro_cinematic.mov':['Approved'],'forge_door.fbx':['Approved'],'ember_wolf.fbx':['Needs review']};
+const chip=t=>`<span class="tag" style="--t:${tagc[t]}">${t}</span>`;
+$('v-files').innerHTML=`<div class="crumb">Emberfall <span>/</span> Characters <span>/</span> Hero <button class="btn sm" style="margin-left:auto">Add files</button><button class="btn sm">Get latest (2)</button></div>
+<div class="tagbar" id="tagbar"><button class="tagf" data-t="" aria-pressed="true">All files</button>${Object.keys(tagc).map(t=>`<button class="tagf" data-t="${t}" aria-pressed="false" style="--t:${tagc[t]}">${t}</button>`).join('')}<button class="tagf add">New tag</button></div>
+<table><thead><tr><th>Name</th><th>Status</th><th>Tags</th><th class="kind">Kind</th><th class="r">Size</th><th class="r">Change</th></tr></thead><tbody>
+${files.map(f=>`<tr class="${f.st}" data-tags="${(tags[f.n]||[]).join('|')}"><td>${T(f.h)}${f.n}</td><td><span class="st">${label(f)}</span></td><td>${(tags[f.n]||[]).map(chip).join('')||'<button class="addtag">Add tag</button>'}</td><td class="kind" style="color:var(--mute)">${f.k}</td><td class="r">${size(f.mb)}</td><td class="r">${f.c||'Not published'}</td></tr>`).join('')}</tbody></table>
+<div class="drop"><b>Drop files here to add them to Hero.</b> Or save them into the folder; they show up here as New by themselves.</div>`;
+$('tagbar').onclick=e=>{const b=e.target.closest('.tagf');if(!b||b.classList.contains('add'))return;
+  document.querySelectorAll('.tagf').forEach(x=>x.setAttribute('aria-pressed',x===b));
+  document.querySelectorAll('#v-files tbody tr').forEach(r=>r.hidden=!!b.dataset.t&&!r.dataset.tags.split('|').includes(b.dataset.t))};
+
+// history
+const chg=[4760,4775,4790,4801,4806,4809,4810,4811,4812,4813];
+const hl=f=>{if(f.st==='new')return '<b style="grid-column:1/10"></b><i class="new">New</i>';
+  const i=chg.indexOf(f.c);let o=chg.map((c,j)=>j===i||(j<i&&(f.h+j*7)%4===0)?'<i></i>':'<b></b>');
+  if(f.st==='theirs'){o=o.slice(0,i+1);o.push(`<i class="hold" style="grid-column:${i+2}/11">${f.by} is working</i>`)}
+  if(f.st==='mine'||f.st==='edited'){o=o.slice(0,9);o.push(`<i class="mine">${f.st==='mine'?'Claimed':'Edited'}</i>`)}
+  if(f.st==='behind')o[i]='<i class="miss"></i>';return o.join('')};
+$('v-history').innerHTML=`<div class="key"><span><u style="background:#c3b8d3"></u>Changed</span><span><u style="border:1.5px solid var(--ink)"></u>You do not have it yet</span><span><u style="background:#b497ff"></u>Someone is working</span><span><u style="background:#ff9a5e"></u>Yours</span><span><u style="background:var(--new)"></u>New</span></div>
+<div class="tl"><div class="hd l">File</div><div class="hd ruler">${chg.map((c,i)=>`<span class="${i===8?'now':i===9?'next':''}">${i===9?'Next':c}</span>`).join('')}</div>
+${files.map(f=>`<div class="trk">${T(f.h)}<span class="el">${f.n}</span></div><div class="lane">${hl(f)}</div>`).join('')}</div>`;
+
+// people
+const card=(f,t)=>`<li>${T(f.h)}<div><strong class="el">${f.n}</strong><small>${t}</small></div></li>`;
+const F=n=>files.find(f=>f.n===n);
+$('v-people').innerHTML=`<div class="wall">
+<section class="p" style="--c:#ffe1cf"><h2>You</h2><p>5 files not published</p><ul>${mine.map(f=>card(f,f.st==='new'?'New, '+size(f.mb):f.st==='mine'?'Claimed since 9:40':'Edited, '+size(f.mb))).join('')}</ul><div class="wait">Sana is waiting for hero_body.fbx</div></section>
+<section class="p" style="--c:#e6dbff"><h2>Mara</h2><p>Working for 40 min</p><ul>${card(F('hero_cape_sim.abc'),'1.4 GB, since 10:12')}</ul><button class="btn sm">Ask to release</button></section>
+<section class="p" style="--c:#d3f3e8"><h2>Teo</h2><p>Working for 2 hours</p><ul>${card(F('forge_door_rust.png'),'12.6 MB, since 8:50')}</ul><button class="btn sm">Ask to release</button></section>
+<section class="p" style="--c:#fbeeb8"><h2>Dev</h2><p>Published 4811 at 8:40</p><ul>${card(F('forge_interior.umap'),'96.4 MB, since 8:20')}</ul><button class="btn sm">Ask to release</button></section>
+<section class="p" style="--c:#ece9f1"><h2>Sana</h2><p>Nothing claimed</p><div class="wait">Waiting on you for hero_body.fbx</div><button class="btn sm">Tell her 1 hour</button></section></div>`;
+
+// drafts
+$('v-drafts').innerHTML=`<article class="chg"><div class="n">Draft<small>Tuesday</small></div><div class="body"><h2>Villager 02, half-finished rig</h2>
+ <div class="by">Saved on the server. Only you can see it until you publish.</div><div class="strip">${T(160)}${T(175)}</div>
+ <div class="row" style="margin-top:14px"><button class="btn sm">Pick back up</button><button class="btn sm">Share with someone</button><button class="btn sm">Delete draft</button></div></div></article>`;
+
+// nav
+const views={today:['Today','Today in Emberfall','Four changes since you last got latest. Two of them touch folders you have on this computer.'],
+ files:['Files','Hero','13 files. 2 are new and only on this computer until you publish them.'],
+ history:['History','History of Hero','Each column is a change. The dark line is where your copy is; everything right of it is not published yet.'],
+ people:['People','Who has what','Four people have files claimed. Everything else is free to pick up.'],
+ drafts:['Drafts','Your drafts','Unfinished work saved on the server without publishing.']};
+const counts={files:'13',drafts:'1'};
+$('nav').innerHTML=Object.entries(views).map(([k,v])=>`<button data-v="${k}">${v[0]}<em>${counts[k]||''}</em></button>`).join('');
+const go=v=>{if(!views[v])v='today';document.querySelectorAll('#nav button').forEach(b=>b.dataset.v===v?b.setAttribute('aria-current','page'):b.removeAttribute('aria-current'));
+  document.querySelectorAll('.view').forEach(e=>e.classList.toggle('on',e.id==='v-'+v));$('title').textContent=views[v][1];$('sub').textContent=views[v][2];state.v=v;sync()};
+$('nav').onclick=e=>{const b=e.target.closest('button');b&&go(b.dataset.v)};
+
+// palette
+const pr=(f,a,sel)=>`<li class="${sel?'sel':''}">${T(f.h)}<div><strong>${f.n}</strong><small>${label(f)}, ${size(f.mb)}</small></div><em>${a}</em></li>`;
+$('palres').innerHTML=pr(F('hero_body.fbx'),'Release',1)+pr(F('hero_body_normal.png'),'Publish')+pr(F('hero_cape_sim.abc'),'Ask Mara')+
+ `<li><span class="plus">+</span><div><strong>Add files to Hero</strong><small>Pick files from anywhere on this computer</small></div><em>Add</em></li>`+
+ `<li><span class="plus">/</span><div><strong>Rewind Hero to an earlier change</strong><small>Your copy only, until you publish</small></div><em>Rewind</em></li>`;
+$('acct').onclick=()=>scene('setup');$('br').onclick=()=>scene('branches');
+const pal=on=>$('veil').classList.toggle('on',on);
+$('find').onclick=()=>pal(true);$('veil').onclick=e=>e.target===$('veil')&&pal(false);
+
+// menu bar scene
+$('icons').innerHTML=files.slice(0,8).map(f=>`<div class="${f.st} ${f.n==='hero_body_normal.png'?'hit':''}">${T(f.h)}${f.st!=='ok'?`<span class="bdg">${short(f)}</span>`:''}<span class="el" style="display:block">${f.n}</span></div>`).join('');
+$('poplist').innerHTML=mine.map((f,i)=>`<li>${T(f.h)}<div><span class="el" style="display:block;font-weight:500">${f.n}</span><small>${f.st==='new'?'<b>New</b>':f.st==='mine'?'Claimed':'Edited'}, ${size(f.mb)}</small></div>${par(8,[0,5,0,0,8][i],[0,1,0,0,0][i])}</li>`).join('');
+
+// ignore chooser
+const picks=[
+ ['Only this file','Characters/Hero/hero_body_autosave_0142.blend1',1,'11 MB'],
+ ['Files named like this','hero_body_autosave_*.blend1',37,'410 MB'],
+ ['Anything with autosave in the name','*autosave*',112,'1.3 GB'],
+ ['This kind of file, in this folder','Characters/Hero/*.blend1',41,'452 MB'],
+ ['This kind of file, everywhere','*.blend1',240,'2.9 GB'],
+ ['Everything in this folder','Characters/Hero/',54,'1.9 GB','6 are already published']];
+let pk=1;
+function drawPick(){
+  $('pick').innerHTML=picks.map((p,i)=>`<li class="${i===pk?'on':''}" data-i="${i}"><input type="radio" name="pk" aria-label="${p[0]}" ${i===pk?'checked':''}>
+   <div><strong>${p[0]}</strong><code>${p[1]}</code></div><em>${p[2]} file${p[2]>1?'s':''}, ${p[3]}${p[4]?`<b>${p[4]}</b>`:''}</em></li>`).join('');
+  const p=picks[pk];$('ignbtn').textContent=`Ignore ${p[2]} file${p[2]>1?'s':''}`;
+  $('ignnote').textContent=p[4]?'6 matching files are already published. They stay tracked unless you choose to stop tracking them; only future files are ignored.':'Ignored files stay on your computer. They are never published and never show as New.'}
+$('pick').onclick=e=>{const li=e.target.closest('li');if(li){pk=+li.dataset.i;drawPick()}};
+$('scope').onclick=e=>{if(e.target.tagName==='BUTTON')[...$('scope').children].forEach(b=>b.setAttribute('aria-pressed',b===e.target))};
+drawPick();
+
+// scenes and keys
+const state={s:'app',v:'today'};
+const sync=()=>history.replaceState(0,'','#'+state.s+(state.s==='app'?'/'+state.v:''));
+const scene=s=>{state.s=s;document.querySelectorAll('.switch button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.s===s));
+  document.querySelectorAll('.scene').forEach(e=>e.classList.toggle('on',e.id===s));sync()};
+document.querySelector('.switch').onclick=e=>e.target.dataset.s&&scene(e.target.dataset.s);
+addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();scene('app');pal(!$('veil').classList.contains('on'))}
+  if(e.key==='Escape')pal(false)});
+const [hs,hv]=location.hash.slice(1).split('/');
+go(hv);scene(['desk','setup','branches','ignore'].includes(hs)?hs:'app');if(hv==='find')pal(true);
+</script>
+</body>
+</html>

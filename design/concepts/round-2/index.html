@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MultiParity concepts, round 2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400..900&family=Sofia+Sans:wght@300..800&family=Sofia+Sans+Condensed:wght@400..800&family=Red+Hat+Display:wght@400..900&family=Onest:wght@300..800&family=Urbanist:wght@300..800&family=Geist:wght@300..700&family=Unbounded:wght@300..800&family=Hanken+Grotesk:wght@300..800&family=Familjen+Grotesk:wght@400..700&family=Syne:wght@500..800&family=Spline+Sans+Mono:wght@300..700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;border-radius:0}
+html,body{height:100%}
+body{background:#0c0c0d;color:#ddd;font:14px/1.4 "Hanken Grotesk",system-ui,sans-serif;overflow:hidden}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+button:focus-visible,[tabindex]:focus-visible{outline:2px solid currentColor;outline-offset:2px}
+ul{list-style:none}
+.switch{height:46px;display:flex;align-items:stretch;background:#0c0c0d;border-bottom:1px solid #2a2a2c;white-space:nowrap;overflow-x:auto}
+.switch b{font-weight:600;padding:0 16px;display:flex;align-items:center;color:#fff}
+.switch button{padding:0 13px;color:#8b8b90;border-left:1px solid #2a2a2c;font-size:13px}
+.switch button[aria-pressed=true]{background:#fff;color:#000}
+.stage{height:calc(100% - 46px)}
+.concept{display:none;height:100%;overflow:hidden}
+.concept.on{display:grid}
+.concept>*{min-width:0;min-height:0}
+.thumb{position:relative;overflow:hidden;flex:none;background:linear-gradient(135deg,hsl(var(--h) 55% 46%),hsl(calc(var(--h) + 40) 60% 22%))}
+.thumb::after{content:"";position:absolute;inset:0;background:
+  radial-gradient(circle at 30% 25%,hsl(calc(var(--h) + 20) 90% 78% / .55),transparent 45%),
+  repeating-linear-gradient(115deg,transparent 0 14px,rgb(0 0 0 / .08) 14px 15px)}
+.parity{display:flex;gap:2px}
+.parity s{flex:1;height:8px;background:var(--p-off)}
+.parity s.d{background:var(--p-on)}.parity s.n{background:var(--p-now)}
+.who{display:inline-grid;place-items:center;width:22px;height:22px;font-size:11px;font-weight:700;flex:none}
+.el{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* D Darkroom: film strips */
+.d{--p-off:#3a3532;--p-on:#efe9e1;--p-now:#ff4a3d;grid-template-columns:84px 1fr 310px;background:#121110;color:#efe9e1;font-family:"Schibsted Grotesk",sans-serif}
+.d .rail{background:#0b0a0a;display:flex;flex-direction:column;gap:2px;padding:14px 8px;font-size:12px}
+.d .rail b{font-weight:800;font-size:15px;padding:0 6px 18px;letter-spacing:-.03em}
+.d .rail span{padding:10px 6px;color:#8f877d}.d .rail .sel{background:#ff4a3d;color:#160301;font-weight:600}
+.d .main{overflow:auto;padding:26px 28px}
+.d h1{font-size:34px;font-weight:800;letter-spacing:-.035em;line-height:1}
+.d h1+p{color:#8f877d;margin:8px 0 22px}
+.d .strip{margin-bottom:26px}
+.d .strip h2{font-size:15px;font-weight:600;margin-bottom:8px;display:flex;gap:10px;align-items:baseline}
+.d .strip h2 small{color:#8f877d;font-weight:400;font-size:13px}
+.d .film{display:flex;gap:3px;background:#000;padding:16px 10px;overflow:hidden;
+  background-image:repeating-linear-gradient(90deg,#2a2725 0 9px,transparent 9px 22px),repeating-linear-gradient(90deg,#2a2725 0 9px,transparent 9px 22px);
+  background-size:100% 6px;background-position:0 5px,0 calc(100% - 5px);background-repeat:no-repeat}
+.d .fr{width:150px;flex:none}
+.d .fr .thumb{height:104px}
+.d .fr.sel .thumb{outline:3px solid #ff4a3d}
+.d .fr p{font-size:12px;margin-top:5px}.d .fr small{font-size:11.5px;color:#8f877d;display:block}
+.d .fr.mine small,.d .fr.edited small{color:#ff4a3d}.d .fr.theirs small{color:#f2b53a}.d .fr.behind small{color:#efe9e1}
+.d .side{background:#1b1918;padding:22px;display:flex;flex-direction:column;gap:14px;overflow:auto}
+.d .side .thumb{height:190px}
+.d .side h3{font-size:22px;font-weight:700;letter-spacing:-.02em}
+.d .side p{color:#b5ada3;font-size:13.5px}
+.d .btn{padding:11px 14px;font-weight:600;border:1px solid #4a4440;text-align:center}
+.d .btn.pri{background:#ff4a3d;border-color:#ff4a3d;color:#160301}
+.d .side hr{border:0;border-top:1px solid #33302d;margin:6px 0}
+
+/* E Blueprint: column browser */
+.e{--p-off:#b9c9dc;--p-on:#0e2a4a;--p-now:#0a4bd6;grid-template-rows:56px 1fr 58px;background:#e8eef5;color:#0e2a4a;font-family:"Sofia Sans",sans-serif;font-size:15px;
+  background-image:linear-gradient(#d5e0ec 1px,transparent 1px),linear-gradient(90deg,#d5e0ec 1px,transparent 1px);background-size:24px 24px}
+.e .bar{display:flex;align-items:center;gap:16px;padding:0 20px;border-bottom:2px solid #0e2a4a;background:#e8eef5}
+.e .bar b{font-family:"Sofia Sans Condensed",sans-serif;font-size:26px;font-weight:800;letter-spacing:-.01em}
+.e .bar span{color:#4f6a89}
+.e .btn{padding:8px 16px;font-weight:700;border:2px solid #0e2a4a;background:#e8eef5}
+.e .btn.pri{background:#0a4bd6;border-color:#0a4bd6;color:#fff}
+.e .cols{display:grid;grid-template-columns:170px 190px 190px 1fr 300px;overflow:hidden}
+.e .col{border-right:1px solid #9db3cc;overflow:auto;background:rgb(232 238 245 / .85)}
+.e .col h4{font-family:"Sofia Sans Condensed",sans-serif;font-weight:700;font-size:15px;padding:10px 14px;border-bottom:1px solid #9db3cc;color:#4f6a89}
+.e .col li{padding:8px 14px;display:flex;justify-content:space-between;gap:8px;align-items:center}
+.e .col li.sel{background:#0e2a4a;color:#fff}
+.e .col li em{font-style:normal;font-size:13px;color:#4f6a89}.e .col li.sel em{color:#b9c9dc}
+.e .col li .tag{font-size:12.5px;font-weight:700;padding:1px 7px;border:1.5px solid currentColor;flex:none}
+.e .theirs .tag{color:#d9480f}.e .mine .tag,.e .edited .tag{color:#0a4bd6}.e li.sel .tag{color:#fff}
+.e .prev{padding:18px;overflow:auto;background:#f4f7fb;display:flex;flex-direction:column;gap:12px;border-right:0}
+.e .prev .thumb{height:170px;outline:2px solid #0e2a4a}
+.e .prev h3{font-family:"Sofia Sans Condensed",sans-serif;font-size:26px;font-weight:800;line-height:1.05}
+.e .prev dl{display:grid;grid-template-columns:auto 1fr;gap:4px 14px}.e .prev dt{color:#4f6a89}
+.e .foot{display:flex;align-items:center;gap:16px;padding:0 20px;border-top:2px solid #0e2a4a;background:#e8eef5}
+.e .foot .parity{width:200px}.e .foot .btn:first-of-type{margin-left:auto}
+
+/* F Two sides: this computer and the server */
+.f{--p-off:#cfc4ae;--p-on:#1f2a2a;--p-now:#0e3a3c;grid-template-columns:1fr 150px 1fr;font-family:"Red Hat Display",sans-serif;font-size:14.5px}
+.f .pane{padding:26px 28px;overflow:auto}
+.f .here{background:#efe7d8;color:#1f2a2a}
+.f .there{background:#0e3a3c;color:#e6f2ee}
+.f h1{font-size:30px;font-weight:800;letter-spacing:-.03em;line-height:1.05}
+.f h1+p{margin:6px 0 20px;opacity:.7}
+.f li{display:grid;grid-template-columns:44px 1fr auto;gap:12px;align-items:center;padding:9px 0;border-top:1px solid rgb(0 0 0 / .14)}
+.f .there li{border-color:rgb(255 255 255 / .16)}
+.f li .thumb{width:44px;height:44px}
+.f li strong{font-weight:600;display:block}.f li small{opacity:.65;font-size:13px}
+.f li em{font-style:normal;font-weight:700;font-size:13px}
+.f .here li em{color:#b5400a}.f .there li em{color:#d7f25c}
+.f .mid{background:#16191a;color:#fff;display:flex;flex-direction:column;justify-content:center;gap:34px;padding:0 14px;text-align:center}
+.f .go{padding:18px 8px 16px;font-weight:800;font-size:16px;position:relative}
+.f .go small{display:block;font-weight:500;font-size:12.5px;opacity:.75;margin-top:2px}
+.f .go.out{background:#d7f25c;color:#16191a;clip-path:polygon(0 0,86% 0,100% 50%,86% 100%,0 100%)}
+.f .go.in{background:#efe7d8;color:#16191a;clip-path:polygon(14% 0,100% 0,100% 100%,14% 100%,0 50%)}
+.f .mid p{font-size:12.5px;color:#9aa5a5}
+
+/* G Board: status columns */
+.g{--p-off:#d9d6d0;--p-on:#1d1c1a;--p-now:#0a8f5b;grid-template-rows:64px 1fr;background:#f1f0ee;color:#1d1c1a;font-family:"Onest",sans-serif}
+.g .bar{display:flex;align-items:center;gap:14px;padding:0 22px}
+.g .bar h1{font-size:24px;font-weight:700;letter-spacing:-.03em}
+.g .bar span{color:#77736c}.g .bar div{margin-left:auto;display:flex;gap:4px}
+.g .lanes{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;padding:0 22px 18px;overflow:hidden}
+.g .lane{background:#e6e4e0;display:flex;flex-direction:column;min-height:0;border-top:4px solid var(--c)}
+.g .lane h2{font-size:15px;font-weight:700;padding:12px 12px 2px;letter-spacing:-.01em}
+.g .lane h2+p{font-size:12.5px;color:#77736c;padding:0 12px 10px}
+.g .lane ul{flex:1;overflow:auto;padding:0 8px;display:flex;flex-direction:column;gap:8px}
+.g .lane li{background:#fff;padding:8px;box-shadow:0 1px 0 #cfccc5}
+.g .lane li .thumb{height:74px;margin-bottom:7px}
+.g .lane li strong{font-size:13px;font-weight:600;display:block}
+.g .lane li small{font-size:12px;color:#77736c}
+.g .lane .btn{margin:10px 8px 8px;padding:10px;font-weight:700;background:var(--c);color:#fff;text-align:center}
+.g .lane .btn.q{background:none;color:#1d1c1a;border:1.5px solid #1d1c1a}
+
+/* H Timeline: files as tracks, changes as time */
+.h{--p-off:#2c3750;--p-on:#e8ecf5;--p-now:#ff7aa8;grid-template-rows:54px 1fr 58px;background:#141a26;color:#e8ecf5;font-family:"Urbanist",sans-serif;font-size:14.5px}
+.h .bar,.h .foot{display:flex;align-items:center;gap:16px;padding:0 18px;background:#1c2434}
+.h .bar b{font-size:20px;font-weight:800;letter-spacing:-.02em}.h .bar span{color:#8492ad}
+.h .btn{padding:8px 16px;font-weight:700;border:1px solid #3b4a6b}
+.h .btn.pri{background:#ff7aa8;border-color:#ff7aa8;color:#2a0714}
+.h .tl{overflow:auto;display:grid;grid-template-columns:270px 1fr;align-content:start}
+.h .hd{position:sticky;top:0;z-index:2;background:#141a26;border-bottom:1px solid #2c3750;height:44px;display:flex;align-items:center}
+.h .hd.l{padding:0 18px;color:#8492ad;font-weight:600}
+.h .ruler{display:grid;grid-template-columns:repeat(10,1fr)}
+.h .ruler span{font-weight:700;font-variant-numeric:tabular-nums;font-size:13px;color:#8492ad;padding-left:6px;border-left:1px solid #2c3750;height:44px;display:flex;align-items:center}
+.h .ruler span.now{color:#141a26;background:#6fe3ff}
+.h .ruler span.next{color:#ff7aa8;border-left:2px dashed #ff7aa8}
+.h .trk{height:46px;border-bottom:1px solid #212a3d;display:flex;align-items:center;gap:10px;padding:0 18px}
+.h .trk .thumb{width:28px;height:28px}
+.h .lane{height:46px;border-bottom:1px solid #212a3d;display:grid;grid-template-columns:repeat(10,1fr);align-items:center;
+  background:linear-gradient(90deg,transparent calc(90% - 1px),#6fe3ff calc(90% - 1px) calc(90% + 1px),transparent calc(90% + 1px))}
+.h .lane i{height:22px;background:#44557a;margin:0 3px}
+.h .lane i.hold{background:repeating-linear-gradient(135deg,#ffb45c 0 6px,#c9832f 6px 12px);color:#241300;font-style:normal;font-size:12px;font-weight:700;padding:2px 8px;white-space:nowrap;overflow:hidden}
+.h .lane i.mine{background:repeating-linear-gradient(135deg,#ff7aa8 0 6px,#d95584 6px 12px);color:#2a0714;font-style:normal;font-size:12px;font-weight:700;padding:2px 8px;white-space:nowrap;overflow:hidden}
+.h .lane i.miss{background:none;border:1.5px solid #e8ecf5}
+.h .foot .parity{width:200px}.h .foot .btn:first-of-type{margin-left:auto}
+.h .key{display:flex;gap:6px;align-items:center;color:#8492ad;font-size:13px}.h .key u{width:14px;height:10px;display:block}
+
+/* I Menu bar: lives in the tray and the file manager */
+.i{--p-off:#d4d2dc;--p-on:#1a1a1e;--p-now:#5b3df5;position:relative;font-family:"Geist",sans-serif;color:#1a1a1e;font-size:13.5px;
+  background:radial-gradient(120% 90% at 80% 0%,#ffb88a 0%,#e56aa0 30%,#5b3df5 62%,#141033 100%)}
+.i .menubar{position:absolute;inset:0 0 auto 0;height:28px;background:rgb(255 255 255 / .32);backdrop-filter:blur(20px);display:flex;align-items:center;gap:18px;padding:0 16px;font-size:13px;font-weight:500}
+.i .menubar b{font-weight:700}.i .menubar .r{margin-left:auto;display:flex;gap:14px;align-items:center}
+.i .menubar .ic{width:16px;height:16px;background:#1a1a1e;outline:3px solid rgb(255 255 255 / .6)}
+.i .pop{position:absolute;top:36px;right:22px;width:372px;background:rgb(248 248 251 / .9);backdrop-filter:blur(40px);box-shadow:0 24px 70px rgb(10 5 40 / .45),0 0 0 1px rgb(0 0 0 / .1);padding:16px;display:flex;flex-direction:column;gap:12px}
+.i .pop h2{font-size:17px;font-weight:650;letter-spacing:-.02em}
+.i .pop h2 small{display:block;font-weight:400;font-size:13px;color:#6b6a75;letter-spacing:0}
+.i .rowb{display:flex;gap:8px;align-items:center;justify-content:space-between;background:#fff;padding:9px 10px;box-shadow:0 0 0 1px rgb(0 0 0 / .08)}
+.i .pop li{display:grid;grid-template-columns:34px 1fr 70px;gap:10px;align-items:center;padding:7px 0;border-top:1px solid rgb(0 0 0 / .08)}
+.i .pop li .thumb{width:34px;height:34px}.i .pop li small{color:#6b6a75;display:block;font-size:12px}
+.i .field{background:#fff;box-shadow:0 0 0 1px rgb(0 0 0 / .12);padding:9px 10px;color:#6b6a75}
+.i .btn{padding:7px 12px;font-weight:600;box-shadow:0 0 0 1px rgb(0 0 0 / .2);background:#fff}
+.i .btn.pri{background:#5b3df5;color:#fff;box-shadow:none;padding:10px}
+.i .nudge{background:#fff3c9;padding:10px;font-size:13px}.i .nudge div{display:flex;gap:6px;margin-top:8px}
+.i .win{position:absolute;left:5%;top:86px;width:min(52%,620px);background:#fbfbfd;box-shadow:0 24px 70px rgb(10 5 40 / .4),0 0 0 1px rgb(0 0 0 / .12)}
+.i .win header{height:40px;display:flex;align-items:center;gap:8px;padding:0 14px;background:#ececf1;font-weight:600}
+.i .win header u{width:12px;height:12px;border-radius:50%;background:#fe5f57}.i .win header u:nth-child(2){background:#febc2e}.i .win header u:nth-child(3){background:#28c840;margin-right:10px}
+.i .icons{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;padding:18px}
+.i .icons div{text-align:center;font-size:12px;position:relative}
+.i .icons .thumb{height:70px;margin-bottom:6px}
+.i .icons .bdg{position:absolute;left:4px;top:52px;z-index:1;padding:1px 6px;font-size:11px;font-weight:700;color:#fff;background:#5b3df5}
+.i .icons .theirs .bdg{background:#d9580f}.i .icons .behind .bdg{background:#1a1a1e}
+.i .ctx{position:absolute;left:46%;top:150px;width:216px;background:rgb(246 246 249 / .94);backdrop-filter:blur(30px);box-shadow:0 14px 40px rgb(0 0 0 / .3),0 0 0 1px rgb(0 0 0 / .12);padding:5px;z-index:3}
+.i .ctx li{padding:5px 10px}.i .ctx li.sel{background:#5b3df5;color:#fff}.i .ctx hr{border:0;border-top:1px solid rgb(0 0 0 / .12);margin:5px 0}
+.i .ctx li.off{color:#a3a2ad}
+
+/* J Vault: one field does everything */
+.j{--p-off:#4f61ff;--p-on:#fff;--p-now:#b8ffd9;grid-template-rows:52px 1fr;background:#1f35ff;color:#fff;font-family:"Hanken Grotesk",sans-serif;font-size:15px}
+.j .bar{display:flex;align-items:center;gap:14px;padding:0 22px;font-weight:600}
+.j .bar b{font-family:"Unbounded",sans-serif;font-weight:700;font-size:14px}
+.j .bar .ppl{margin-left:auto;display:flex;gap:4px;align-items:center}.j .bar .ppl span{font-weight:400;opacity:.8;margin-right:6px}
+.j .mid{overflow:auto;padding:5vh 22px 30px}
+.j .col{max-width:760px;margin:0 auto}
+.j h1{font-family:"Unbounded",sans-serif;font-size:clamp(28px,4vw,46px);font-weight:700;letter-spacing:-.04em;line-height:1.05;margin-bottom:22px}
+.j .ask{background:#fff;color:#0a1033;display:flex;align-items:center;padding:0 18px;height:64px;font-size:22px;font-weight:500}
+.j .ask u{text-decoration:none;border-right:3px solid #1f35ff;height:28px;margin-left:1px}
+.j .ask span{margin-left:auto;font-size:13px;color:#6a7199}
+.j .res{background:#0a1033}
+.j .res li{display:grid;grid-template-columns:40px 1fr auto;gap:14px;align-items:center;padding:10px 18px;border-top:1px solid #1c2557}
+.j .res li.sel{background:#b8ffd9;color:#0a1033}
+.j .res .thumb{width:40px;height:40px}
+.j .res small{display:block;opacity:.7;font-size:13px}
+.j .res em{font-style:normal;font-weight:700;font-size:14px;padding:6px 12px;border:1.5px solid currentColor}
+.j .ready{margin-top:30px;display:flex;gap:14px;align-items:center;border-top:1px solid #4f61ff;padding-top:20px}
+.j .ready .thumb{width:56px;height:56px}
+.j .ready p{font-weight:600}.j .ready p small{display:block;font-weight:400;opacity:.8}
+.j .btn{padding:13px 20px;font-weight:700;border:1.5px solid #fff}
+.j .btn.pri{background:#b8ffd9;border-color:#b8ffd9;color:#0a1033;margin-left:auto}
+
+/* K Map: the project by size and status */
+.k{--p-off:#3a3a3f;--p-on:#f2f2f0;--p-now:#5d7bff;grid-template-columns:260px 1fr;grid-template-rows:1fr 58px;background:#1a1a1c;color:#f2f2f0;font-family:"Familjen Grotesk",sans-serif;font-size:15px}
+.k .side{grid-row:1/3;padding:24px 20px;display:flex;flex-direction:column;gap:20px;border-right:1px solid #303034;overflow:auto}
+.k .side h1{font-size:30px;font-weight:700;letter-spacing:-.03em;line-height:1}
+.k .side h1 small{display:block;font-size:15px;font-weight:400;color:#9a9aa0;letter-spacing:0;margin-top:8px;line-height:1.3}
+.k .leg li{display:grid;grid-template-columns:18px 1fr auto;gap:10px;align-items:center;padding:7px 0;border-top:1px solid #303034}
+.k .leg u{width:18px;height:18px;display:block}.k .leg em{font-style:normal;color:#9a9aa0}
+.k .map{display:grid;grid-template-columns:repeat(12,1fr);grid-template-rows:repeat(8,1fr);gap:3px;padding:3px}
+.k .blk{padding:10px 12px;overflow:hidden;background:#34343a;display:flex;flex-direction:column;justify-content:space-between}
+.k .blk strong{font-weight:600;font-size:14px;line-height:1.15;word-break:break-word}
+.k .blk small{font-size:13px;opacity:.8}
+.k .blk.tiny{flex-direction:row;align-items:center;gap:10px;padding:0 12px}.k .blk.tiny strong{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.k .blk.tiny small{white-space:nowrap}
+.k .blk.big strong{font-size:26px;letter-spacing:-.02em}
+.k .mine,.k .edited{background:#5d7bff;color:#060b26}
+.k .edited{background:repeating-linear-gradient(135deg,#5d7bff 0 10px,#7d95ff 10px 20px)}
+.k .theirs{background:#ff9b3d;color:#291300}
+.k .behind{background:#f2f2f0;color:#1a1a1c}
+.k .foot{display:flex;align-items:center;gap:16px;padding:0 16px;border-top:1px solid #303034}
+.k .foot .parity{width:180px}
+.k .btn{padding:9px 16px;font-weight:700;border:1px solid #55555c}
+.k .foot .btn:first-of-type{margin-left:auto}
+.k .btn.pri{background:#5d7bff;border-color:#5d7bff;color:#060b26}
+
+/* L Wall: who has what */
+.l{grid-template-rows:auto 1fr;background:#f5f6f8;color:#17171c;font-family:"Hanken Grotesk",sans-serif;font-size:14.5px}
+.l .bar{padding:24px 26px 18px;display:flex;align-items:flex-end;gap:20px}
+.l .bar h1{font-family:"Syne",sans-serif;font-size:38px;font-weight:800;letter-spacing:-.04em;line-height:.95}
+.l .bar p{color:#62626e;max-width:44ch}
+.l .btn{padding:10px 16px;font-weight:700;border:1.5px solid #17171c;background:#fff;text-align:center}
+.l .bar .btn{margin-left:auto}
+.l .wall{display:grid;grid-template-columns:1.25fr repeat(4,1fr);gap:0;overflow:hidden}
+.l .p{background:var(--c);padding:18px 16px;display:flex;flex-direction:column;gap:10px;min-height:0;overflow:auto}
+.l .p h2{font-family:"Syne",sans-serif;font-size:26px;font-weight:700;letter-spacing:-.03em}
+.l .p h2+p{font-size:13px;margin-top:-8px;opacity:.75}
+.l .p li{background:rgb(255 255 255 / .75);padding:8px;display:grid;grid-template-columns:46px 1fr;gap:10px;align-items:center;margin-bottom:6px}
+.l .p li .thumb{width:46px;height:46px}
+.l .p li strong{font-weight:600;font-size:13.5px;display:block}
+.l .p li small{font-size:12.5px;opacity:.7}
+.l .p .btn.pri{background:#17171c;color:#fff;margin-top:auto}
+.l .p .btn.q{margin-top:auto;background:none}
+.l .p .wait{font-size:13px;font-weight:600;border-left:4px solid #17171c;padding:6px 10px;background:rgb(255 255 255 / .6)}
+
+/* M Plain: text first, keys for everything */
+.m{grid-template-columns:1fr 330px;grid-template-rows:1fr 44px;background:#e9efe8;color:#10261c;font-family:"Spline Sans Mono",monospace;font-size:13.5px}
+.m .out{padding:26px 30px;overflow:auto;line-height:1.75}
+.m .out h1{font-size:20px;font-weight:700;letter-spacing:-.02em}
+.m .out h1+p{color:#5d7266;margin-bottom:18px}
+.m h2{font-size:13.5px;font-weight:700;margin-top:20px;display:flex;gap:14px;border-bottom:1.5px solid #10261c;padding-bottom:2px}
+.m h2 span{font-weight:400;color:#5d7266;margin-left:auto}
+.m .r{display:grid;grid-template-columns:22px minmax(0,2.2fr) 1fr 90px 1.6fr;gap:12px;padding:1px 6px}
+.m .r.sel{background:#10261c;color:#e9efe8}
+.m .r span:nth-child(4){text-align:right}
+.m .r .mk{font-weight:700;color:#c2187a}.m .r.sel .mk{color:#ff8ac8}
+.m .r .dim{color:#5d7266}.m .r.sel .dim{color:#a9bdb0}
+.m .side{border-left:1.5px solid #10261c;padding:22px;display:flex;flex-direction:column;gap:12px;overflow:auto}
+.m .side .thumb{height:180px}
+.m .side h3{font-size:15px;font-weight:700}
+.m .side p{color:#5d7266;line-height:1.5}
+.m .msg{border:1.5px solid #10261c;padding:10px;min-height:90px;background:#f4f8f3;line-height:1.5}
+.m .msg u{text-decoration:none;background:#c2187a;color:#c2187a}
+.m .keys{grid-column:1/3;display:flex;gap:22px;align-items:center;padding:0 30px;background:#10261c;color:#e9efe8}
+.m .keys b{background:#e9efe8;color:#10261c;padding:1px 7px;margin-right:7px;font-weight:700}
+.m .keys .go b{background:#ff8ac8}
+</style>
+</head>
+<body>
+<nav class="switch" aria-label="Concepts"><b>Round 2</b></nav>
+<div class="stage" id="stage"></div>
+
+<script>
+const files=[
+ {n:'hero_body.fbx',k:'Model',s:'48.2 MB',st:'mine',c:4812,h:18,f:'Hero'},
+ {n:'hero_body_diffuse.png',k:'Texture',s:'22.1 MB',st:'edited',c:4812,h:32,f:'Hero'},
+ {n:'hero_cape_sim.abc',k:'Sim cache',s:'1.4 GB',st:'theirs',by:'Mara',c:4809,h:265,f:'Hero'},
+ {n:'ember_wolf.fbx',k:'Model',s:'31.7 MB',st:'behind',c:4806,h:200,f:'Ember wolf'},
+ {n:'ember_wolf_normal.png',k:'Texture',s:'18.0 MB',st:'ok',c:4806,h:230,f:'Ember wolf'},
+ {n:'forge_door.fbx',k:'Model',s:'9.3 MB',st:'ok',c:4790,h:40,f:'Forge'},
+ {n:'forge_door_rust.png',k:'Texture',s:'12.6 MB',st:'theirs',by:'Teo',c:4801,h:14,f:'Forge'},
+ {n:'ash_plains_sky.exr',k:'Image',s:'212 MB',st:'ok',c:4775,h:205,f:'Forge'},
+ {n:'campfire_loop.wav',k:'Audio',s:'6.1 MB',st:'ok',c:4760,h:48,f:'Ember wolf'},
+ {n:'intro_cinematic.mov',k:'Video',s:'3.8 GB',st:'behind',c:4811,h:330,f:'Hero'},
+ {n:'wolf_howl_03.wav',k:'Audio',s:'2.2 MB',st:'edited',c:4812,h:120,f:'Ember wolf'},
+ {n:'forge_interior.umap',k:'Level',s:'96.4 MB',st:'theirs',by:'Dev',c:4810,h:285,f:'Forge'}];
+const label=f=>({mine:'Claimed by you',edited:'Edited',theirs:'Claimed by '+f.by,behind:'Newer available',ok:'Up to date'})[f.st];
+const par=(n,done,now=0)=>`<div class="parity">${Array.from({length:n},(_,i)=>`<s class="${i<done?'d':i<done+now?'n':''}"></s>`).join('')}</div>`;
+const T=(h,style='')=>`<div class="thumb" style="--h:${h};${style}"></div>`;
+const by=st=>files.filter(f=>[].concat(st).includes(f.st));
+const mine=by(['mine','edited']);
+const W=(l,bg,fg)=>`<span class="who" style="background:${bg};color:${fg}">${l}</span>`;
+const C={};
+
+C.d=['Darkroom',`
+<nav class="rail"><b>mp</b><span class="sel">Files</span><span>My work</span><span>Parked</span><span>People</span><span>History</span></nav>
+<main class="main"><h1>Characters and sets</h1><p>Emberfall, change 4812. Each strip is a folder, each frame a file.</p>
+${['Hero','Ember wolf','Forge'].map(g=>`<section class="strip"><h2>${g}<small>${files.filter(f=>f.f===g).length} files</small></h2><div class="film">
+${files.filter(f=>f.f===g).map(f=>`<div class="fr ${f.st} ${f.n==='hero_cape_sim.abc'?'sel':''}">${T(f.h)}<p class="el">${f.n}</p><small>${label(f)}</small></div>`).join('')}</div></section>`).join('')}</main>
+<aside class="side">${T(265)}<h3>hero_cape_sim.abc</h3><p>Mara claimed this 40 minutes ago. 1.4 GB, last changed in 4809.</p>
+<button class="btn">Ask Mara to release</button><button class="btn">Show history</button><hr>
+<p>3 of your files are edited, 71 MB to send.</p>${par(20,8,2)}<button class="btn pri">Publish 3 files</button><button class="btn">Park</button></aside>`];
+
+C.e=['Columns',`
+<header class="bar"><b>MultiParity</b><span>studio.local</span><span style="margin-left:auto">Search Emberfall</span><button class="btn">Get latest (2)</button></header>
+<div class="cols">
+<div class="col"><h4>Projects</h4><ul><li class="sel">Emberfall<em>244</em></li><li>Tidewrack<em>1,912</em></li><li>Shared library<em>630</em></li></ul></div>
+<div class="col"><h4>Emberfall</h4><ul><li class="sel">Characters<em>38</em></li><li>Environments<em>112</em></li><li>Audio<em>64</em></li><li>Cinematics<em>9</em></li><li>Levels<em>21</em></li></ul></div>
+<div class="col"><h4>Characters</h4><ul><li class="sel">Hero<em>12</em></li><li>Ember wolf<em>9</em></li><li>Villagers<em>17</em></li></ul></div>
+<div class="col"><h4>Hero</h4><ul>${files.map((f,i)=>`<li class="${f.st} ${i===2?'sel':''}"><span class="el">${f.n}</span>${f.st==='ok'?`<em>${f.s}</em>`:`<span class="tag">${f.st==='theirs'?f.by:f.st==='behind'?'Newer':f.st==='mine'?'Yours':'Edited'}</span>`}</li>`).join('')}</ul></div>
+<div class="col prev">${T(265)}<h3>hero_cape_sim.abc</h3><dl><dt>Held by</dt><dd><b>Mara</b>, 40 min</dd><dt>Size</dt><dd>1.4 GB</dd><dt>Change</dt><dd>4809</dd><dt>Kind</dt><dd>Simulation cache</dd></dl>
+<button class="btn">Ask Mara to release</button><button class="btn">Show history</button></div></div>
+<footer class="foot">${par(24,10,2)}<span><b>3 edited files</b>, 71 MB to send</span><button class="btn">Park</button><button class="btn pri">Publish 3 files</button></footer>`];
+
+const row=(f,tag)=>`<li>${T(f.h)}<div><strong class="el">${f.n}</strong><small>${f.s}, ${f.k.toLowerCase()}</small></div><em>${tag}</em></li>`;
+C.f=['Two sides',`
+<section class="pane here"><h1>On this computer</h1><p>Your copy of Emberfall. 3 files are ahead of the server.</p><ul>
+${mine.map(f=>row(f,f.st==='mine'?'Claimed':'Edited')).join('')}${by('ok').slice(0,4).map(f=>row(f,'')).join('')}</ul></section>
+<div class="mid"><button class="go out">Publish 3<small>71 MB out</small></button><button class="go in">Get latest<small>2 files, 3.8 GB in</small></button><p>Up to date with change 4812 otherwise</p></div>
+<section class="pane there"><h1>On the server</h1><p>What the studio has. 2 files are newer than yours.</p><ul>
+${by('behind').map(f=>row(f,'Newer')).join('')}${by('theirs').map(f=>row(f,f.by+' has it')).join('')}${by('ok').slice(0,2).map(f=>row(f,'')).join('')}</ul></section>`];
+
+const lane=(t,sub,c,fs,btn,q)=>`<section class="lane" style="--c:${c}"><h2>${t}</h2><p>${sub}</p><ul>${fs.map(f=>`<li>${T(f.h)}<strong class="el">${f.n}</strong><small>${f.by?f.by+', ':''}${f.s}</small></li>`).join('')}</ul>${btn?`<button class="btn ${q?'q':''}">${btn}</button>`:''}</section>`;
+C.g=['Board',`
+<header class="bar"><h1>Emberfall</h1><span>Characters, change 4812</span><div>${W('M','#ffb86b','#2a1500')}${W('T','#7fd9b0','#00261a')}${W('D','#c9a6ff','#1c0a36')}${W('S','#ffe06b','#2a2000')}</div></header>
+<div class="lanes">
+${lane('Newer on the server','2 files, 3.8 GB','#1d1c1a',by('behind'),'Get latest')}
+${lane('Claimed by you','Nobody else can publish these','#5b4bd6',by('mine'),'Release',1)}
+${lane('Edited','Ready when you are','#0a8f5b',by('edited'),'Publish 2 files')}
+${lane('Parked','Saved on the server, not published','#77736c',[{n:'villager_02_wip.fbx',s:'27.4 MB',h:160}],'Pick back up',1)}
+${lane('Claimed by others','Ask if you need one','#b4541a',by('theirs'),'Ask to release',1)}</div>`];
+
+const chg=[4760,4775,4790,4801,4806,4809,4810,4811,4812,4813];
+const hl=f=>{const i=chg.indexOf(f.c);let o=chg.map((c,j)=>j===i||(j<i&&(f.h+j*7)%4===0)?'<i></i>':'<b></b>');
+  if(f.st==='theirs'){o=o.slice(0,i+1);o.push(`<i class="hold" style="grid-column:${i+2}/11">${f.by} is working</i>`)}
+  if(f.st==='mine'||f.st==='edited'){o=o.slice(0,9);o.push(`<i class="mine">${f.st==='mine'?'Claimed':'Edited'}</i>`)}
+  if(f.st==='behind'){o[i]='<i class="miss"></i>'}
+  return o.join('')};
+C.h=['Timeline',`
+<header class="bar"><b>Emberfall</b><span>Characters</span>
+<div class="key" style="margin-left:auto"><u style="background:#44557a"></u>Changed<u style="border:1.5px solid #e8ecf5"></u>You do not have it yet<u style="background:#ffb45c"></u>Someone is working<u style="background:#ff7aa8"></u>Yours</div>
+<button class="btn">Get latest (2)</button></header>
+<div class="tl"><div class="hd l">File</div><div class="hd ruler">${chg.map((c,i)=>`<span class="${i===8?'now':i===9?'next':''}">${i===9?'Next':c}</span>`).join('')}</div>
+${files.map(f=>`<div class="trk">${T(f.h)}<span class="el">${f.n}</span></div><div class="lane">${hl(f)}</div>`).join('')}</div>
+<footer class="foot">${par(24,10,2)}<span><b>Your next change, 4813.</b> 3 files, 71 MB</span><button class="btn">Park</button><button class="btn pri">Publish 3 files</button></footer>`];
+
+C.i=['Menu bar',`
+<div class="menubar"><b>Finder</b><span>File</span><span>Edit</span><span>View</span><span>Go</span><div class="r"><span class="ic"></span><span>Thu 10:52</span></div></div>
+<div class="win"><header><u></u><u></u><u></u>Emberfall / Characters / Hero</header><div class="icons">
+${files.slice(0,8).map(f=>`<div class="${f.st}">${T(f.h)}${f.st!=='ok'?`<span class="bdg">${f.st==='theirs'?f.by:f.st==='behind'?'Newer':f.st==='mine'?'Yours':'Edited'}</span>`:''}<span>${f.n}</span></div>`).join('')}</div></div>
+<ul class="ctx"><li>Open</li><li>Quick Look</li><hr><li class="sel">Ask Mara to release</li><li class="off">Claim</li><li>Get latest</li><li>Show history</li><li>Rewind to an earlier change</li><hr><li>Copy link</li></ul>
+<div class="pop"><h2>Emberfall<small>Up to date with change 4812</small></h2>
+<div class="rowb"><span>2 newer files, 3.8 GB</span><button class="btn">Get latest</button></div>
+<ul>${mine.map((f,i)=>`<li>${T(f.h)}<div><span class="el" style="display:block;font-weight:500">${f.n}</span><small>${f.st==='mine'?'Claimed':'Edited'}, ${f.s}</small></div>${par(8,[0,5,8][i],[0,1,0][i])}</li>`).join('')}</ul>
+<div class="field">Say what you changed</div><button class="btn pri">Publish 3 files</button>
+<div class="nudge"><b>Sana is waiting for hero_body.fbx.</b><div><button class="btn">Release it</button><button class="btn">Tell her 1 hour</button></div></div>
+<div style="display:flex;justify-content:space-between;color:#6b6a75;font-size:12.5px"><span>Open MultiParity</span><span>Pause syncing</span></div></div>`];
+
+const res=(f,a,sel)=>`<li class="${sel?'sel':''}">${T(f.h)}<div><strong>${f.n}</strong><small>${label(f)}, ${f.s}</small></div><em>${a}</em></li>`;
+C.j=['Vault',`
+<header class="bar"><b>MultiParity</b><span>Emberfall</span><div class="ppl"><span>6 here now</span>${W('M','#ffb86b','#2a1500')}${W('T','#b8ffd9','#00261a')}${W('D','#fff','#1f35ff')}${W('S','#ffe06b','#2a2000')}</div></header>
+<main class="mid"><div class="col"><h1>What are you working on?</h1>
+<div class="ask">hero<u></u><span>Enter to claim, Tab for more</span></div>
+<ul class="res">${res(files[0],'Release',1)}${res(files[1],'Publish')}${res(files[2],'Ask Mara')}${res(files[9],'Get latest')}</ul>
+<div class="ready">${mine.map(f=>T(f.h)).join('')}<p>3 files ready to publish<small>71 MB, will be change 4813</small></p><button class="btn">Park</button><button class="btn pri" style="margin-left:0">Publish 3 files</button></div>
+</div></main>`];
+
+const area={'intro_cinematic.mov':'1/1/7/7','hero_cape_sim.abc':'1/7/6/11','ash_plains_sky.exr':'1/11/4/13','forge_interior.umap':'4/11/6/13','hero_body.fbx':'6/7/9/9','ember_wolf.fbx':'6/9/8/11','hero_body_diffuse.png':'6/11/8/13','ember_wolf_normal.png':'7/1/9/3','forge_door_rust.png':'7/3/9/5','forge_door.fbx':'7/5/9/7','campfire_loop.wav':'8/9/9/11','wolf_howl_03.wav':'8/11/9/13'};
+C.k=['Map',`
+<aside class="side"><h1>5.9 GB<small>in Emberfall / Characters. Bigger block, bigger file.</small></h1>
+<ul class="leg"><li><u style="background:#5d7bff"></u>Yours<em>3</em></li><li><u style="background:#ff9b3d"></u>Someone else has it<em>3</em></li><li><u style="background:#f2f2f0"></u>Newer on the server<em>2</em></li><li><u style="background:#34343a;outline:1px solid #55555c"></u>Up to date<em>4</em></li></ul>
+<div><p style="color:#9a9aa0;margin-bottom:8px">Working now</p><p>Mara, Teo, Dev</p></div></aside>
+<main class="map">${files.map(f=>`<div class="blk ${f.st} ${/GB/.test(f.s)?'big':/\.wav/.test(f.n)?'tiny':''}" style="grid-area:${area[f.n]}"><strong>${f.n}</strong><small>${f.s}${f.by?', '+f.by:''}</small></div>`).join('')}</main>
+<footer class="foot">${par(22,9,2)}<span><b>3 edited files</b>, 71 MB to send</span><button class="btn">Get latest (2)</button><button class="btn">Park</button><button class="btn pri">Publish 3 files</button></footer>`];
+
+const card=(f,t)=>`<li>${T(f.h)}<div><strong class="el">${f.n}</strong><small>${t}</small></div></li>`;
+C.l=['Wall',`
+<header class="bar"><h1>Who has what</h1><p>Emberfall today. Five people have files claimed; everything else is free to pick up.</p><button class="btn">Get latest (2)</button></header>
+<div class="wall">
+<section class="p" style="--c:#cfe0ff"><h2>You</h2><p>3 files, 71 MB not published</p><ul>${mine.map(f=>card(f,f.st==='mine'?'Claimed since 9:40':'Edited, '+f.s)).join('')}</ul>
+ <div class="wait">Sana is waiting for hero_body.fbx</div><button class="btn pri">Publish 3 files</button></section>
+<section class="p" style="--c:#ffd9c2"><h2>Mara</h2><p>Working for 40 min</p><ul>${card(files[2],'1.4 GB, since 10:12')}</ul><button class="btn q">Ask to release</button></section>
+<section class="p" style="--c:#c8f0dc"><h2>Teo</h2><p>Working for 2 hours</p><ul>${card(files[6],'12.6 MB, since 8:50')}</ul><button class="btn q">Ask to release</button></section>
+<section class="p" style="--c:#e6d4ff"><h2>Dev</h2><p>Published 4811 at 8:40</p><ul>${card(files[11],'96.4 MB, since 8:20')}</ul><button class="btn q">Ask to release</button></section>
+<section class="p" style="--c:#fff1a8"><h2>Sana</h2><p>Nothing claimed</p><div class="wait">Waiting on you for hero_body.fbx</div><button class="btn q">Tell her 1 hour</button></section></div>`];
+
+const mr=(f,mk,note,sel)=>`<div class="r ${sel?'sel':''}"><span class="mk">${mk}</span><span class="el">${f.n}</span><span class="dim">${f.k}</span><span>${f.s}</span><span class="dim el">${note}</span></div>`;
+C.m=['Plain',`
+<main class="out"><h1>Emberfall / Characters</h1><p>Change 4812. studio.local. 6 people online.</p>
+<h2>Yours, 3 files <span>71 MB to send</span></h2>${mine.map((f,i)=>mr(f,f.st==='mine'?'C':'E',f.st==='mine'?'claimed 9:40, Sana is waiting':'edited',i===1)).join('')}
+<h2>Newer on the server, 2 files <span>3.8 GB</span></h2>${by('behind').map(f=>mr(f,'N','change '+f.c)).join('')}
+<h2>Claimed by others, 3 files</h2>${by('theirs').map(f=>mr(f,'',f.by+' has it')).join('')}
+<h2>Up to date, 4 files</h2>${by('ok').map(f=>mr(f,'','change '+f.c)).join('')}</main>
+<aside class="side">${T(32)}<h3>hero_body_diffuse.png</h3><p>Edited 6 minutes ago. 4096 by 4096. Was 21.8 MB in change 4806.</p>
+<h3>Next change, 4813</h3><div class="msg">Hero body retopo and new diffuse. Wolf howl trimmed to loop cleanly.<u>.</u></div></aside>
+<footer class="keys"><span class="go"><b>P</b>Publish 3 files</span><span><b>G</b>Get latest</span><span><b>K</b>Park</span><span><b>C</b>Claim</span><span><b>R</b>Release</span><span><b>Space</b>Preview</span><span><b>/</b>Find</span></footer>`];
+
+const ids=Object.keys(C),nav=document.querySelector('.switch'),stage=document.getElementById('stage');
+ids.forEach((id,i)=>{nav.insertAdjacentHTML('beforeend',`<button data-c="${id}">${id.toUpperCase()} ${C[id][0]}</button>`);
+  stage.insertAdjacentHTML('beforeend',`<section class="concept ${id}" id="${id}">${C[id][1]}</section>`)});
+const show=c=>{nav.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.c===c));
+  stage.querySelectorAll('.concept').forEach(s=>s.classList.toggle('on',s.id===c));history.replaceState(0,'','#'+c)};
+nav.onclick=e=>e.target.dataset.c&&show(e.target.dataset.c);
+addEventListener('keydown',e=>{const cur=ids.indexOf(location.hash.slice(1));
+  if(e.key==='ArrowRight')show(ids[(cur+1)%ids.length]);if(e.key==='ArrowLeft')show(ids[(cur+ids.length-1)%ids.length]);
+  if(/^[0-9]$/.test(e.key))show(ids[(+e.key+9)%10])});
+const fromHash=()=>show(ids.includes(location.hash.slice(1))?location.hash.slice(1):ids[0]);
+addEventListener('hashchange',fromHash);fromHash();
+</script>
+</body>
+</html>

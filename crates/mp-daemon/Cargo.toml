@@ -1,0 +1,18 @@
+[package]
+name = "mp-daemon"
+description = "MultiParity background daemon: local API, auto-claim, auto-checkpoints"
+version.workspace = true
+edition.workspace = true
+license = "Apache-2.0"
+
+[dependencies]
+mp-core = { path = "../mp-core" }
+mp-client = { path = "../mp-client" }
+anyhow.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+uuid.workspace = true
+axum = "0.7"
+tower-http = { version = "0.5", features = ["cors", "fs"] }

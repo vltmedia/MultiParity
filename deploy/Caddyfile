@@ -1,0 +1,24 @@
+# HTTPS in front of MultiParity, used by `docker compose --profile https up -d`.
+#
+# MP_DOMAIN  the name people type, e.g. mp.yourstudio.com. Point its DNS at this machine and
+#            open ports 80 and 443 to it.
+# MP_TLS     an email address: a real certificate from Let's Encrypt, renewed by itself (the
+#            email gets expiry warnings). "internal": Caddy's own certificate, for testing on a
+#            private network; computers will not trust it until Caddy's root is installed.
+
+{$MP_DOMAIN} {
+	tls {$MP_TLS:internal}
+
+	# Large uploads go in parts of a few MB, so no body limit is needed here.
+	reverse_proxy server:18500 {
+		# Live updates (server-sent events) must reach the browser as they happen.
+		flush_interval -1
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "same-origin"
+		-Server
+	}
+}

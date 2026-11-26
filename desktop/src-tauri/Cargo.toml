@@ -1,0 +1,33 @@
+[package]
+name = "multiparity-desktop"
+description = "MultiParity desktop app"
+version = "0.1.0"
+edition = "2021"
+license = "AGPL-3.0-only"
+
+# Built on its own (not part of the server workspace): it needs the platform's webview SDK.
+[workspace]
+
+[lib]
+name = "multiparity_desktop"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon"] }
+tauri-plugin-dialog = "2"
+tauri-plugin-opener = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["full"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+dirs = "5"
+mp-client = { path = "../../crates/mp-client" }
+mp-daemon = { path = "../../crates/mp-daemon" }
+
+[profile.release]
+lto = "thin"
+strip = true

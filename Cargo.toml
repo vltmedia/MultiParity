@@ -1,0 +1,35 @@
+[workspace]
+resolver = "2"
+exclude = ["desktop"]
+members = ["crates/mp-core", "crates/mp-server", "crates/mp-client", "crates/mp-daemon", "crates/mp-cli"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "AGPL-3.0-only"
+
+[workspace.dependencies]
+anyhow = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+blake3 = "1.5"
+fastcdc = "3.1"
+zstd = "0.13"
+hex = "0.4"
+bytes = "1"
+uuid = { version = "1", features = ["v4", "serde"] }
+chrono = { version = "0.4", default-features = false, features = ["clock", "serde", "std"] }
+tokio = { version = "1", features = ["full"] }
+futures = "0.3"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+ignore = "0.4"
+globset = "0.4"
+walkdir = "2"
+diffy = "0.4"
+rand = "0.8"
+
+[profile.release]
+lto = "thin"
+codegen-units = 4
+strip = true

@@ -1,0 +1,12 @@
+/target
+**/node_modules
+/web/dist
+/desktop/src-tauri/target
+/desktop/src-tauri/gen
+.env
+*.log
+/tmp
+# Written by scripts/dev/seed-demo.sh next to .env; holds demo passwords
+demo-accounts.txt
+# Local editor and assistant settings
+/.claude/
