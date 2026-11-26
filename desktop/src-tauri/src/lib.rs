@@ -59,6 +59,33 @@ async fn open_server_page(app: AppHandle, account_id: String, path: String) -> R
     Ok(())
 }
 
+/// A path inside one of the folders synced on this computer, or an error. Keeps the page from
+/// opening anything else.
+fn inside_synced_folder(path: &str) -> Result<std::path::PathBuf, String> {
+    let p = std::path::PathBuf::from(path);
+    let p = std::fs::canonicalize(&p).map_err(|_| format!("{path} is not on this computer (it may not be synced here)."))?;
+    let roots = mp_client::workspace::Registry::workspaces().map_err(|e| e.to_string())?;
+    if roots.iter().filter_map(|r| std::fs::canonicalize(r).ok()).any(|r| p.starts_with(&r)) {
+        Ok(p)
+    } else {
+        Err("That file is not in a synced folder.".into())
+    }
+}
+
+/// Open a synced file in the app the system uses for it.
+#[tauri::command]
+fn open_path(path: String) -> Result<(), String> {
+    let p = inside_synced_folder(&path)?;
+    tauri_plugin_opener::open_path(p, None::<&str>).map_err(|e| e.to_string())
+}
+
+/// Show a synced file in Explorer or Finder.
+#[tauri::command]
+fn reveal_path(path: String) -> Result<(), String> {
+    let p = inside_synced_folder(&path)?;
+    tauri_plugin_opener::reveal_item_in_dir(p).map_err(|e| e.to_string())
+}
+
 fn show_main(app: &AppHandle) {
     if let Some(w) = app.get_webview_window("main") {
         let _ = w.show();
@@ -84,7 +111,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![pick_folder, default_root, open_server_page])
+        .invoke_handler(tauri::generate_handler![pick_folder, default_root, open_server_page, open_path, reveal_path])
         .setup(|app| {
             // The daemon runs inside the app unless the command-line one is already running.
             tauri::async_runtime::spawn(async {

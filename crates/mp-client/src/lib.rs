@@ -18,4 +18,5 @@ pub mod workspace;
 
 pub use accounts::{Account, Accounts};
 pub use api::Api;
+pub use reqwest::Method as HttpMethod;
 pub use workspace::Workspace;

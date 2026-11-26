@@ -14,6 +14,7 @@ var work = {
   conflict: null,
   busy: null,
   timer: null,
+  tab: "work", // work, files, history, branches, drafts (project.js)
   close() {
     clearInterval(this.timer);
     this.timer = null;
@@ -67,6 +68,8 @@ async function openWork(wsId) {
     work.keepMine = new Set();
     work.conflict = null;
     work.status = null;
+    work.tab = "work";
+    proj.reset();
   }
   work.wsId = wsId;
   for (const g of state.groups) for (const p of g.projects) for (const w of p.workspaces) if (w.id === wsId) Object.assign(work, { ws: w, project: p.project, account: g.account });
@@ -101,6 +104,9 @@ function renderWork() {
   const msg = $("#w-msg");
   if (msg) work.message = msg.value;
   const focused = document.activeElement && document.activeElement.id === "w-msg";
+  const q = $("#p-q");
+  const qFocused = q && document.activeElement === q;
+  const qText = q ? q.value : null;
   const st = work.status;
   const all = files();
   const on = ticked();
@@ -121,6 +127,8 @@ function renderWork() {
     </header>
     ${work.error ? `<div class="notice bad">${esc(work.error)}</div>` : ""}
     ${st && st.checkpoint_notice ? `<div class="notice hold">${esc(st.checkpoint_notice)}</div>` : ""}
+    ${tabsHtml()}
+    ${work.tab !== "work" ? `<div class="ptab">${tabHtml()}</div>` : `
     <div class="work">
       <section class="changes" aria-label="Your changes">
         <div class="bar">
@@ -146,10 +154,12 @@ function renderWork() {
         <p class="note">Publishing sends the ticked files to everyone as one change and releases your claims on them. Unticked files stay as they are.</p>
       </aside>
     </div>
-    ${checkpointsHtml()}`;
+    ${checkpointsHtml()}`}`;
 
   const m = $("#w-msg");
   if (m && focused) { m.focus(); m.setSelectionRange(m.value.length, m.value.length); }
+  const q2 = $("#p-q");
+  if (q2 && qText !== null) { q2.value = qText; if (qFocused) { q2.focus(); q2.setSelectionRange(qText.length, qText.length); } }
 }
 
 function fileRow(f) {
@@ -414,6 +424,12 @@ function openMenu(li, x, y) {
   if (kind !== "new") items.push(["Older versions…", () => versionsDialog(path)]);
   if (kind !== "deleted") items.push(["Leave out of checkpoints…", () => patternDialog(path, "nocheckpoint")]);
   if (kind === "new") items.push(["Ignore…", () => patternDialog(path, "ignore")]);
+  if (tauri && kind !== "deleted") items.push(["Show in folder", () => invoke("reveal_path", { path: absPath(path) })]);
+  showMenu(items, x, y, li);
+}
+
+/** A right-click menu of [label, action] items at x, y; Escape gives focus back to `back`. */
+function showMenu(items, x, y, back) {
   const ul = $("#ctx");
   ul.innerHTML = items.map(([t], i) => `<li role="menuitem" tabindex="-1" data-i="${i}">${esc(t)}</li>`).join("");
   ul.hidden = false;
@@ -426,7 +442,7 @@ function openMenu(li, x, y) {
     if (e.key === "ArrowDown") { e.preventDefault(); all[(at + 1) % all.length].focus(); }
     if (e.key === "ArrowUp") { e.preventDefault(); all[(at - 1 + all.length) % all.length].focus(); }
     if (e.key === "Enter") { e.preventDefault(); document.activeElement.click(); }
-    if (e.key === "Escape") { closeMenu(); li.focus(); }
+    if (e.key === "Escape") { closeMenu(); if (back) back.focus(); }
   };
   ul.firstElementChild.focus();
 }

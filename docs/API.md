@@ -265,6 +265,10 @@ web UI origin and from the desktop app. No auth: it is bound to loopback only.
 | POST | `/local/workspaces/{id}/rewind` | `{checkpoint, paths?: string[]}` | `{files, undo}`: `undo` is the checkpoint taken first |
 | POST | `/local/workspaces/{id}/discard` | `{paths: string[]}` | `{files, undo}` |
 | POST | `/local/workspaces/{id}/draft` | `{title}` | `Draft` |
+| POST | `/local/workspaces/{id}/drafts/{draft}/restore` | | `{files}`: the draft's files written into the folder (current work checkpointed first) |
+| POST | `/local/workspaces/{id}/branch` | `{branch_id}` | `{branch, downloaded, removed, workspace}`; `409` while there is unpublished work |
+| GET, POST | `/local/workspaces/{id}/versions` | `path` / `{path, change, to: 'folder'\|'copy'\|'latest'}` | versions, or what was done |
+| any | `/local/workspaces/{id}/server/{rest}` | passed through | the server's `/api/projects/{project}/{rest}` with the folder's account. Only from the app itself (or that server's web UI); server errors come back unchanged. The desktop app's Files, History, Branches and Drafts tabs use it. `MP_DAEMON_DEV_ORIGIN` allows one more origin for working on those pages in a browser. |
 | POST | `/local/workspaces/{id}/disconnect` | | `{root}` (files stay) |
 | GET | `/local/accounts` | | `Array<{id, server, email, name, label?}>` |
 | POST | `/local/accounts/login` | `{server, email, password, label?}` | account |

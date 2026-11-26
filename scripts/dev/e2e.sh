@@ -462,6 +462,36 @@ check "but none in bob's other folder, which has edits and the default setting" 
 R=$(curl -fs -X POST "$D/workspaces/$WID/publish" -H 'content-type: application/json' -d '{"message":"Published from the app"}')
 check "publish through the daemon" test "$(echo "$R" | jq '.change.number')" -gt 0
 check "suggest ignore choices through the daemon" test "$(curl -fs "$D/workspaces/$WID/ignore/suggest?path=Art/Hero/hero_body.fbx" | jq length)" -ge 3
+
+step "Desktop screens: files, history, branches, claims and drafts through the daemon"
+APP=(-H 'Origin: tauri://localhost' -H 'content-type: application/json')
+BMAIN=$(curl -fs "${APP[@]}" "$D/workspaces/$WID/server/branches" | jq -r '.[] | select(.name=="Main") | .id')
+check "the app lists the folder's files through the daemon" test "$(curl -fs "${APP[@]}" "$D/workspaces/$WID/server/branches/$BMAIN/files?prefix=Art/" | jq 'length')" -ge 2
+check "and its history" test "$(curl -fs "${APP[@]}" "$D/workspaces/$WID/server/changes?branch=$BMAIN&limit=5" | jq 'length')" = 5
+check "a web page cannot use the pass-through" test "$(curl -s -o /dev/null -w '%{http_code}' -H 'Origin: http://localhost:5173' "$D/workspaces/$WID/server/branches")" = 403
+check "paths cannot climb out of the project" test "$(curl -s -o /dev/null -w '%{http_code}' "${APP[@]}" "$D/workspaces/$WID/server/x/../../me")" != 200
+check "server refusals come back as they are" test "$(curl -s -o /dev/null -w '%{http_code}' "${APP[@]}" "$D/workspaces/$WID/server/changes/99999")" = 404
+curl -fs "${APP[@]}" -X POST "$D/workspaces/$WID/server/claims" -d "{\"branch\":\"$BMAIN\",\"paths\":[\"Docs/notes.txt\"],\"device\":\"Desktop app\"}" >/dev/null
+check "claiming from the app" test "$(bob -C "$B" claims --json | jq '[.[] | select(.path=="Docs/notes.txt" and .user.name=="Bob")] | length')" = 1
+curl -fs "${APP[@]}" -X POST "$D/workspaces/$WID/server/claims/release" -d "{\"branch\":\"$BMAIN\",\"paths\":[\"Docs/notes.txt\"]}" >/dev/null
+check "releasing from the app" test "$(bob -C "$B" claims --json | jq '[.[] | select(.path=="Docs/notes.txt")] | length')" = 0
+printf 'app draft\n' > "$B/Docs/app-draft.txt"
+curl -fs "${APP[@]}" -X POST "$D/workspaces/$WID/draft" -d '{"title":"From the app"}' >/dev/null
+DID=$(curl -fs "${APP[@]}" "$D/workspaces/$WID/server/drafts" | jq -r '.[] | select(.title=="From the app") | .id')
+check "the draft is listed" test -n "$DID"
+rm "$B/Docs/app-draft.txt"
+check "switching branches is refused while there is unpublished work" bash -c "printf x > '$B/Docs/tmp-dirty.txt'; test \"\$(curl -s -o /dev/null -w '%{http_code}' -H 'content-type: application/json' -X POST '$D/workspaces/$WID/branch' -d '{\"branch_id\":\"$BMAIN\"}')\" = 409; rm '$B/Docs/tmp-dirty.txt'"
+NB=$(curl -fs "${APP[@]}" -X POST "$D/workspaces/$WID/server/branches" -d "{\"name\":\"app-branch\",\"from\":\"$BMAIN\",\"shares_claims\":true}" | jq -r .id)
+R=$(curl -fs "${APP[@]}" -X POST "$D/workspaces/$WID/branch" -d "{\"branch_id\":\"$NB\"}")
+check "the app switches the folder to a new branch" test "$(echo "$R" | jq -r .workspace.branch_name)" = app-branch
+curl -fs "${APP[@]}" -X POST "$D/workspaces/$WID/drafts/$DID/restore" >/dev/null
+check "picking up the draft writes its file" grep -q "app draft" "$B/Docs/app-draft.txt"
+curl -fs -X POST "$D/workspaces/$WID/publish" -H 'content-type: application/json' -d '{"message":"Draft finished on a branch"}' >/dev/null
+check "merging the branch from the app" test "$(curl -fs "${APP[@]}" -X POST "$D/workspaces/$WID/server/branches/$NB/merge" -d '{"message":"Merge app-branch"}' | jq '.change.number')" -gt 0
+curl -fs "${APP[@]}" -X DELETE "$D/workspaces/$WID/server/drafts/$DID" >/dev/null
+check "deleting the draft" test "$(curl -fs "${APP[@]}" "$D/workspaces/$WID/server/drafts" | jq '[.[] | select(.id=="'"$DID"'")] | length')" = 0
+curl -fs "${APP[@]}" -X POST "$D/workspaces/$WID/branch" -d "{\"branch_id\":\"$BMAIN\"}" >/dev/null
+check "and back on Main the merged file is there" grep -q "app draft" "$B/Docs/app-draft.txt"
 kill $DPID 2>/dev/null || true
 
 step "Backups: back up, restore into a fresh database and storage, and serve from it"

@@ -88,6 +88,16 @@ impl Api {
         self.send(self.req(Method::DELETE, path)).await
     }
 
+    /// Any call, for passing requests through (the desktop app's screens). `path` may carry a
+    /// query string.
+    pub async fn raw(&self, method: Method, path: &str, body: Option<Value>) -> Result<Value> {
+        let mut r = self.req(method, path);
+        if let Some(b) = body {
+            r = r.json(&b);
+        }
+        self.send(r).await
+    }
+
     pub async fn delete_with<B: Serialize, T: DeserializeOwned>(&self, path: &str, body: &B) -> Result<T> {
         self.send(self.req(Method::DELETE, path).json(body)).await
     }

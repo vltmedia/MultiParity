@@ -140,6 +140,9 @@ pub async fn run(listen: &str, interval: u64) -> Result<()> {
         .route("/local/workspaces/:id/rewind", post(rewind))
         .route("/local/workspaces/:id/discard", post(discard))
         .route("/local/workspaces/:id/versions", get(versions).post(version_action))
+        .route("/local/workspaces/:id/server/*rest", axum::routing::any(server_proxy))
+        .route("/local/workspaces/:id/branch", post(switch_branch))
+        .route("/local/workspaces/:id/drafts/:draft/restore", post(restore_draft))
         .route("/local/workspaces/:id/move", post(move_folder))
         .route("/local/accounts", get(accounts))
         .route("/local/accounts/login", post(account_login))
@@ -719,6 +722,81 @@ async fn version_action(State(s): State<DState>, Path(id): Path<String>, Json(b)
         }
         _ => Err(DErr(StatusCode::UNPROCESSABLE_ENTITY, "Choose folder, copy or latest.".into())),
     }
+}
+
+/// The desktop app's screens for the project behind a folder (files, history, branches,
+/// claims, drafts) talk to the server through here with the folder's account, so no token
+/// reaches the page. Only that project's API is reachable, and only from the app itself or that
+/// server's own web app.
+async fn server_proxy(method: Method, headers: axum::http::HeaderMap, Path((id, rest)): Path<(String, String)>, uri: axum::http::Uri, body: axum::body::Bytes) -> Response {
+    let ws = match find_ws(&id) {
+        Ok(ws) => ws,
+        Err(e) => return e.into_response(),
+    };
+    let api = match ops::api_for(&ws) {
+        Ok(a) => a,
+        Err(e) => return DErr::from(e).into_response(),
+    };
+    if let Some(o) = headers.get("origin").and_then(|v| v.to_str().ok()) {
+        let o = o.trim_end_matches('/');
+        let app = o == "tauri://localhost" || o == "http://tauri.localhost" || o == "https://tauri.localhost";
+        // For working on the app's pages in a browser: MP_DAEMON_DEV_ORIGIN=http://127.0.0.1:4176
+        let dev = std::env::var("MP_DAEMON_DEV_ORIGIN").map(|d| d.trim_end_matches('/') == o).unwrap_or(false);
+        if !app && !dev && o != api.server.trim_end_matches('/') {
+            return DErr(StatusCode::FORBIDDEN, "Only the MultiParity app can do this.".into()).into_response();
+        }
+    }
+    if rest.split('/').any(|seg| seg == ".." || seg.is_empty()) {
+        return DErr(StatusCode::BAD_REQUEST, "Bad path.".into()).into_response();
+    }
+    let mut path = format!("/projects/{}/{}", ws.config.project_id, rest);
+    if let Some(q) = uri.query() {
+        path.push('?');
+        path.push_str(q);
+    }
+    let json_body = if body.is_empty() { None } else { serde_json::from_slice::<Value>(&body).ok() };
+    let m = mp_client::HttpMethod::from_bytes(method.as_str().as_bytes()).unwrap_or(mp_client::HttpMethod::GET);
+    match api.raw(m, &path, json_body).await {
+        Ok(v) => Json(v).into_response(),
+        Err(e) => match e.downcast_ref::<mp_client::api::ServerError>() {
+            Some(se) => {
+                let status = StatusCode::from_u16(se.status.as_u16()).unwrap_or(StatusCode::BAD_GATEWAY);
+                (status, Json(json!({ "error": { "code": se.code, "message": se.message, "details": se.details } }))).into_response()
+            }
+            None => DErr(StatusCode::BAD_GATEWAY, format!("{e:#}")).into_response(),
+        },
+    }
+}
+
+#[derive(Deserialize)]
+struct SwitchBody {
+    branch_id: String,
+}
+
+/// Switch the folder to another branch (refused while there is unpublished work).
+async fn switch_branch(State(s): State<DState>, Path(id): Path<String>, Json(b): Json<SwitchBody>) -> DResult<Json<Value>> {
+    let mut ws = find_ws(&id)?;
+    let lock = s.lock_for(&ws.config.id).await;
+    let _g = lock.lock().await;
+    let api = ops::api_for(&ws)?;
+    let target = api
+        .branches(&ws.config.project_id)
+        .await?
+        .into_iter()
+        .find(|x| x.id == b.branch_id)
+        .ok_or_else(|| DErr(StatusCode::NOT_FOUND, "That branch is gone. Refresh and pick another.".into()))?;
+    let r = ops::switch_branch(&api, &mut ws, &target, |_| {}).await.map_err(|e| DErr(StatusCode::CONFLICT, format!("{e:#}")))?;
+    Ok(Json(json!({ "branch": target, "downloaded": r.downloaded.len(), "removed": r.removed.len(), "workspace": ws_json(&ws) })))
+}
+
+/// Put a draft's files into the folder; the current state is checkpointed first.
+async fn restore_draft(State(s): State<DState>, Path((id, draft)): Path<(String, String)>) -> DResult<Json<Value>> {
+    let ws = find_ws(&id)?;
+    let lock = s.lock_for(&ws.config.id).await;
+    let _g = lock.lock().await;
+    let api = ops::api_for(&ws)?;
+    let n = ops::restore_draft(&api, &ws, &draft).await?;
+    Ok(Json(json!({ "files": n })))
 }
 
 #[derive(Deserialize)]
