@@ -3,8 +3,10 @@
 //! /data/exports), whose .zip files can be downloaded from the web app; more targets (a folder,
 //! a NAS, an S3 bucket) are named in MP_EXPORT_TARGETS the same way as storage locations:
 //!
-//!     MP_EXPORT_TARGETS="delivery=s3:bucket=client-delivery;endpoint=https://...;region=auto nas=mount:/data/nas-exports"
-//!     MP_STORAGE_DELIVERY_ACCESS_KEY_ID=...  MP_STORAGE_DELIVERY_SECRET_ACCESS_KEY=...
+//! ```text
+//! MP_EXPORT_TARGETS="delivery=s3:bucket=client-delivery;endpoint=https://...;region=auto nas=mount:/data/nas-exports"
+//! MP_STORAGE_DELIVERY_ACCESS_KEY_ID=...  MP_STORAGE_DELIVERY_SECRET_ACCESS_KEY=...
+//! ```
 //!
 //! Files are streamed part by part, so a 40 GB file never sits in memory. A .zip is written on
 //! this server first (zip64, so files over 4 GB are fine) and then sent to a remote target.

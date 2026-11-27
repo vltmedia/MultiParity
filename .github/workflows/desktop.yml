@@ -1,0 +1,213 @@
+# Release builds of the desktop app and the `mp` command line, on GitHub's machines:
+# Windows (.exe, .msi), macOS (one universal app for Apple silicon and Intel) and Linux
+# (.AppImage, .deb). Push a tag like v0.1.5 (the version in desktop/src-tauri/tauri.conf.json),
+# or start it by hand. Everything lands in a DRAFT release with a merged latest.json; publishing
+# the draft on GitHub is what offers the update to installed apps.
+#
+# Secrets (Settings > Secrets and variables > Actions), see docs/DESKTOP.md:
+#   TAURI_SIGNING_PRIVATE_KEY           the update signing key's contents (required)
+#   TAURI_SIGNING_PRIVATE_KEY_PASSWORD  its password, if it has one
+#   macOS signing and notarizing (optional; without them the Mac app is unsigned):
+#   APPLE_CERTIFICATE                   the Developer ID Application certificate as .p12, base64
+#   APPLE_CERTIFICATE_PASSWORD          the .p12's password
+#   APPLE_SIGNING_IDENTITY              "Developer ID Application: Name (TEAMID)"
+#   APPLE_ID, APPLE_PASSWORD, APPLE_TEAM_ID   notarizing with an app-specific password
+name: Desktop release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      notes:
+        description: "Release notes (one line; edit the draft for more)"
+        required: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: desktop-release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      tag: ${{ steps.v.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: v
+        name: Check the version
+        run: |
+          VERSION=$(node -p "require('./desktop/src-tauri/tauri.conf.json').version")
+          TAG="v$VERSION"
+          if [ "${{ github.ref_type }}" = tag ] && [ "${{ github.ref_name }}" != "$TAG" ]; then
+            echo "::error::The tag ${{ github.ref_name }} does not match the app's version $VERSION (tauri.conf.json)."
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: version
+    name: ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows
+            os: windows-latest
+            key: windows
+          - name: macOS (universal)
+            os: macos-latest
+            key: macos
+          - name: Linux
+            os: ubuntu-22.04
+            key: linux
+    runs-on: ${{ matrix.os }}
+    env:
+      BASE_URL: https://github.com/${{ github.repository }}/releases/download/${{ needs.version.outputs.tag }}
+      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Linux build tools
+        if: matrix.key == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev libssl-dev file
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.key == 'macos' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            . -> target
+            desktop/src-tauri -> target
+          key: release-${{ matrix.key }}
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: desktop/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+        working-directory: desktop
+
+      - name: Check the update signing key is set
+        shell: bash
+        run: |
+          if [ -z "$TAURI_SIGNING_PRIVATE_KEY" ]; then
+            echo "::error::Add the TAURI_SIGNING_PRIVATE_KEY secret (the update signing key), or installed apps cannot verify the update."
+            exit 1
+          fi
+
+      - name: Desktop app (Windows, Linux)
+        if: matrix.key != 'macos'
+        run: npx tauri build
+        working-directory: desktop
+
+      - name: Desktop app (macOS, signed and notarized when the Apple secrets are set)
+        if: matrix.key == 'macos'
+        working-directory: desktop
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          # Unset empty secrets, so an unsigned build is not mistaken for a broken signed one.
+          for v in APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID; do
+            [ -z "${!v}" ] && unset "$v"
+          done
+          [ -z "${APPLE_SIGNING_IDENTITY:-}" ] && echo "::warning::No Apple signing secrets: the Mac app is unsigned and Gatekeeper will warn people."
+          npx tauri build --target universal-apple-darwin
+
+      - name: Collect the installers and latest.json
+        shell: bash
+        run: |
+          BUNDLE=desktop/src-tauri/target/release/bundle
+          ARCH=""
+          if [ "${{ matrix.key }}" = macos ]; then BUNDLE=desktop/src-tauri/target/universal-apple-darwin/release/bundle; ARCH="--arch universal"; fi
+          node scripts/release/desktop-latest.mjs --out out --bundle "$BUNDLE" --base-url "$BASE_URL" --notes "${{ github.event.inputs.notes || format('MultiParity {0}', needs.version.outputs.version) }}" $ARCH
+          # Other installers people may want, beside the ones latest.json names.
+          if [ "${{ matrix.key }}" = windows ]; then cp $BUNDLE/msi/*.msi out/ ; fi
+          if [ "${{ matrix.key }}" = linux ]; then cp $BUNDLE/deb/*.deb out/ ; fi
+          mv out/latest.json "out/latest-${{ matrix.key }}.json"
+          ls -la out
+
+      - name: Command line (mp)
+        shell: bash
+        run: |
+          V=${{ needs.version.outputs.version }}
+          case "${{ matrix.key }}" in
+            windows)
+              cargo build --release --locked --bin mp
+              7z a "out/mp-$V-windows-x86_64.zip" ./target/release/mp.exe ;;
+            macos)
+              cargo build --release --locked --bin mp --target aarch64-apple-darwin
+              cargo build --release --locked --bin mp --target x86_64-apple-darwin
+              lipo -create -output mp target/aarch64-apple-darwin/release/mp target/x86_64-apple-darwin/release/mp
+              tar czf "out/mp-$V-macos-universal.tar.gz" mp ;;
+            linux)
+              cargo build --release --locked --bin mp
+              tar czf "out/mp-$V-linux-x86_64.tar.gz" -C target/release mp ;;
+          esac
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.key }}
+          path: out/*
+          if-no-files-found: error
+
+  release:
+    needs: [version, build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: parts
+          pattern: release-*
+          merge-multiple: true
+      - name: One latest.json for every system
+        run: |
+          node -e '
+            const fs = require("fs");
+            const parts = fs.readdirSync("parts").filter((f) => /^latest-.*\.json$/.test(f));
+            const out = { platforms: {}, downloads: {}, sizes: {} };
+            for (const f of parts) {
+              const j = JSON.parse(fs.readFileSync("parts/" + f, "utf8"));
+              out.version = j.version; out.notes = j.notes; out.pub_date = new Date().toISOString();
+              Object.assign(out.platforms, j.platforms); Object.assign(out.downloads, j.downloads || {}); Object.assign(out.sizes, j.sizes || {});
+              fs.unlinkSync("parts/" + f);
+            }
+            fs.writeFileSync("parts/latest.json", JSON.stringify(out, null, 2) + "\n");
+            console.log("latest.json:", Object.keys(out.platforms).join(", "));
+          '
+          ls -la parts
+      - name: Draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.version.outputs.tag }}
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" parts/* --clobber
+          else
+            gh release create "$TAG" parts/* --draft --target "$GITHUB_SHA" --title "MultiParity $VERSION" \
+              --notes "${{ github.event.inputs.notes || 'Built by GitHub Actions. Edit these notes, then publish the release to offer the update.' }}"
+          fi
+          echo "Draft release $TAG is ready: https://github.com/${{ github.repository }}/releases"

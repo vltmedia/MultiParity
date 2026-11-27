@@ -1,0 +1,68 @@
+# Checks on every push and pull request: the Rust crates (build, tests, lints) and the web app
+# (types and a production build). Release builds are in desktop.yml.
+name: Checks
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ["site/**", "docs/**", "design/**", "**.md"]
+  pull_request:
+    paths-ignore: ["site/**", "docs/**", "design/**", "**.md"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rust:
+    name: Rust (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Build
+        run: cargo build --workspace --locked
+      - name: Tests
+        run: cargo test --workspace --locked
+
+  web:
+    name: Web app
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+        working-directory: web
+      - name: Types
+        run: npx tsc --noEmit -p .
+        working-directory: web
+      - name: Build
+        run: pnpm build
+        working-directory: web
+
+  desktop-ui:
+    name: Desktop app scripts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Parse every script
+        run: for f in desktop/ui/*.js; do node -e "new Function(require('fs').readFileSync('$f','utf8'))" || exit 1; done

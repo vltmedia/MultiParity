@@ -44,6 +44,35 @@ operating system trusting the installer: see [SIGNING.md](SIGNING.md).
 
 ## Publishing a release on GitHub
 
+### With GitHub Actions (recommended)
+
+`.github/workflows/desktop.yml` builds everything on GitHub's machines: Windows (`.exe`, `.msi`),
+macOS (one universal app for Apple silicon and Intel) and Linux (`.AppImage`, `.deb`), plus the
+`mp` command line for all three, and makes a **draft** release with one `latest.json`.
+
+1. Raise `version` in `desktop/src-tauri/tauri.conf.json`, `desktop/src-tauri/Cargo.toml` and
+   `desktop/package.json`, commit and push.
+2. Push a tag with that version: `git tag v0.2.0 && git push origin v0.2.0` (or run the workflow
+   from the Actions tab; a tag that does not match the version stops it).
+3. When it finishes, open the draft under Releases, write the notes, and **Publish**. Installed
+   apps are offered the update only then.
+
+It needs these repository secrets (Settings > Secrets and variables > Actions):
+
+| Secret | |
+|---|---|
+| `TAURI_SIGNING_PRIVATE_KEY` | The contents of the update signing key file (below). Required. |
+| `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | Its password, if it has one. |
+| `APPLE_CERTIFICATE` | The Developer ID Application certificate exported as `.p12`, base64 (`base64 -i cert.p12 \| pbcopy`). |
+| `APPLE_CERTIFICATE_PASSWORD` | The `.p12`'s export password. |
+| `APPLE_SIGNING_IDENTITY` | `Developer ID Application: Name (TEAMID)` |
+| `APPLE_ID`, `APPLE_PASSWORD`, `APPLE_TEAM_ID` | Notarizing: the Apple ID, an app-specific password, the team id. |
+
+Without the Apple secrets the Mac app is built unsigned (Gatekeeper warns people). Windows builds
+are not code signed either way (docs/SIGNING.md).
+
+### By hand
+
 1. Raise `version` in `desktop/src-tauri/tauri.conf.json` and `desktop/src-tauri/Cargo.toml`,
    commit and push.
 2. Build on each system (`pwsh -File scripts/release/build-desktop.ps1` on Windows,
