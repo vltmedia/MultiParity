@@ -1,0 +1,334 @@
+<title>Tutorial Card Looks</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Inter:wght@400;500;600&display=swap">
+<style>
+/* A dark screening room: the cards are the only bright things on the page; a contact-sheet grid per kind of card. */
+:root {
+  --ground: #04111b;
+  --panel: #0a2233;
+  --line: #16384d;
+  --text: #e4f0f7;
+  --muted: #8aa6b8;
+  --blue: #2887f7;
+  --cyan: #26caf3;
+  --display: "Space Grotesk", "Segoe UI", system-ui, sans-serif;
+  --body: "Inter", "Segoe UI", system-ui, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--ground); color: var(--text); font-family: var(--body); font-size: 15px; line-height: 1.5; }
+.wrap { max-width: 1320px; margin: 0 auto; padding-block: 40px 80px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 48px; }
+header { display: grid; gap: 18px; }
+h1 { font-family: var(--display); font-weight: 700; font-size: clamp(30px, 5vw, 48px); line-height: 1.05; margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
+.lede { color: var(--muted); max-width: 64ch; margin: 0; }
+.fields { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: end; }
+.fields label { display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
+.fields input { font: 500 15px var(--body); color: var(--text); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; width: 220px; max-width: 100%; }
+.fields input:focus-visible, button:focus-visible, .card:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+.toggle { display: flex; gap: 8px; align-items: center; font-size: 13px; color: var(--muted); padding-bottom: 8px; }
+section { display: grid; gap: 18px; }
+.sec-head { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: baseline; border-bottom: 1px solid var(--line); padding-bottom: 10px; }
+h2 { font-family: var(--display); font-size: 24px; margin: 0; }
+.sec-head p { margin: 0; color: var(--muted); font-size: 14px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr)); gap: 22px 18px; }
+.card { display: grid; gap: 8px; cursor: pointer; border-radius: 8px; min-width: 0; }
+.card canvas { width: 100%; aspect-ratio: 16 / 9; max-width: 100%; display: block; border-radius: 6px; background: #000; border: 1px solid var(--line); }
+.card:hover canvas { border-color: var(--cyan); }
+.meta { display: flex; gap: 10px; align-items: baseline; min-width: 0; }
+.num { font-family: var(--display); font-weight: 700; color: var(--cyan); font-variant-numeric: tabular-nums; flex: none; }
+.name { font-family: var(--display); font-weight: 700; font-size: 17px; }
+.desc { color: var(--muted); font-size: 13.5px; margin: 0; }
+.err { color: #ff8a80; font: 12px ui-monospace, monospace; white-space: pre-wrap; margin: 0; }
+dialog { background: var(--ground); color: var(--text); border: 1px solid var(--line); border-radius: 10px; padding: 0; width: min(1180px, 96vw); max-height: 96vh; }
+dialog::backdrop { background: rgba(0, 6, 12, 0.85); }
+.dlg { display: grid; gap: 12px; padding: 16px; }
+.dlg canvas { width: 100%; aspect-ratio: 16 / 9; max-width: 100%; display: block; border-radius: 6px; background: #000; }
+.bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.bar input[type=range] { flex: 1 1 200px; accent-color: var(--cyan); }
+button { font: 600 14px var(--body); color: var(--text); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 7px 14px; cursor: pointer; }
+button.primary { background: var(--cyan); border-color: var(--cyan); color: #04111b; }
+.time { font: 500 13px var(--body); font-variant-numeric: tabular-nums; color: var(--muted); min-width: 7ch; }
+@media (prefers-reduced-motion: reduce) { .card:hover canvas { border-color: var(--line); } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Tutorial card looks</h1>
+    <p class="lede">Ten looks each for the logo card, the intro title and the end card, all GLSL shaders in Kitlig's format, playing live. The intro dissolves into the video and the end card covers it, shown here over a frame from Branches. Click any card to watch it big and scrub through it.</p>
+    <div class="fields">
+      <label for="f-title">This video<input id="f-title" value="Branches" autocomplete="off"></label>
+      <label for="f-next">Next video<input id="f-next" value="Drafts" autocomplete="off"></label>
+      <label class="toggle" for="f-video"><input type="checkbox" id="f-video" checked> Show the video under the cards</label>
+    </div>
+  </header>
+  <section id="s-logo"><div class="sec-head"><h2>Logo cards</h2><p>3 seconds, before the title.</p></div><div class="grid"></div></section>
+  <section id="s-intro"><div class="sec-head"><h2>Intro titles</h2><p>4 seconds, dissolving into the tutorial.</p></div><div class="grid"></div></section>
+  <section id="s-end"><div class="sec-head"><h2>End cards</h2><p>5 seconds, over the last of the tutorial.</p></div><div class="grid"></div></section>
+</div>
+
+<dialog id="dlg">
+  <div class="dlg">
+    <div class="meta"><span class="num" id="d-num"></span><span class="name" id="d-name"></span></div>
+    <canvas id="d-canvas" width="1280" height="720"></canvas>
+    <div class="bar">
+      <button class="primary" id="d-play">Pause</button>
+      <input type="range" id="d-scrub" min="0" max="1000" value="0" aria-label="Time">
+      <span class="time" id="d-time">0.0 s</span>
+      <button id="d-close">Close</button>
+    </div>
+    <p class="desc" id="d-desc"></p>
+  </div>
+</dialog>
+
+<script>
+const MP = /*MP*/"";
+const CARDS = /*CARDS*/[];
+const BG = /*BG*/"";
+const KIND = { logo: 'Logo', intro: 'Intro', end: 'End' };
+
+// ---- WebGL: one context draws every card in turn, then each is copied to its own canvas.
+const glc = document.createElement('canvas');
+glc.width = 1280; glc.height = 720;
+const gl = glc.getContext('webgl2', { preserveDrawingBuffer: true, premultipliedAlpha: false, antialias: false });
+const VS = `#version 300 es
+in vec2 a; void main() { gl_Position = vec4(a, 0.0, 1.0); }`;
+const quad = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, quad);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+
+function header(inputs) {
+  let s = `#version 300 es
+precision highp float;
+uniform vec2 uResolution; uniform float uTime, uProgress, uDuration, uFps; uniform int uFrame;
+uniform sampler2D _bg; uniform float _showBg;
+#define iTime uTime
+#define iResolution vec3(uResolution, 1.0)
+#define iFrame uFrame
+float textFill(sampler2D s, vec2 uv) { return texture(s, uv).r; }
+float textDistance(sampler2D s, vec2 uv) { return (texture(s, uv).g * 2.0 - 1.0) * 0.06; }
+float textHalo(sampler2D s, vec2 uv) { return texture(s, uv).b; }
+`;
+  for (const i of inputs) if (i.type === 'text') s += `uniform sampler2D ${i.name}; uniform vec4 ${i.name}Box; uniform int ${i.name}Count; uniform vec4 ${i.name}Glyphs[64];\n`;
+  return s;
+}
+const FOOT = `
+out vec4 _o;
+void main() {
+  vec4 c; mainImage(c, gl_FragCoord.xy);
+  vec3 under = mix(vec3(0.02), texture(_bg, gl_FragCoord.xy / uResolution).rgb, _showBg);
+  _o = vec4(mix(under, c.rgb, clamp(c.a, 0.0, 1.0)), 1.0);
+}`;
+
+function compile(card) {
+  if (card.prog || card.error) return card.prog;
+  const mk = (type, src) => { const sh = gl.createShader(type); gl.shaderSource(sh, src); gl.compileShader(sh); if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(sh)); return sh; };
+  try {
+    const p = gl.createProgram();
+    gl.attachShader(p, mk(gl.VERTEX_SHADER, VS));
+    gl.attachShader(p, mk(gl.FRAGMENT_SHADER, header(card.inputs) + MP + '\n' + card.src + FOOT));
+    gl.bindAttribLocation(p, 0, 'a');
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+    card.prog = p;
+    card.loc = {};
+    for (const n of ['uResolution', 'uTime', 'uProgress', 'uDuration', 'uFps', 'uFrame', '_bg', '_showBg']) card.loc[n] = gl.getUniformLocation(p, n);
+  } catch (e) {
+    card.error = String(e.message || e);
+    console.error(card.id, card.error);
+    const el = document.createElement('pre'); el.className = 'err'; el.textContent = card.error;
+    card.el.appendChild(el);
+  }
+  return card.prog;
+}
+
+// ---- Text: drawn once per wording into a 960x540 picture holding coverage, signed distance and halo,
+// matching what Kitlig gives a shader for a text input.
+const TW = 960, TH = 540;
+const textCache = new Map();
+function edt(grid, w, h) {
+  const INF = 1e20, n = Math.max(w, h);
+  const f = new Float64Array(n), d = new Float64Array(n), v = new Int32Array(n), z = new Float64Array(n + 1);
+  const pass = (len, get, set) => {
+    for (let q = 0; q < len; q++) f[q] = get(q);
+    let k = 0; v[0] = 0; z[0] = -INF; z[1] = INF;
+    for (let q = 1; q < len; q++) {
+      let s = ((f[q] + q * q) - (f[v[k]] + v[k] * v[k])) / (2 * q - 2 * v[k]);
+      while (s <= z[k]) { k--; s = ((f[q] + q * q) - (f[v[k]] + v[k] * v[k])) / (2 * q - 2 * v[k]); }
+      k++; v[k] = q; z[k] = s; z[k + 1] = INF;
+    }
+    k = 0;
+    for (let q = 0; q < len; q++) { while (z[k + 1] < q) k++; d[q] = (q - v[k]) * (q - v[k]) + f[v[k]]; }
+    for (let q = 0; q < len; q++) set(q, d[q]);
+  };
+  for (let x = 0; x < w; x++) pass(h, (y) => grid[y * w + x], (y, val) => { grid[y * w + x] = val; });
+  for (let y = 0; y < h; y++) pass(w, (x) => grid[y * w + x], (x, val) => { grid[y * w + x] = val; });
+  return grid;
+}
+function textInfo(inp) {
+  const key = JSON.stringify(inp);
+  if (textCache.has(key)) return textCache.get(key);
+  const cv = document.createElement('canvas'); cv.width = TW; cv.height = TH;
+  const cx = cv.getContext('2d', { willReadFrequently: true });
+  const size = inp.sizePct / 100 * TH;
+  cx.font = `${inp.bold ? 700 : 400} ${size}px "Space Grotesk"`;
+  cx.fillStyle = '#fff';
+  const text = String(inp.value || '');
+  const m = cx.measureText(text);
+  const asc = m.actualBoundingBoxAscent, desc = m.actualBoundingBoxDescent;
+  const align = inp.align || 'left';
+  const ax = inp.x * TW;
+  const start = align === 'center' ? ax - m.width / 2 : align === 'right' ? ax - m.width : ax;
+  const cy = (1 - inp.y) * TH;
+  const base = cy + (asc - desc) / 2;
+  cx.textAlign = 'left';
+  cx.fillText(text, start, base);
+  const box = [(start - m.actualBoundingBoxLeft + (align === 'left' ? 0 : 0)) / TW, 1 - (base + desc) / TH, (start + m.actualBoundingBoxRight) / TW, 1 - (base - asc) / TH];
+  const glyphs = [];
+  for (let i = 0; i < text.length && glyphs.length < 64; i++) {
+    const ch = text[i]; if (ch.trim() === '') continue;
+    const wp = cx.measureText(text.slice(0, i)).width, g = cx.measureText(ch);
+    glyphs.push((start + wp - g.actualBoundingBoxLeft) / TW, 1 - (base + g.actualBoundingBoxDescent) / TH, (start + wp + g.actualBoundingBoxRight) / TW, 1 - (base - g.actualBoundingBoxAscent) / TH);
+  }
+  const img = cx.getImageData(0, 0, TW, TH).data;
+  const N = TW * TH;
+  const outside = new Float64Array(N), inside = new Float64Array(N);
+  for (let i = 0; i < N; i++) { const on = img[i * 4 + 3] > 127; outside[i] = on ? 0 : 1e20; inside[i] = on ? 1e20 : 0; }
+  edt(outside, TW, TH); edt(inside, TW, TH);
+  const out = new Uint8Array(N * 4);
+  for (let i = 0; i < N; i++) {
+    const a = img[i * 4 + 3];
+    const dOut = Math.sqrt(outside[i]), dIn = Math.sqrt(inside[i]);
+    const sd = (dIn > 0 ? dIn - 0.5 : -(dOut - 0.5)) / TH;
+    const halo = Math.max(0, 1 - dOut / (0.5 * TH));
+    out[i * 4] = a; out[i * 4 + 1] = Math.round(Math.min(1, Math.max(0, 0.5 + sd / 0.12)) * 255);
+    out[i * 4 + 2] = Math.round(halo * halo * 255); out[i * 4 + 3] = 255;
+  }
+  const tex = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, tex);
+  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, TW, TH, 0, gl.RGBA, gl.UNSIGNED_BYTE, out);
+  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  const info = { tex, box, glyphs, count: glyphs.length / 4 };
+  textCache.set(key, info);
+  return info;
+}
+const fieldFor = { title: 'f-title', next: 'f-next' };
+function wording(inp) {
+  const f = fieldFor[inp.name];
+  return f ? { ...inp, value: document.getElementById(f).value || inp.value } : inp;
+}
+
+let bgTex = null;
+function loadBg() {
+  return new Promise((ok) => {
+    const im = new Image();
+    im.onload = () => {
+      bgTex = gl.createTexture();
+      gl.bindTexture(gl.TEXTURE_2D, bgTex);
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, im);
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      ok();
+    };
+    im.onerror = () => ok();
+    im.src = BG;
+  });
+}
+
+function draw(card, t, w, h, target) {
+  const p = compile(card); if (!p) return;
+  gl.viewport(0, 0, w, h);
+  gl.useProgram(p);
+  gl.bindBuffer(gl.ARRAY_BUFFER, quad);
+  gl.enableVertexAttribArray(0);
+  gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+  const L = card.loc;
+  // Make any new text pictures first: making one binds a texture, which would disturb the units below.
+  const texts = card.inputs.filter((i) => i.type === 'text').map((i) => [i, textInfo(wording(i))]);
+  gl.uniform2f(L.uResolution, w, h);
+  gl.uniform1f(L.uTime, t); gl.uniform1f(L.uDuration, card.dur); gl.uniform1f(L.uProgress, Math.min(1, t / card.dur));
+  gl.uniform1f(L.uFps, 30); gl.uniform1i(L.uFrame, Math.floor(t * 30));
+  let unit = 0;
+  gl.activeTexture(gl.TEXTURE0 + unit); gl.bindTexture(gl.TEXTURE_2D, bgTex); gl.uniform1i(L._bg, unit++);
+  gl.uniform1f(L._showBg, document.getElementById('f-video').checked ? 1 : 0);
+  for (const [inp, ti] of texts) {
+    gl.activeTexture(gl.TEXTURE0 + unit); gl.bindTexture(gl.TEXTURE_2D, ti.tex);
+    gl.uniform1i(gl.getUniformLocation(p, inp.name), unit++);
+    gl.uniform4fv(gl.getUniformLocation(p, inp.name + 'Box'), ti.box);
+    gl.uniform1i(gl.getUniformLocation(p, inp.name + 'Count'), ti.count);
+    if (ti.count) gl.uniform4fv(gl.getUniformLocation(p, inp.name + 'Glyphs'), new Float32Array(ti.glyphs));
+  }
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  const cx = target.getContext('2d');
+  cx.drawImage(glc, 0, glc.height - h, w, h, 0, 0, target.width, target.height);
+}
+
+// ---- Page
+const visible = new Set();
+const io = new IntersectionObserver((es) => es.forEach((e) => e.isIntersecting ? visible.add(e.target.card) : visible.delete(e.target.card)), { rootMargin: '100px' });
+const counts = {};
+for (const card of CARDS) {
+  const kind = card.id.split('-')[0];
+  counts[kind] = (counts[kind] || 0) + 1;
+  card.label = `${KIND[kind]} ${counts[kind]}`;
+  const el = document.createElement('div');
+  el.className = 'card'; el.tabIndex = 0; el.setAttribute('role', 'button');
+  el.innerHTML = `<canvas width="640" height="360"></canvas><div class="meta"><span class="num"></span><span class="name"></span></div><p class="desc"></p>`;
+  el.querySelector('.num').textContent = card.label;
+  el.querySelector('.name').textContent = card.name;
+  el.querySelector('.desc').textContent = card.desc;
+  el.card = card; card.el = el; card.canvas = el.querySelector('canvas');
+  card.offset = Math.random() * card.dur;
+  el.addEventListener('click', () => openCard(card));
+  el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openCard(card); } });
+  document.querySelector(`#s-${kind} .grid`).appendChild(el);
+  io.observe(el);
+}
+
+const dlg = document.getElementById('dlg'), dc = document.getElementById('d-canvas');
+const scrub = document.getElementById('d-scrub'), playBtn = document.getElementById('d-play');
+let open = null, playing = true, openT = 0;
+function openCard(card) {
+  open = card; openT = 0; playing = true; playBtn.textContent = 'Pause';
+  document.getElementById('d-num').textContent = card.label;
+  document.getElementById('d-name').textContent = card.name;
+  document.getElementById('d-desc').textContent = `${card.desc} ${card.dur} s. In Kitlig: design/tutorials/cards, card ${card.id}.`;
+  dlg.showModal();
+}
+dlg.addEventListener('close', () => { open = null; });
+document.getElementById('d-close').onclick = () => dlg.close();
+playBtn.onclick = () => { playing = !playing; playBtn.textContent = playing ? 'Pause' : 'Play'; };
+scrub.oninput = () => { playing = false; playBtn.textContent = 'Play'; openT = scrub.value / 1000 * (open ? open.dur : 1); };
+for (const id of ['f-title', 'f-next']) document.getElementById(id).addEventListener('change', () => {});
+
+const HOLD = 0.9;
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min(0.1, (now - last) / 1000); last = now;
+  if (open) {
+    if (playing) { openT += dt; if (openT > open.dur + HOLD) openT = 0; scrub.value = Math.round(Math.min(1, openT / open.dur) * 1000); }
+    draw(open, Math.min(openT, open.dur), 1280, 720, dc);
+    document.getElementById('d-time').textContent = `${Math.min(openT, open.dur).toFixed(1)} s`;
+  } else {
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    for (const card of visible) {
+      const t = reduce ? card.dur * 0.6 : (now / 1000 + card.offset) % (card.dur + HOLD);
+      draw(card, Math.min(t, card.dur), 640, 360, card.canvas);
+    }
+  }
+  requestAnimationFrame(frame);
+}
+(async () => {
+  try { await document.fonts.load('700 40px "Space Grotesk"'); } catch (e) {}
+  await loadBg();
+  requestAnimationFrame(frame);
+})();
+</script>

@@ -1,0 +1,897 @@
+[
+ {
+  "id": "logo-01",
+  "name": "Assemble",
+  "dur": 3.0,
+  "desc": "The two halves slide in from the sides and lock together; the white lenses light; the name rises.",
+  "inputs": [
+   {
+    "name": "wordmark",
+    "type": "text",
+    "value": "MultiParity",
+    "fontId": "space-grotesk",
+    "sizePct": 6.5,
+    "bold": true,
+    "align": "center",
+    "x": 0.5,
+    "y": 0.27
+   }
+  ],
+  "src": "void mainImage(out vec4 fragColor, in vec2 fragCoord) {\n  vec2 p = mpP(fragCoord), uv = fragCoord / uResolution;\n  vec3 bg = mix(MP_INK, MP_DEEP, length(p) * 1.3);\n  float k = eOut(ramp(0.1, 0.85));\n  vec4 lg = mpLogo(p, vec2(0.0, 0.07), 0.15, (1.0 - k) * 4.0, ramp(0.75, 1.05));\n  vec3 col = mix(bg, lg.rgb, lg.a);\n  col += MP_CYAN * 0.25 * exp(-length(p - vec2(0.0, 0.07)) * 9.0) * (ramp(0.8, 0.9) - ramp(0.9, 1.6));\n  col = mix(col, MP_WHITE, textFill(wordmark, uv + vec2(0.0, 0.025 * (1.0 - eOut(ramp(0.9, 1.6))))) * ramp(0.9, 1.4));\n  fragColor = vec4(mix(col, bg, ramp(uDuration - 0.35, uDuration)), 1.0);\n}\n"
+ },
+ {
+  "id": "logo-02",
+  "name": "Coin flip",
+  "dur": 3.0,
+  "desc": "The icon spins in like a tossed coin, lands face up, and a glint runs across it.",
+  "inputs": [
+   {
+    "name": "wordmark",
+    "type": "text",
+    "value": "MultiParity",
+    "fontId": "space-grotesk",
+    "sizePct": 6.5,
+    "bold": true,
+    "align": "center",
+    "x": 0.5,
+    "y": 0.27
+   }
+  ],
+  "src": "void mainImage(out vec4 fragColor, in vec2 fragCoord) {\n  vec2 p = mpP(fragCoord), uv = fragCoord / uResolution;\n  vec3 bg = mix(MP_INK, MP_DEEP, length(p) * 1.3);\n  vec2 c = vec2(0.0, 0.07);\n  float a = (1.0 - eOut(ramp(0.05, 1.2))) * 9.42478;\n  float cs = cos(a);\n  float sx = max(abs(cs), 0.02);\n  vec2 q = vec2((p.x - c.x) / sx * sign(cs + 1e-4), p.y - c.y) + c;\n  float sc = mix(0.6, 1.0, eOut(ramp(0.05, 1.2)));\n  vec4 lg = mpLogo(q, c, 0.15 * sc, 0.0, 1.0);\n  lg.rgb *= mix(0.55, 1.0, abs(cs));\n  vec3 col = mix(bg, lg.rgb, lg.a * step(abs(p.x - c.x), 0.15 * sc * sx + 0.01) * ramp(0.05, 0.2));\n  float g = (p.x + (p.y - c.y) * 0.6) - mix(-0.3, 0.3, ramp(1.25, 1.75));\n  col += vec3(0.6) * exp(-g * g * 900.0) * lg.a * step(1.25, mpT()) * (1.0 - ramp(1.7, 1.8));\n  col = mix(col, MP_WHITE, textFill(wordmark, uv) * ramp(1.2, 1.6));\n  fragColor = vec4(mix(col, bg, ramp(uDuration - 0.35, uDuration)), 1.0);\n}\n"
+ },
+ {
+  "id": "logo-03",
+  "name": "Draw on",
+  "dur": 3.0,
+  "desc": "A pen traces each shape of the icon round from the top, then the shapes fill with colour.",
+  "inputs": [
+   {
+    "name": "wordmark",
+    "type": "text",
+    "value": "MultiParity",
+    "fontId": "space-grotesk",
+    "sizePct": 6.5,
+    "bold": true,
+    "align": "center",
+    "x": 0.5,
+    "y": 0.27
+   }
+  ],
+  "src": "void mainImage(out vec4 fragColor, in vec2 fragCoord) {\n  vec2 p = mpP(fragCoord), uv = fragCoord / uResolution;\n  vec3 bg = mix(MP_INK, MP_DEEP, length(p) * 1.3);\n  vec2 c = vec2(0.0, 0.07); float r = 0.15;\n  vec2 q = (p - c) / r;\n  float ang = (atan(q.x, q.y) + 3.14159) / 6.28318;\n  float prog = eInOut(ramp(0.1, 1.2));\n  float drawn = step(1.0 - ang, prog);\n  float w = px() / r;\n  float lw = 2.2 * w;\n  vec3 col = bg;\n  col = mix(col, MP_BLUE, (1.0 - smoothstep(lw * 0.5, lw, abs(sdBlue(q)))) * drawn);\n  col = mix(col, MP_CYAN, (1.0 - smoothstep(lw * 0.5, lw, abs(sdCyan(q)))) * drawn);\n  col = mix(col, MP_WHITE, (1.0 - smoothstep(lw * 0.5, lw, abs(min(sdLensL(q), sdLensR(q))))) * step(1.0 - ang, prog - 0.12));\n  vec4 lg = mpLogo(p, c, r, 0.0, 1.0);\n  col = mix(col, lg.rgb, lg.a * ramp(1.15, 1.55));\n  col = mix(col, MP_WHITE, textFill(wordmark, uv) * step(uv.x, mix(wordmarkBox.x, wordmarkBox.z + 0.01, ramp(1.3, 1.9))));\n  fragColor = vec4(mix(col, bg, ramp(uDuration - 0.35, uDuration)), 1.0);\n}\n"
+ },
+ {
+  "id": "logo-04",
+  "name": "Eclipse",
+  "dur": 3.0,
+  "desc": "A dark disc sits over the icon with a ring of light round it, then slides away to uncover it.",
+  "inputs": [
+   {
+    "name": "wordmark",
+    "type": "text",
+    "value": "MultiParity",
+    "fontId": "space-grotesk",
+    "sizePct": 6.5,
+    "bold": true,
+    "align": "center",
+    "x": 0.5,
+    "y": 0.27
+   }
+  ],
+  "src": "void mainImage(out vec4 fragColor, in vec2 fragCoord) {\n  vec2 p = mpP(fragCoord), uv = fragCoord / uResolution;\n  vec3 bg = MP_DEEP;\n  bg += vec3(0.6) * step(0.997, hash12(floor(p * 220.0))) * 0.5;   // a few stars\n  vec2 c = vec2(0.0, 0.07); float r = 0.15;\n  vec4 lg = mpLogo(p, c, r, 0.0, 1.0);\n  vec3 col = mix(bg, lg.rgb, lg.a);\n  float m = eInOut(ramp(0.55, 1.5));\n  vec2 oc = c + vec2(m * 0.42, m * 0.12);\n  float od = length(p - oc) - r * 1.03;\n  float corona = exp(-max(od, 0.0) / 0.018) * (0.4 + 0.6 * ramp(0.0, 0.5)) * (1.0 - m);\n  float rays = 0.6 + 0.4 * fbm(vec2(atan(p.y - oc.y, p.x - oc.x) * 3.0, mpT() * 0.6));\n  col += MP_CYAN * corona * rays * step(0.0, od);\n  col = mix(col, bg * 0.6, cover(od, px()) * (1.0 - ramp(1.45, 1.5)));\n  col = mix(col, MP_WHITE, textFill(wordmark, uv) * ramp(1.35, 1.8));\n  fragColor = vec4(mix(col, MP_DEEP, ramp(uDuration - 0.35, uDuration)), 1.0);\n}\n"
+ },
+ {
+  "id": "logo-05",
+  "name": "Fill up",
+  "dur": 3.0,
+  "desc": "Each half fills like a glass, blue then cyan, with a wave on the surface; the lenses light last.",
+  "inputs": [
+   {
+    "name": "wordmark",
+    "type": "text",
+    "value": "MultiParity",
+    "fontId": "space-grotesk",
+    "sizePct": 6.5,
+    "bold": true,
+    "align": "center",
+    "x": 0.5,
+    "y": 0.27
+   }
+  ],
+  "src": "void mainImage(out vec4 fragColor, in vec2 fragCoord) {\n  vec2 p = mpP(fragCoord), uv = fragCoord / uResolution;\n  float t = mpT();\n  vec3 bg = mix(MP_INK, MP_DEEP, length(p) * 1.3);\n  vec2 c = vec2(0.0, 0.07); float r = 0.15;\n  vec2 q = (p - c) / r;\n  float w = px() / r;\n  float calm = 1.0 - ramp(1.4, 1.9);\n  float lvL = mix(-1.15, 1.15, eInOut(ramp(0.1, 1.3))) + 0.07 * sin(q.x * 7.0 + t * 8.0) * calm;\n  float lvR = mix(-1.15, 1.15, eInOut(ramp(0.3, 1.5))) + 0.07 * sin(q.x * 7.0 - t * 8.0 + 1.0) * calm;\n  vec3 col = bg;\n  float ring = 1.0 - smoothstep(w, w * 2.5, abs(sdDisc(q)));\n  col = mix(col, MP_WHITE * 0.35, ring * 0.6 * (1.0 - ramp(1.3, 1.6)));\n  col = mix(col, MP_BLUE, cover(sdBlue(q), w) * step(q.y, lvL));\n  col = mix(col, MP_CYAN, cover(sdCyan(q), w) * step(q.y, lvR));\n  col = mix(col, MP_WHITE, cover(min(sdLensL(q), sdLensR(q)), w) * ramp(1.45, 1.75));\n  col = mix(col, MP_WHITE, textFill(wordmark, uv) * ramp(1.5, 1.9));\n  fragColor = vec4(mix(col, bg, ramp(uDuration - 0.35, uDuration)), 1.0);\n}\n"
+ },
+ {
+  "id": "logo-06",
+  "name": "App tile",
+  "dur": 3.0,
+  "desc": "The app's own icon tile pops up with a bounce and a soft shadow; the name slides out beside it.",
+  "inputs": [
+   {
+    "name": "wordmark",
+    "type": "text",
+    "value": "MultiParity",
+    "fontId": "space-grotesk",
+    "sizePct": 9,
+    "bold": true,
+    "align": "left",
+    "x": 0.46,
+    "y": 0.5
+   }
+  ],
+  "src": "void mainImage(out vec4 fragColor, in vec2 fragCoord) {\n  vec2 p = mpP(fragCoord), uv = fragCoord / uResolution;\n  vec3 bg = mix(vec3(0.05, 0.16, 0.25), MP_DEEP, length(p - vec2(-0.3, 0.1)) * 1.1);\n  vec2 c = vec2(-0.31, 0.0);\n  float s = max(eBack(ramp(0.1, 0.65)), 1e-3);\n  vec2 q = (p - c) / s;\n  float half_ = 0.18;\n  float td = sdRBox(q, vec2(half_), 0.04);\n  float shadow = exp(-max(sdRBox(p - c - vec2(0.0, -0.025), vec2(half_ * s), 0.04 * s), 0.0) / 0.03) * 0.45 * ramp(0.1, 0.5);\n  vec3 col = bg * (1.0 - shadow);\n  col = mix(col, MP_INK, cover(td, px() / s));\n  vec4 lg = mpLogo(q, vec2(0.0), 0.12, 0.0, 1.0);\n  col = mix(col, lg.rgb, lg.a * cover(td, px()));\n  float k = eOut(ramp(0.6, 1.3));\n  float tm = smoothstep(0.43, 0.445, uv.x);\n  col = mix(col, MP_WHITE, textFill(wordmark, uv + vec2(0.12 * (1.0 - k), 0.0)) * tm);\n  fragColor = vec4(mix(col, bg, ramp(uDuration - 0.35, uDuration)), 1.0);\n}\n"
+ },
+ {
+  "id": "logo-07",
+  "name": "Column drop",
+  "dur": 3.0,
+  "desc": "The icon falls into place in thin columns, each on its own beat, like a picture being stacked.",
+  "inputs": [
+   {
+    "name": "wordmark",
+    "type": "text",
+    "value": "MultiParity",
+    "fontId": "space-grotesk",
+    "sizePct": 6.5,
+    "bold": true,
+    "align": "center",
+    "x": 0.5,
+    "y": 0.27
+   }
+  ],
+  "src": "void mainImage(out vec4 fragColor, in vec2 fragCoord) {\n  vec2 p = mpP(fragCoord), uv = fragCoord / uResolution;\n  vec3 bg = mix(MP_INK, MP_DEEP, length(p) * 1.3);\n  vec2 c = vec2(0.0, 0.07); float r = 0.15;\n  float cw = 0.012;\n  float col_id = floor((p.x - c.x) / cw);\n  float h = hash12(vec2(col_id, 3.0));\n  float d0 = 0.1 + h * 0.6 + abs(col_id) * 0.012;\n  float k = eBack(ramp(d0, d0 + 0.5));\n  float off = (1.0 - k) * 0.9;\n  vec4 lg = mpLogo(p - vec2(0.0, off), c, r, 0.0, 1.0);\n  float edge = smoothstep(0.0, px() * 1.5, abs(fract((p.x - c.x) / cw) - 0.5) * cw - cw * 0.5 + px() * 1.5);\n  lg.rgb *= mix(1.0, 0.82 + 0.18 * h, 1.0 - ramp(d0 + 0.4, d0 + 0.7));\n  vec3 col = mix(bg, lg.rgb, lg.a);\n  col = mix(col, MP_WHITE, textFill(wordmark, uv) * ramp(1.3, 1.7));\n  fragColor = vec4(mix(col, bg, ramp(uDuration - 0.35, uDuration)), 1.0);\n}\n"
+ },
+ {
+  "id": "logo-08",
+  "name": "Neon",
+  "dur": 3.0,
+  "desc": "The icon is bent glass tubing that flickers on, one half then the other, and stays lit.",
+  "inputs": [
+   {
+    "name": "wordmark",
+    "type": "text",
+    "value": "MultiParity",
+    "fontId": "space-grotesk",
+    "sizePct": 6.5,
+    "bold": true,
+    "align": "center",
+    "x": 0.5,
+    "y": 0.27
+   }
+  ],
+  "src": "void mainImage(out vec4 fragColor, in vec2 fragCoord) {\n  vec2 p = mpP(fragCoord), uv = fragCoord / uResolution;\n  float t = mpT();\n  vec3 bg = MP_DEEP * (0.8 + 0.4 * fbm(p * 18.0));\n  vec2 c = vec2(0.0, 0.07); float r = 0.15;\n  vec2 q = (p - c) / r;\n  float fl = step(0.45, hash12(vec2(floor(t * 22.0), 1.0)));\n  float onL = t < 0.25 ? 0.0 : (t < 0.75 ? fl : 1.0);\n  float onR = t < 0.5 ? 0.0 : (t < 1.0 ? step(0.45, hash12(vec2(floor(t * 19.0), 7.0))) : 1.0);\n  float onW = t < 0.9 ? 0.0 : (t < 1.25 ? step(0.4, hash12(vec2(floor(t * 25.0), 3.0))) : 1.0);\n  vec3 col = bg;\n  float dB = abs(sdBlue(q)) * r, dC = abs(sdCyan(q)) * r, dW = abs(min(sdLensL(q), sdLensR(q))) * r;\n  col += MP_BLUE * exp(-dB / 0.014) * 0.7 * onL;\n  col += MP_CYAN * exp(-dC / 0.014) * 0.7 * onR;\n  col += MP_WHITE * exp(-dW / 0.012) * 0.45 * onW;\n  col = mix(col, mix(MP_BLUE, vec3(1.0), 0.55), (1.0 - smoothstep(0.0015, 0.003, dB)) * onL);\n  col = mix(col, mix(MP_CYAN, vec3(1.0), 0.55), (1.0 - smoothstep(0.0015, 0.003, dC)) * onR);\n  col = mix(col, vec3(1.0), (1.0 - smoothstep(0.0015, 0.003, dW)) * onW);\n  float on2 = t < 1.3 ? 0.0 : (t < 1.6 ? step(0.4, hash12(vec2(floor(t * 23.0), 9.0))) : 1.0);\n  float wd = textDistance(wordmark, uv);\n  col += MP_CYAN * pow(textHalo(wordmark, uv), 4.0) * 0.5 * on2;\n  col = mix(col, vec3(0.92, 0.98, 1.0), (1.0 - smoothstep(0.001, 0.0025, abs(wd))) * on2);\n  fragColor = vec4(mix(col, bg, ramp(uDuration - 0.35, uDuration)), 1.0);\n}\n"
+ },
+ {
+  "id": "logo-09",
+  "name": "Converge",
+  "dur": 3.0,
+  "desc": "A blue ghost and a cyan ghost of the icon swing in from opposite corners and land as one, with a flash.",
+  "inputs": [
+   {
+    "name": "wordmark",
+    "type": "text",
+    "value": "MultiParity",
+    "fontId": "space-grotesk",
+    "sizePct": 6.5,
+    "bold": true,
+    "align": "center",
+    "x": 0.5,
+    "y": 0.27
+   }
+  ],
+  "src": "void mainImage(out vec4 fragColor, in vec2 fragCoord) {\n  vec2 p = mpP(fragCoord), uv = fragCoord / uResolution;\n  float t = mpT();\n  vec3 bg = mix(MP_INK, MP_DEEP, length(p) * 1.3);\n  float hit = 1.0;\n  float shake = (1.0 - ramp(hit, hit + 0.3)) * step(hit, t);\n  p += vec2(sin(t * 90.0), cos(t * 77.0)) * 0.006 * shake;\n  vec2 c = vec2(0.0, 0.07); float r = 0.15;\n  float k = eInOut(ramp(0.05, hit));\n  float u = 1.0 - k;\n  vec2 pa = c + rot(-0.9 * u) * (p - c - vec2(-0.55, 0.22) * u);\n  vec2 pb = c + rot(0.9 * u) * (p - c - vec2(0.55, -0.22) * u);\n  float aa = mpLogo(pa, c, r, 0.0, 1.0).a, ab = mpLogo(pb, c, r, 0.0, 1.0).a;\n  vec3 col = bg;\n  col += MP_BLUE * aa * 0.75 * (1.0 - step(hit, t));\n  col += MP_CYAN * ab * 0.75 * (1.0 - step(hit, t));\n  vec4 lg = mpLogo(p, c, r, 0.0, 1.0);\n  col = mix(col, lg.rgb, lg.a * step(hit, t));\n  float rr = (t - hit) * 0.8;\n  col += MP_WHITE * (1.0 - smoothstep(0.0, 0.006, abs(length(p - c) - r - rr))) * (1.0 - ramp(hit, hit + 0.6)) * step(hit, t);\n  col += MP_WHITE * 0.5 * exp(-length(p - c) * 6.0) * (1.0 - ramp(hit, hit + 0.25)) * step(hit, t);\n  col = mix(col, MP_WHITE, textFill(wordmark, uv) * ramp(1.3, 1.7));\n  fragColor = vec4(mix(col, bg, ramp(uDuration - 0.35, uDuration)), 1.0);\n}\n"
+ },
+ {
+  "id": "logo-10",
+  "name": "Construction",
+  "dur": 3.0,
+  "desc": "The geometry behind the icon is drafted first: its circle, the two cuts, the lens arcs. Then it is inked.",
+  "inputs": [
+   {
+    "name": "wordmark",
+    "type": "text",
+    "value": "MultiParity",
+    "fontId": "space-grotesk",
+    "sizePct": 6.5,
+    "bold": true,
+    "align": "center",
+    "x": 0.5,
+    "y": 0.27
+   }
+  ],
+  "src": "void mainImage(out vec4 fragColor, in vec2 fragCoord) {\n  vec2 p = mpP(fragCoord), uv = fragCoord / uResolution;\n  // Dark ground. At the end the grid, the drafting and the name fade but the icon stays, so the\n  // \"Through the gap\" intro can pick it up where it is (centre 0, 0.07, radius 0.15).\n  float leave = 1.0 - ramp(uDuration - 0.4, uDuration);\n  vec3 ground = MP_DEEP * 0.75;\n  vec3 bg = ground;\n  vec2 g = abs(fract(p * 20.0 + 0.5) - 0.5) / 20.0;\n  bg = mix(bg, MP_BLUE, (1.0 - smoothstep(0.0, px() * 1.2, min(g.x, g.y))) * 0.05 * leave);\n  vec2 c = vec2(0.0, 0.07); float r = 0.15;\n  vec2 q = (p - c) / r;\n  float lw = 1.3 * px() / r;\n  float ang = (atan(q.y, q.x) + 3.14159) / 6.28318;\n  float dash = step(0.5, fract(ang * 48.0));\n  vec3 col = bg;\n  float c1 = (1.0 - smoothstep(0.0, lw, abs(sdDisc(q)))) * step(ang, eOut(ramp(0.05, 0.6)));\n  float v = (1.0 - smoothstep(0.0, lw, abs(abs(q.x) - 0.278))) * step(abs(q.y), 1.25 * eOut(ramp(0.35, 0.75)));\n  float a1 = length(q - vec2(-0.637, 0.0)), a2 = length(q - vec2(0.637, 0.0));\n  float arcs = (1.0 - smoothstep(0.0, lw, min(abs(a1 - 0.634), abs(a2 - 0.634)))) * ramp(0.6, 0.9) * dash;\n  float cross_ = (1.0 - smoothstep(0.0, lw, min(abs(q.x), abs(q.y)))) * step(length(q), 1.35) * ramp(0.1, 0.4) * 0.5;\n  float marks = max(max(c1, v), max(arcs, cross_));\n  col = mix(col, MP_CYAN, marks * (1.0 - 0.6 * ramp(1.2, 1.6)) * leave);\n  vec4 lg = mpLogo(p, c, r, 0.0, 1.0);\n  float ink = step(q.x, mix(-1.1, 1.1, eInOut(ramp(0.95, 1.45))));\n  col = mix(col, lg.rgb, lg.a * ink);\n  col = mix(col, MP_WHITE, textFill(wordmark, uv) * ramp(1.4, 1.8) * leave);\n  fragColor = vec4(col, 1.0);\n}\n"
+ },
+ {
+  "id": "intro-01",
+  "name": "Halves part",
+  "dur": 4.0,
+  "desc": "The two halves of the icon fill the frame, then part like doors; the inner edges carry the white lens.",
+  "inputs": [
+   {
+    "name": "title",
+    "type": "text",
+    "value": "Branches",
+    "fontId": "space-grotesk",
+    "sizePct": 11,
+    "bold": true,
+    "align": "center",
+    "x": 0.5,
+    "y": 0.5
+   },
+   {
+    "name": "kicker",
+    "type": "text",
+    "value": "MultiParity tutorial",
+    "fontId": "space-grotesk",
+    "sizePct": 2.6,
+    "bold": true,
+    "align": "center",
+    "x": 0.5,
+    "y": 0.62
+   }
+  ],
+  "src": "void mainImage(out vec4 fragColor, in vec2 fragCoord) {\n  vec2 uv = fragCoord / uResolution;\n  float k = eInOut(ramp(0.25, 1.3));\n  float edge = 0.5 * (1.0 - k) - 0.1 * k;           // where each panel's flat side sits\n  float yy = (uv.y - 0.5) * 2.0;\n  float bulge = 0.07 * sqrt(max(0.0, 1.0 - yy * yy)); // the lens, bowed like the icon's\n  float w = 1.5 / uResolution.x;\n  vec3 col = mix(MP_DEEP, MP_INK, uv.y);\n  float s = mix(1.08, 1.0, eOut(ramp(0.45, 1.7)));\n  col = mix(col, MP_WHITE, textFill(title, (uv - 0.5) / s + 0.5) * ramp(0.5, 1.1));\n  col = mix(col, MP_CYAN, textFill(kicker, uv + vec2(0.0, 0.03 * (1.0 - eOut(ramp(0.9, 1.6))))) * ramp(0.9, 1.5));\n  float blue = 1.0 - smoothstep(edge - w, edge + w, uv.x);\n  float lensL = (1.0 - smoothstep(edge + bulge - w, edge + bulge + w, uv.x)) * (1.0 - blue);\n  float cyan = smoothstep(1.0 - edge - w, 1.0 - edge + w, uv.x);\n  float lensR = smoothstep(1.0 - edge - bulge - w, 1.0 - edge - bulge + w, uv.x) * (1.0 - cyan);\n  col = mix(col, MP_WHITE, lensL + lensR);\n  col = mix(col, MP_BLUE, blue);\n  col = mix(col, MP_CYAN, cyan);\n  fragColor = vec4(col, 1.0 - ramp(uDuration - 0.5, uDuration));\n}\n"
+ },
+ {
+  "id": "intro-02",
+  "name": "Through the gap",
+  "dur": 4.0,
+  "desc": "The camera dives into the gap between the icon's halves; the title waits on the far side.",
+  "inputs": [
+   {
+    "name": "title",
+    "type": "text",
+    "value": "Branches",
+    "fontId": "space-grotesk",
+    "sizePct": 10,
+    "bold": true,
+    "align": "center",
+    "x": 0.5,
+    "y": 0.5
+   },
+   {
+    "name": "kicker",
+    "type": "text",
+    "value": "MultiParity tutorial",
+    "fontId": "space-grotesk",
+    "sizePct": 2.4,
+    "bold": true,
+    "align": "center",
+    "x": 0.5,
+    "y": 0.61
+   }
+  ],
+  "src": "void mainImage(out vec4 fragColor, in vec2 fragCoord) {\n  vec2 p = mpP(fragCoord), uv = fragCoord / uResolution;\n  // Starts on the icon exactly as the Construction logo card leaves it, on the same dark ground.\n  float z = eInOut(ramp(0.15, 1.45));\n  float r = 0.15 * exp(z * 9.0);\n  vec2 c = vec2(0.0, 0.07 * (1.0 - z));\n  vec3 col = mix(MP_DEEP * 0.75, mix(MP_DEEP, MP_INK, 0.5 + 0.5 * uv.y), z);\n  col += MP_CYAN * 0.10 * exp(-abs(p.x) * 9.0) * z;      // light spilling through the gap\n  vec4 logo = mpLogo(p, c, r, 0.0, 1.0);\n  col = mix(col, logo.rgb, logo.a);\n  float a = ramp(1.15, 1.7);\n  float s = mix(0.92, 1.0, eOut(ramp(1.15, 2.0)));\n  col = mix(col, MP_WHITE, textFill(title, (uv - 0.5) / s + 0.5) * a);\n  col = mix(col, MP_CYAN, textFill(kicker, uv) * ramp(1.4, 1.9));\n  fragColor = vec4(col, 1.0 - ramp(uDuration - 0.5, uDuration));\n}\n"
+ },
+ {
+  "id": "intro-03",
+  "name": "Blueprint",
+  "dur": 4.0,
+  "desc": "A drafting grid draws itself; the title is traced as an outline by a scan line, then filled.",
+  "inputs": [
+   {
+    "name": "title",
+    "type": "text",
+    "value": "Branches",
+    "fontId": "space-grotesk",
+    "sizePct": 11,
+    "bold": true,
+    "align": "left",
+    "x": 0.1,
+    "y": 0.47
+   },
+   {
+    "name": "kicker",
+    "type": "text",
+    "value": "MultiParity tutorial",
+    "fontId": "space-grotesk",
+    "sizePct": 2.4,
+    "bold": true,
+    "align": "left",
+    "x": 0.1,
+    "y": 0.6
+   }
+  ],
+  "src": "void mainImage(out vec4 fragColor, in vec2 fragCoord) {\n  vec2 uv = fragCoord / uResolution, p = mpP(fragCoord);\n  vec3 col = MP_INK;\n  vec2 g = abs(fract(p * 16.0 + 0.5) - 0.5) / 16.0;\n  vec2 g4 = abs(fract(p * 4.0 + 0.5) - 0.5) / 4.0;\n  float grid = max(1.0 - smoothstep(0.0, px() * 1.2, min(g.x, g.y)), 0.0) * 0.10;\n  grid += (1.0 - smoothstep(0.0, px() * 1.4, min(g4.x, g4.y))) * 0.18;\n  float drawn = step(uv.x, eOut(ramp(0.0, 1.0)) * 1.05);\n  col = mix(col, MP_BLUE, grid * drawn);\n  float scan = mix(-0.05, 1.1, eInOut(ramp(0.35, 1.6)));\n  float d = textDistance(title, uv);\n  float outline = 1.0 - smoothstep(0.0012, 0.0028, abs(d));\n  float traced = step(uv.x, scan);\n  col = mix(col, MP_CYAN, outline * traced);\n  col = mix(col, MP_WHITE, textFill(title, uv) * ramp(1.5, 2.0));\n  col += MP_CYAN * 0.55 * exp(-abs(uv.x - scan) * 220.0) * step(scan, 1.05) * step(0.0, scan);\n  col = mix(col, MP_CYAN, textFill(kicker, uv) * step(uv.x, scan) * ramp(0.6, 1.0));\n  fragColor = vec4(col, 1.0 - ramp(uDuration - 0.5, uDuration));\n}\n"
+ },
+ {
+  "id": "intro-04",
+  "name": "Letter drop",
+  "dur": 4.0,
+  "desc": "Each letter drops in on its own beat, flashing blue or cyan as it lands, then settles white.",
+  "inputs": [
+   {
+    "name": "title",
+    "type": "text",
+    "value": "Branches",
+    "fontId": "space-grotesk",
+    "sizePct": 12,
+    "bold": true,
+    "align": "center",
+    "x": 0.5,
+    "y": 0.48
+   },
+   {
+    "name": "kicker",
+    "type": "text",
+    "value": "MultiParity tutorial",
+    "fontId": "space-grotesk",
+    "sizePct": 2.4,
+    "bold": true,
+    "align": "center",
+    "x": 0.5,
+    "y": 0.63
+   }
+  ],
+  "src": "void mainImage(out vec4 fragColor, in vec2 fragCoord) {\n  vec2 uv = fragCoord / uResolution;\n  vec3 col = mix(MP_DEEP, MP_INK, smoothstep(0.0, 1.0, uv.y));\n  float shadow = 0.0;\n  for (int i = 0; i < 64; i++) {\n    if (i >= titleCount) break;\n    vec4 b = titleGlyphs[i];\n    float d0 = 0.3 + float(i) * 0.07;\n    float k = eBack(ramp(d0, d0 + 0.55));\n    float off = (1.0 - k) * 0.22;\n    vec2 sp = uv - vec2(0.0, off);\n    if (sp.x < b.x - 0.004 || sp.x > b.z + 0.004 || sp.y < b.y - 0.02 || sp.y > b.w + 0.02) continue;\n    float a = textFill(title, sp) * ramp(d0, d0 + 0.12);\n    vec3 flash = mod(float(i), 2.0) < 0.5 ? MP_BLUE : MP_CYAN;\n    vec3 c = mix(flash, MP_WHITE, ramp(d0 + 0.35, d0 + 0.8));\n    col = mix(col, c, a);\n  }\n  // A soft floor shadow the letters land on.\n  float floorY = titleBox.y - 0.01;\n  col *= 1.0 - 0.25 * exp(-pow((uv.y - floorY) * 60.0, 2.0)) * step(titleBox.x, uv.x) * step(uv.x, titleBox.z) * ramp(0.4, 1.2);\n  col = mix(col, MP_CYAN, textFill(kicker, uv) * ramp(1.2, 1.7));\n  fragColor = vec4(col, 1.0 - ramp(uDuration - 0.5, uDuration));\n}\n"
+ },
+ {
+  "id": "intro-05",
+  "name": "Parity slices",
+  "dur": 4.0,
+  "desc": "The title arrives in horizontal slices, alternate ones from the left and the right, meeting in the middle.",
+  "inputs": [
+   {
+    "name": "title",
+    "type": "text",
+    "value": "Branches",
+    "fontId": "space-grotesk",
+    "sizePct": 12,
+    "bold": true,
+    "align": "center",
+    "x": 0.5,
+    "y": 0.5
+   },
+   {
+    "name": "kicker",
+    "type": "text",
+    "value": "MultiParity tutorial",
+    "fontId": "space-grotesk",
+    "sizePct": 2.4,
+    "bold": true,
+    "align": "center",
+    "x": 0.5,
+    "y": 0.645
+   }
+  ],
+  "src": "void mainImage(out vec4 fragColor, in vec2 fragCoord) {\n  vec2 uv = fragCoord / uResolution;\n  vec3 col = MP_INK;\n  // The ground is split down the middle too: a hair darker on the left.\n  col = mix(col * 0.82, col, smoothstep(0.495, 0.505, uv.x));\n  float bands = 9.0;\n  float rel = (uv.y - titleBox.y) / max(titleBox.w - titleBox.y, 1e-3);\n  float band = floor(clamp(rel, 0.0, 0.999) * bands);\n  float side = mod(band, 2.0) < 0.5 ? -1.0 : 1.0;\n  float d0 = 0.25 + band * 0.045;\n  float k = eOut(ramp(d0, d0 + 0.8));\n  vec2 sp = uv + vec2(side * (1.0 - k) * 0.7, 0.0);\n  vec3 tint = side < 0.0 ? MP_BLUE : MP_CYAN;\n  col = mix(col, mix(tint, MP_WHITE, ramp(d0 + 0.5, d0 + 1.0)), textFill(title, sp) * ramp(d0, d0 + 0.2));\n  // The kicker types itself out.\n  float typed = mix(kickerBox.x, kickerBox.z + 0.01, ramp(1.2, 1.9));\n  col = mix(col, MP_CYAN, textFill(kicker, uv) * step(uv.x, typed));\n  float caret = step(abs(uv.x - typed - 0.004), 0.0015) * step(kickerBox.y, uv.y) * step(uv.y, kickerBox.w) * step(1.2, mpT()) * step(fract(mpT() * 2.5), 0.6);\n  col = mix(col, MP_CYAN, caret);\n  fragColor = vec4(col, 1.0 - ramp(uDuration - 0.5, uDuration));\n}\n"
+ },
+ {
+  "id": "intro-06",
+  "name": "Aurora",
+  "dur": 4.0,
+  "desc": "Blue and cyan light drifts below; the letters grow from hairlines to full weight inside a soft halo.",
+  "inputs": [
+   {
+    "name": "title",
+    "type": "text",
+    "value": "Branches",
+    "fontId": "space-grotesk",
+    "sizePct": 11,
+    "bold": true,
+    "align": "center",
+    "x": 0.5,
+    "y": 0.52
+   },
+   {
+    "name": "kicker",
+    "type": "text",
+    "value": "MultiParity tutorial",
+    "fontId": "space-grotesk",
+    "sizePct": 2.4,
+    "bold": true,
+    "align": "center",
+    "x": 0.5,
+    "y": 0.65
+   }
+  ],
+  "src": "void mainImage(out vec4 fragColor, in vec2 fragCoord) {\n  vec2 uv = fragCoord / uResolution, p = mpP(fragCoord);\n  float t = mpT();\n  vec3 col = MP_DEEP;\n  float n = fbm(vec2(p.x * 1.6 + t * 0.12, p.y * 2.2 - t * 0.05));\n  float m = fbm(vec2(p.x * 2.3 - t * 0.09 + 4.0, p.y * 1.4 + 2.0));\n  float band = exp(-pow((p.y + 0.22 - 0.18 * n) * 3.2, 2.0));\n  col += MP_BLUE * band * 0.55 * smoothstep(0.3, 0.8, n);\n  col += MP_CYAN * band * 0.45 * smoothstep(0.35, 0.85, m);\n  col *= ramp(0.0, 0.9);\n  float grow = mix(0.009, 0.0, eOut(ramp(0.35, 1.5)));\n  float d = textDistance(title, uv);\n  float letters = smoothstep(grow - 0.0015, grow + 0.0015, d) * ramp(0.35, 0.6);\n  col += MP_CYAN * 0.35 * pow(textHalo(title, uv), 3.0) * ramp(0.4, 1.4);\n  col = mix(col, MP_WHITE, letters);\n  col = mix(col, MP_CYAN, textFill(kicker, uv) * ramp(1.2, 1.7));\n  fragColor = vec4(col, 1.0 - ramp(uDuration - 0.5, uDuration));\n}\n"
+ },
+ {
+  "id": "intro-07",
+  "name": "Halftone",
+  "dur": 4.0,
+  "desc": "The title is printed in dots that swell until they join into solid letters.",
+  "inputs": [
+   {
+    "name": "title",
+    "type": "text",
+    "value": "Branches",
+    "fontId": "space-grotesk",
+    "sizePct": 13,
+    "bold": true,
+    "align": "center",
+    "x": 0.5,
+    "y": 0.5
+   },
+   {
+    "name": "kicker",
+    "type": "text",
+    "value": "MultiParity tutorial",
+    "fontId": "space-grotesk",
+    "sizePct": 2.4,
+    "bold": true,
+    "align": "center",
+    "x": 0.5,
+    "y": 0.66
+   }
+  ],
+  "src": "void mainImage(out vec4 fragColor, in vec2 fragCoord) {\n  vec2 uv = fragCoord / uResolution, p = mpP(fragCoord);\n  float cell = 0.016;\n  vec2 id = floor(p / cell), c = (id + 0.5) * cell;\n  vec2 cuv = mpUV(c);\n  float cov = textFill(title, cuv);\n  float bg = 0.12 * smoothstep(0.55, 0.0, length(p - vec2(0.75, -0.4)));   // a faint dot field in the corner\n  float h = hash12(id);\n  float grow = eOut(ramp(0.2 + h * 0.4, 1.4 + h * 0.3));\n  float r = cell * 0.5 * sqrt(max(cov, bg)) * grow * 1.15;\n  float dt = cover(length(p - c) - r, px() * 0.8);\n  vec3 col = MP_INK;\n  vec3 ink = cov > 0.5 ? mix(MP_CYAN, MP_WHITE, ramp(1.0, 1.6)) : MP_BLUE;\n  col = mix(col, ink, dt * (cov > 0.5 ? 1.0 : 0.7));\n  float solid = ramp(1.6, 2.1);\n  col = mix(col, MP_WHITE, textFill(title, uv) * solid);\n  col = mix(col, MP_CYAN, textFill(kicker, uv) * ramp(1.6, 2.0));\n  fragColor = vec4(col, 1.0 - ramp(uDuration - 0.5, uDuration));\n}\n"
+ },
+ {
+  "id": "intro-08",
+  "name": "Ripple and register",
+  "dur": 4.0,
+  "desc": "Rings spread from the centre; a blue copy and a cyan copy of the title slide into register and turn white.",
+  "inputs": [
+   {
+    "name": "title",
+    "type": "text",
+    "value": "Branches",
+    "fontId": "space-grotesk",
+    "sizePct": 11,
+    "bold": true,
+    "align": "center",
+    "x": 0.5,
+    "y": 0.5
+   },
+   {
+    "name": "kicker",
+    "type": "text",
+    "value": "MultiParity tutorial",
+    "fontId": "space-grotesk",
+    "sizePct": 2.4,
+    "bold": true,
+    "align": "center",
+    "x": 0.5,
+    "y": 0.63
+   }
+  ],
+  "src": "void mainImage(out vec4 fragColor, in vec2 fragCoord) {\n  vec2 uv = fragCoord / uResolution, p = mpP(fragCoord);\n  float t = mpT();\n  vec3 col = mix(MP_INK, MP_DEEP, length(p));\n  for (int i = 0; i < 4; i++) {\n    float st = 0.1 + float(i) * 0.22;\n    float rr = (t - st) * 0.55;\n    float fade = (1.0 - sat((t - st) / 1.8)) * step(st, t);\n    col = mix(col, MP_CYAN, (1.0 - smoothstep(0.0, px() * 2.5, abs(length(p) - rr))) * fade * 0.6);\n  }\n  float d = 0.035 * (1.0 - eOut(ramp(0.3, 1.35)));\n  float a = ramp(0.25, 0.6);\n  float b = textFill(title, uv + vec2(d, d * 0.3)) * a;\n  float c = textFill(title, uv - vec2(d, d * 0.3)) * a;\n  vec3 ink = MP_BLUE * b * (1.0 - c) + MP_CYAN * c * (1.0 - b) + MP_WHITE * b * c;\n  col = mix(col, ink, max(b, c));\n  col = mix(col, MP_CYAN, textFill(kicker, uv) * ramp(1.2, 1.7));\n  fragColor = vec4(col, 1.0 - ramp(uDuration - 0.5, uDuration));\n}\n"
+ },
+ {
+  "id": "intro-09",
+  "name": "Stripe sweep",
+  "dur": 4.0,
+  "desc": "A band of brand stripes sweeps across on a slant and leaves the title behind it; the kicker sits in a tag.",
+  "inputs": [
+   {
+    "name": "title",
+    "type": "text",
+    "value": "Branches",
+    "fontId": "space-grotesk",
+    "sizePct": 11,
+    "bold": true,
+    "align": "left",
+    "x": 0.1,
+    "y": 0.46
+   },
+   {
+    "name": "kicker",
+    "type": "text",
+    "value": "MultiParity tutorial",
+    "fontId": "space-grotesk",
+    "sizePct": 2.3,
+    "bold": true,
+    "align": "left",
+    "x": 0.113,
+    "y": 0.6
+   }
+  ],
+  "src": "void mainImage(out vec4 fragColor, in vec2 fragCoord) {\n  vec2 uv = fragCoord / uResolution, p = mpP(fragCoord);\n  float aspect = uResolution.x / uResolution.y;\n  float slant = p.x + p.y * 0.45;\n  float front = mix(-1.5, 1.9, eInOut(ramp(0.1, 1.4)));\n  float band = step(front - 0.55, slant) * step(slant, front);\n  vec3 col = MP_INK;\n  float behind = step(slant, front - 0.55);\n  col = mix(col, MP_WHITE, textFill(title, uv) * behind);\n  // The tag: a cyan pill with dark words.\n  vec2 k0 = kickerBox.xy - vec2(0.012, 0.018), k1 = kickerBox.zw + vec2(0.012, 0.018);\n  vec2 kc = (k0 + k1) * 0.5, kh = (k1 - k0) * 0.5;\n  float pd = sdRBox((uv - kc) * vec2(aspect, 1.0), kh * vec2(aspect, 1.0), 0.02);\n  float pill = cover(pd, px()) * behind * ramp(1.2, 1.5);\n  col = mix(col, MP_CYAN, pill);\n  col = mix(col, MP_INK, textFill(kicker, uv) * pill);\n  float s = fract(slant * 9.0);\n  vec3 stripe = s < 0.45 ? MP_BLUE : (s < 0.9 ? MP_CYAN : MP_WHITE);\n  col = mix(col, stripe, band);\n  fragColor = vec4(col, 1.0 - ramp(uDuration - 0.5, uDuration));\n}\n"
+ },
+ {
+  "id": "intro-10",
+  "name": "Mosaic resolve",
+  "dur": 4.0,
+  "desc": "Big coloured blocks refine step by step into the title, like a picture coming in over a slow line.",
+  "inputs": [
+   {
+    "name": "title",
+    "type": "text",
+    "value": "Branches",
+    "fontId": "space-grotesk",
+    "sizePct": 12,
+    "bold": true,
+    "align": "center",
+    "x": 0.5,
+    "y": 0.5
+   },
+   {
+    "name": "kicker",
+    "type": "text",
+    "value": "MultiParity tutorial",
+    "fontId": "space-grotesk",
+    "sizePct": 2.4,
+    "bold": true,
+    "align": "center",
+    "x": 0.5,
+    "y": 0.645
+   }
+  ],
+  "src": "void mainImage(out vec4 fragColor, in vec2 fragCoord) {\n  vec2 uv = fragCoord / uResolution, p = mpP(fragCoord);\n  float k = ramp(0.2, 1.5);\n  float stepN = floor(k * 6.0);\n  float cell = 0.12 * pow(0.5, stepN);\n  vec2 id = floor(p / cell), c = (id + 0.5) * cell;\n  float cov = textFill(title, mpUV(c));\n  // Wider blocks average more of the letters, so sample a few points in the block.\n  cov = (cov + textFill(title, mpUV(c + cell * vec2(0.3, 0.3))) + textFill(title, mpUV(c - cell * vec2(0.3, 0.3)))\n        + textFill(title, mpUV(c + cell * vec2(0.3, -0.3))) + textFill(title, mpUV(c + cell * vec2(-0.3, 0.3)))) / 5.0;\n  float h = hash12(id + stepN * 7.0);\n  vec3 tint = h < 0.5 ? MP_BLUE : MP_CYAN;\n  vec3 col = MP_INK + (h - 0.5) * 0.03;\n  float sharp = step(5.5, k * 6.0);\n  vec3 ink = mix(tint, MP_WHITE, ramp(1.1, 1.6));\n  col = mix(col, ink, mix(cov, textFill(title, uv), sharp) * step(0.01, k));\n  col = mix(col, MP_CYAN, textFill(kicker, uv) * ramp(1.5, 1.9));\n  fragColor = vec4(col, 1.0 - ramp(uDuration - 0.5, uDuration));\n}\n"
+ },
+ {
+  "id": "end-01",
+  "name": "Doors close",
+  "dur": 5.0,
+  "desc": "The icon's halves close over the video like doors, then draw back to the edges to show what is next.",
+  "inputs": [
+   {
+    "name": "kicker",
+    "type": "text",
+    "value": "Up next",
+    "fontId": "space-grotesk",
+    "sizePct": 2.6,
+    "bold": true,
+    "align": "center",
+    "x": 0.5,
+    "y": 0.6
+   },
+   {
+    "name": "next",
+    "type": "text",
+    "value": "Drafts",
+    "fontId": "space-grotesk",
+    "sizePct": 10,
+    "bold": true,
+    "align": "center",
+    "x": 0.5,
+    "y": 0.49
+   }
+  ],
+  "src": "void mainImage(out vec4 fragColor, in vec2 fragCoord) {\n  vec2 uv = fragCoord / uResolution;\n  float t = mpT();\n  float edge = 0.5 * eInOut(ramp(0.0, 0.9));\n  edge = mix(edge, 0.06, eInOut(ramp(1.1, 1.9)));\n  float yy = (uv.y - 0.5) * 2.0;\n  float bulge = 0.07 * sqrt(max(0.0, 1.0 - yy * yy)) * mix(1.0, 0.4, ramp(1.1, 1.9));\n  float w = 1.5 / uResolution.x;\n  float shut = step(0.9, t);\n  vec4 col = vec4(mix(MP_DEEP, MP_INK, uv.y), shut);\n  col.rgb = mix(col.rgb, MP_CYAN, textFill(kicker, uv) * ramp(1.5, 2.0));\n  col.rgb = mix(col.rgb, MP_WHITE, textFill(next, uv + vec2(0.0, 0.02 * (1.0 - eOut(ramp(1.6, 2.4))))) * ramp(1.6, 2.1));\n  float blue = 1.0 - smoothstep(edge - w, edge + w, uv.x);\n  float lensL = (1.0 - smoothstep(edge + bulge - w, edge + bulge + w, uv.x)) * (1.0 - blue) * step(0.001, edge);\n  float cyan = smoothstep(1.0 - edge - w, 1.0 - edge + w, uv.x);\n  float lensR = smoothstep(1.0 - edge - bulge - w, 1.0 - edge - bulge + w, uv.x) * (1.0 - cyan) * step(0.001, edge);\n  col = over(vec4(MP_WHITE, lensL + lensR), col);\n  col = over(vec4(MP_BLUE, blue), col);\n  col = over(vec4(MP_CYAN, cyan), col);\n  fragColor = col;\n}\n"
+ },
+ {
+  "id": "end-02",
+  "name": "Up next card",
+  "dur": 5.0,
+  "desc": "The video dims, a card slides in with the next video's name, and a bar counts down the seconds.",
+  "inputs": [
+   {
+    "name": "kicker",
+    "type": "text",
+    "value": "Up next",
+    "fontId": "space-grotesk",
+    "sizePct": 2.4,
+    "bold": true,
+    "align": "left",
+    "x": 0.6,
+    "y": 0.59
+   },
+   {
+    "name": "next",
+    "type": "text",
+    "value": "Drafts",
+    "fontId": "space-grotesk",
+    "sizePct": 7,
+    "bold": true,
+    "align": "left",
+    "x": 0.6,
+    "y": 0.5
+   }
+  ],
+  "src": "void mainImage(out vec4 fragColor, in vec2 fragCoord) {\n  vec2 uv = fragCoord / uResolution, p = mpP(fragCoord);\n  float aspect = uResolution.x / uResolution.y;\n  float dim = 0.6 * ramp(0.0, 0.6);\n  vec4 col = vec4(MP_DEEP, dim);\n  float k = eOut(ramp(0.3, 1.0));\n  float sx = (1.0 - k) * 0.5;\n  vec2 a = vec2(0.565, 0.33), b = vec2(0.93, 0.68);\n  vec2 cc = (a + b) * 0.5 + vec2(sx, 0.0), hh = (b - a) * 0.5;\n  float d = sdRBox((uv - cc) * vec2(aspect, 1.0), hh * vec2(aspect, 1.0), 0.025);\n  float card = cover(d, px());\n  col = over(vec4(MP_INK, card * 0.96), col);\n  col = over(vec4(MP_CYAN, (1.0 - smoothstep(0.0, px() * 1.5, abs(d))) * 0.6 * card), col);\n  col = over(vec4(MP_CYAN, textFill(kicker, uv - vec2(sx, 0.0))), col);\n  col = over(vec4(MP_WHITE, textFill(next, uv - vec2(sx, 0.0))), col);\n  float prog = ramp(1.0, uDuration - 0.4);\n  float barY = 0.385, x0 = 0.6 + sx, x1 = 0.895 + sx;\n  float bar = step(abs(uv.y - barY), 0.004) * step(x0, uv.x) * step(uv.x, x1);\n  col = over(vec4(MP_WHITE, bar * 0.15 * k), col);\n  col = over(vec4(MP_CYAN, bar * step(uv.x, mix(x0, x1, prog)) * k), col);\n  vec4 lg = mpLogo(p, vec2(-0.78, 0.4), 0.035, 0.0, 1.0);\n  col = over(vec4(lg.rgb, lg.a * ramp(0.4, 0.9)), col);\n  // At the very end the whole frame goes to the ground colour.\n  col = over(vec4(MP_INK, ramp(uDuration - 0.6, uDuration)), col);\n  fragColor = col;\n}\n"
+ },
+ {
+  "id": "end-03",
+  "name": "Iris out",
+  "dur": 5.0,
+  "desc": "The old film iris: a circle closes on the video and the icon appears where it shut.",
+  "inputs": [
+   {
+    "name": "kicker",
+    "type": "text",
+    "value": "Up next",
+    "fontId": "space-grotesk",
+    "sizePct": 2.4,
+    "bold": true,
+    "align": "center",
+    "x": 0.5,
+    "y": 0.33
+   },
+   {
+    "name": "next",
+    "type": "text",
+    "value": "Drafts",
+    "fontId": "space-grotesk",
+    "sizePct": 7,
+    "bold": true,
+    "align": "center",
+    "x": 0.5,
+    "y": 0.25
+   }
+  ],
+  "src": "void mainImage(out vec4 fragColor, in vec2 fragCoord) {\n  vec2 uv = fragCoord / uResolution, p = mpP(fragCoord);\n  vec2 c = vec2(0.0, 0.09);\n  float R = mix(1.15, 0.0, eInOut(ramp(0.1, 1.2)));\n  float d = length(p - c) - R;\n  vec4 col = vec4(mix(MP_INK, MP_DEEP, length(p) * 1.2), smoothstep(-px(), px(), d));\n  col = over(vec4(MP_CYAN, (1.0 - smoothstep(0.0, px() * 2.5, abs(d))) * step(0.01, R)), col);\n  float s = eBack(ramp(1.15, 1.6));\n  vec4 lg = mpLogo(p, c, 0.11 * max(s, 1e-3), 0.0, 1.0);\n  col = over(vec4(lg.rgb, lg.a * step(1.15, mpT())), col);\n  col = over(vec4(MP_CYAN, textFill(kicker, uv) * ramp(1.5, 1.9)), col);\n  col = over(vec4(MP_WHITE, textFill(next, uv) * ramp(1.6, 2.1)), col);\n  fragColor = col;\n}\n"
+ },
+ {
+  "id": "end-04",
+  "name": "Aurora",
+  "dur": 5.0,
+  "desc": "The video gives way to slow blue and cyan light; the next video's name is set large on the left.",
+  "inputs": [
+   {
+    "name": "kicker",
+    "type": "text",
+    "value": "Up next",
+    "fontId": "space-grotesk",
+    "sizePct": 2.6,
+    "bold": true,
+    "align": "left",
+    "x": 0.1,
+    "y": 0.6
+   },
+   {
+    "name": "next",
+    "type": "text",
+    "value": "Drafts",
+    "fontId": "space-grotesk",
+    "sizePct": 12,
+    "bold": true,
+    "align": "left",
+    "x": 0.1,
+    "y": 0.48
+   },
+   {
+    "name": "foot",
+    "type": "text",
+    "value": "MultiParity tutorials",
+    "fontId": "space-grotesk",
+    "sizePct": 2,
+    "bold": true,
+    "align": "left",
+    "x": 0.1,
+    "y": 0.12
+   }
+  ],
+  "src": "void mainImage(out vec4 fragColor, in vec2 fragCoord) {\n  vec2 uv = fragCoord / uResolution, p = mpP(fragCoord);\n  float t = mpT();\n  vec3 col = MP_DEEP;\n  float n = fbm(vec2(p.x * 1.4 + t * 0.1, p.y * 2.0 - t * 0.04));\n  float m = fbm(vec2(p.x * 2.1 - t * 0.08 + 4.0, p.y * 1.3 + 2.0));\n  float band = exp(-pow((p.y - 0.05 - p.x * 0.25 - 0.2 * n) * 2.6, 2.0));\n  col += MP_BLUE * band * 0.5 * smoothstep(0.3, 0.8, n);\n  col += MP_CYAN * band * 0.4 * smoothstep(0.35, 0.85, m);\n  col = mix(col, MP_CYAN, textFill(kicker, uv) * ramp(0.7, 1.1));\n  col = mix(col, MP_WHITE, textFill(next, uv + vec2(0.03 * (1.0 - eOut(ramp(0.8, 1.6))), 0.0)) * ramp(0.8, 1.3));\n  col = mix(col, MP_WHITE * 0.7, textFill(foot, uv) * ramp(1.2, 1.6));\n  vec4 lg = mpLogo(p, vec2(0.76, -0.38), 0.045, 0.0, 1.0);\n  col = mix(col, lg.rgb, lg.a * ramp(1.2, 1.6));\n  fragColor = vec4(col, eOut(ramp(0.0, 0.8)));\n}\n"
+ },
+ {
+  "id": "end-05",
+  "name": "Countdown ring",
+  "dur": 5.0,
+  "desc": "The icon sits inside a ring that fills as the seconds run out, beside the next video's name.",
+  "inputs": [
+   {
+    "name": "kicker",
+    "type": "text",
+    "value": "Up next",
+    "fontId": "space-grotesk",
+    "sizePct": 2.6,
+    "bold": true,
+    "align": "left",
+    "x": 0.42,
+    "y": 0.57
+   },
+   {
+    "name": "next",
+    "type": "text",
+    "value": "Drafts",
+    "fontId": "space-grotesk",
+    "sizePct": 9,
+    "bold": true,
+    "align": "left",
+    "x": 0.42,
+    "y": 0.47
+   }
+  ],
+  "src": "void mainImage(out vec4 fragColor, in vec2 fragCoord) {\n  vec2 uv = fragCoord / uResolution, p = mpP(fragCoord);\n  vec2 c = vec2(-0.43, 0.02);\n  vec3 col = mix(MP_INK, MP_DEEP, length(p - c) * 1.2);\n  float s = eBack(ramp(0.3, 0.8));\n  vec4 lg = mpLogo(p, c, 0.12 * max(s, 1e-3), 0.0, 1.0);\n  col = mix(col, lg.rgb, lg.a);\n  float rr = length(p - c) - 0.19;\n  float ring = 1.0 - smoothstep(0.003, 0.0045, abs(rr));\n  float ang = (atan(p.x - c.x, p.y - c.y) + 3.14159) / 6.28318;\n  float fill = ramp(0.9, uDuration - 0.2);\n  col = mix(col, MP_WHITE, ring * 0.12 * ramp(0.5, 0.9));\n  col = mix(col, MP_CYAN, ring * step(1.0 - ang, fill));\n  col = mix(col, MP_CYAN, textFill(kicker, uv) * ramp(0.8, 1.2));\n  col = mix(col, MP_WHITE, textFill(next, uv + vec2(0.02 * (1.0 - eOut(ramp(0.9, 1.6))), 0.0)) * ramp(0.9, 1.3));\n  fragColor = vec4(col, eOut(ramp(0.0, 0.5)));\n}\n"
+ },
+ {
+  "id": "end-06",
+  "name": "Stripe wipe",
+  "dur": 5.0,
+  "desc": "The brand stripes sweep across on a slant and wipe the video away, leaving the icon and what's next.",
+  "inputs": [
+   {
+    "name": "kicker",
+    "type": "text",
+    "value": "Up next",
+    "fontId": "space-grotesk",
+    "sizePct": 2.4,
+    "bold": true,
+    "align": "center",
+    "x": 0.5,
+    "y": 0.4
+   },
+   {
+    "name": "next",
+    "type": "text",
+    "value": "Drafts",
+    "fontId": "space-grotesk",
+    "sizePct": 8,
+    "bold": true,
+    "align": "center",
+    "x": 0.5,
+    "y": 0.31
+   }
+  ],
+  "src": "void mainImage(out vec4 fragColor, in vec2 fragCoord) {\n  vec2 uv = fragCoord / uResolution, p = mpP(fragCoord);\n  float slant = p.x + p.y * 0.45;\n  float front = mix(-1.5, 1.9, eInOut(ramp(0.0, 1.1)));\n  float band = step(front - 0.55, slant) * step(slant, front);\n  float behind = step(slant, front - 0.55);\n  vec4 col = vec4(MP_INK, behind);\n  vec4 lg = mpLogo(p, vec2(0.0, 0.14), 0.1, 0.0, 1.0);\n  col = over(vec4(lg.rgb, lg.a * behind * ramp(0.8, 1.2)), col);\n  col = over(vec4(MP_CYAN, textFill(kicker, uv) * behind * ramp(1.0, 1.4)), col);\n  col = over(vec4(MP_WHITE, textFill(next, uv) * behind * ramp(1.1, 1.5)), col);\n  float s = fract(slant * 9.0);\n  vec3 stripe = s < 0.45 ? MP_BLUE : (s < 0.9 ? MP_CYAN : MP_WHITE);\n  col = over(vec4(stripe, band), col);\n  fragColor = col;\n}\n"
+ },
+ {
+  "id": "end-07",
+  "name": "Drafting table",
+  "dur": 5.0,
+  "desc": "A drafting grid fades in over the video; the next title is outlined, then inked.",
+  "inputs": [
+   {
+    "name": "kicker",
+    "type": "text",
+    "value": "Up next",
+    "fontId": "space-grotesk",
+    "sizePct": 2.4,
+    "bold": true,
+    "align": "left",
+    "x": 0.1,
+    "y": 0.6
+   },
+   {
+    "name": "next",
+    "type": "text",
+    "value": "Drafts",
+    "fontId": "space-grotesk",
+    "sizePct": 11,
+    "bold": true,
+    "align": "left",
+    "x": 0.1,
+    "y": 0.48
+   }
+  ],
+  "src": "void mainImage(out vec4 fragColor, in vec2 fragCoord) {\n  vec2 uv = fragCoord / uResolution, p = mpP(fragCoord);\n  vec3 col = MP_INK;\n  vec2 g = abs(fract(p * 16.0 + 0.5) - 0.5) / 16.0;\n  vec2 g4 = abs(fract(p * 4.0 + 0.5) - 0.5) / 4.0;\n  float grid = (1.0 - smoothstep(0.0, px() * 1.2, min(g.x, g.y))) * 0.10 + (1.0 - smoothstep(0.0, px() * 1.4, min(g4.x, g4.y))) * 0.18;\n  col = mix(col, MP_BLUE, grid);\n  float d = textDistance(next, uv);\n  float trace = step(uv.x, mix(nextBox.x - 0.01, nextBox.z + 0.01, eInOut(ramp(0.6, 1.6))));\n  col = mix(col, MP_CYAN, (1.0 - smoothstep(0.0012, 0.0028, abs(d))) * trace);\n  col = mix(col, MP_WHITE, textFill(next, uv) * ramp(1.6, 2.0));\n  col = mix(col, MP_CYAN, textFill(kicker, uv) * ramp(0.5, 0.9));\n  vec4 lg = mpLogo(p, vec2(0.76, -0.38), 0.045, 0.0, 1.0);\n  col = mix(col, lg.rgb, lg.a * ramp(1.2, 1.6));\n  fragColor = vec4(col, eOut(ramp(0.0, 0.6)));\n}\n"
+ },
+ {
+  "id": "end-08",
+  "name": "Drifting halves",
+  "dur": 5.0,
+  "desc": "Half discs in blue and cyan float slowly upward behind the next video's name.",
+  "inputs": [
+   {
+    "name": "kicker",
+    "type": "text",
+    "value": "Up next",
+    "fontId": "space-grotesk",
+    "sizePct": 2.6,
+    "bold": true,
+    "align": "center",
+    "x": 0.5,
+    "y": 0.6
+   },
+   {
+    "name": "next",
+    "type": "text",
+    "value": "Drafts",
+    "fontId": "space-grotesk",
+    "sizePct": 10,
+    "bold": true,
+    "align": "center",
+    "x": 0.5,
+    "y": 0.49
+   }
+  ],
+  "src": "void mainImage(out vec4 fragColor, in vec2 fragCoord) {\n  vec2 uv = fragCoord / uResolution, p = mpP(fragCoord);\n  float t = mpT();\n  vec3 col = mix(MP_DEEP, MP_INK, uv.y);\n  for (int layer = 0; layer < 2; layer++) {\n    float L = float(layer);\n    float cell = 0.3 - L * 0.1;\n    vec2 q = p + vec2(L * 0.37, -t * (0.035 + L * 0.03));\n    vec2 id = floor(q / cell);\n    float h = hash12(id + L * 19.0);\n    if (h < 0.62) continue;\n    vec2 cc = (id + 0.5 + (vec2(hash12(id + 3.1), hash12(id + 7.7)) - 0.5) * 0.3) * cell;\n    float r = cell * (0.22 + 0.12 * hash12(id + 1.3));\n    cc.x += r * (step(0.78, h) * 2.0 - 1.0) * 0.6;   // each half sits over its cell's middle\n    vec2 lq = (q - cc) / r;\n    float leftHalf = step(0.78, h);\n    float sd = leftHalf > 0.5 ? sdBlue(lq) : sdCyan(lq);\n    vec3 tint = leftHalf > 0.5 ? MP_BLUE : MP_CYAN;\n    col = mix(col, tint, cover(sd, px() / r) * (0.18 + L * 0.12));\n  }\n  col = mix(col, MP_CYAN, textFill(kicker, uv) * ramp(0.6, 1.0));\n  col = mix(col, MP_WHITE, textFill(next, uv) * ramp(0.7, 1.2));\n  vec4 lg = mpLogo(p, vec2(0.0, -0.27), 0.045, 0.0, 1.0);\n  col = mix(col, lg.rgb, lg.a * ramp(1.0, 1.4));\n  fragColor = vec4(col, eOut(ramp(0.0, 0.7)));\n}\n"
+ },
+ {
+  "id": "end-09",
+  "name": "Was and next",
+  "dur": 5.0,
+  "desc": "The frame splits in two: the video you watched on the blue side, the next one on the cyan side, the icon on the seam.",
+  "inputs": [
+   {
+    "name": "was",
+    "type": "text",
+    "value": "You watched",
+    "fontId": "space-grotesk",
+    "sizePct": 2.4,
+    "bold": true,
+    "align": "center",
+    "x": 0.25,
+    "y": 0.56
+   },
+   {
+    "name": "title",
+    "type": "text",
+    "value": "Branches",
+    "fontId": "space-grotesk",
+    "sizePct": 6.5,
+    "bold": true,
+    "align": "center",
+    "x": 0.25,
+    "y": 0.47
+   },
+   {
+    "name": "kicker",
+    "type": "text",
+    "value": "Up next",
+    "fontId": "space-grotesk",
+    "sizePct": 2.4,
+    "bold": true,
+    "align": "center",
+    "x": 0.75,
+    "y": 0.56
+   },
+   {
+    "name": "next",
+    "type": "text",
+    "value": "Drafts",
+    "fontId": "space-grotesk",
+    "sizePct": 6.5,
+    "bold": true,
+    "align": "center",
+    "x": 0.75,
+    "y": 0.47
+   }
+  ],
+  "src": "void mainImage(out vec4 fragColor, in vec2 fragCoord) {\n  vec2 uv = fragCoord / uResolution, p = mpP(fragCoord);\n  float kl = eInOut(ramp(0.0, 0.8)), kr = eInOut(ramp(0.15, 0.95));\n  float left = step(uv.x, 0.5) * step(1.0 - kl, uv.y);\n  float right = step(0.5, uv.x) * step(uv.y, kr);\n  vec4 col = vec4(0.0);\n  col = over(vec4(MP_BLUE, left), col);\n  col = over(vec4(MP_CYAN, right), col);\n  col = over(vec4(MP_INK * 1.2, textFill(was, uv) * left * ramp(0.8, 1.2) * 0.85), col);\n  col = over(vec4(MP_INK, textFill(title, uv) * left * ramp(0.85, 1.25)), col);\n  col = over(vec4(MP_INK * 1.2, textFill(kicker, uv) * right * ramp(1.0, 1.4) * 0.85), col);\n  col = over(vec4(MP_INK, textFill(next, uv) * right * ramp(1.05, 1.45)), col);\n  float s = eBack(ramp(0.9, 1.35));\n  vec2 c = vec2(0.0, 0.0);\n  float disc = cover(length(p - c) - 0.1 * s, px());\n  col = over(vec4(MP_INK, disc * step(0.9, mpT())), col);\n  vec4 lg = mpLogo(p, c, 0.075 * max(s, 1e-3), 0.0, 1.0);\n  col = over(vec4(lg.rgb, lg.a * step(0.9, mpT())), col);\n  fragColor = col;\n}\n"
+ },
+ {
+  "id": "end-10",
+  "name": "Quiet close",
+  "dur": 5.0,
+  "desc": "A calm fade to the icon and one line of type; a thin rule draws out under it; then all goes dark.",
+  "inputs": [
+   {
+    "name": "kicker",
+    "type": "text",
+    "value": "Up next",
+    "fontId": "space-grotesk",
+    "sizePct": 2.2,
+    "bold": true,
+    "align": "center",
+    "x": 0.5,
+    "y": 0.42
+   },
+   {
+    "name": "next",
+    "type": "text",
+    "value": "Drafts",
+    "fontId": "space-grotesk",
+    "sizePct": 5,
+    "bold": true,
+    "align": "center",
+    "x": 0.5,
+    "y": 0.35
+   }
+  ],
+  "src": "void mainImage(out vec4 fragColor, in vec2 fragCoord) {\n  vec2 uv = fragCoord / uResolution, p = mpP(fragCoord);\n  vec3 col = mix(MP_INK, MP_DEEP, length(p) * 1.2);\n  vec4 lg = mpLogo(p, vec2(0.0, 0.13), 0.07, 0.0, 1.0);\n  col = mix(col, lg.rgb, lg.a * ramp(0.5, 1.1));\n  col = mix(col, MP_CYAN, textFill(kicker, uv) * ramp(0.9, 1.3));\n  col = mix(col, MP_WHITE, textFill(next, uv) * ramp(1.0, 1.5));\n  float ruleW = 0.09 * eInOut(ramp(1.3, 2.1));\n  float rule = step(abs(uv.y - (nextBox.y - 0.03)), 0.0016) * step(abs(uv.x - 0.5), ruleW);\n  col = mix(col, MP_CYAN, rule);\n  col *= 1.0 - ramp(uDuration - 0.9, uDuration);\n  fragColor = vec4(col, eOut(ramp(0.0, 0.6)));\n}\n"
+ },
+ {
+  "id": "end-11",
+  "name": "Logo and link",
+  "dur": 5.0,
+  "desc": "The Construction logo card as the ending: the video goes dark, the icon is drafted and inked, then where to get it.",
+  "inputs": [
+   {
+    "name": "wordmark",
+    "type": "text",
+    "value": "MultiParity",
+    "fontId": "space-grotesk",
+    "sizePct": 6.5,
+    "bold": true,
+    "align": "center",
+    "x": 0.5,
+    "y": 0.37
+   },
+   {
+    "name": "cta",
+    "type": "text",
+    "value": "Get it on GitHub",
+    "fontId": "space-grotesk",
+    "sizePct": 2.6,
+    "bold": true,
+    "align": "center",
+    "x": 0.5,
+    "y": 0.265
+   },
+   {
+    "name": "url",
+    "type": "text",
+    "value": "vltmedia.github.io/MultiParity",
+    "fontId": "space-grotesk",
+    "sizePct": 2.3,
+    "bold": false,
+    "align": "center",
+    "x": 0.5,
+    "y": 0.19
+   }
+  ],
+  "src": "void mainImage(out vec4 fragColor, in vec2 fragCoord) {\n  vec2 p = mpP(fragCoord), uv = fragCoord / uResolution;\n  float aspect = uResolution.x / uResolution.y;\n  vec3 bg = MP_DEEP * 0.75;\n  vec2 g = abs(fract(p * 20.0 + 0.5) - 0.5) / 20.0;\n  bg = mix(bg, MP_BLUE, (1.0 - smoothstep(0.0, px() * 1.2, min(g.x, g.y))) * 0.05);\n  vec2 c = vec2(0.0, 0.13); float r = 0.13;\n  vec2 q = (p - c) / r;\n  float lw = 1.3 * px() / r;\n  float ang = (atan(q.y, q.x) + 3.14159) / 6.28318;\n  float dash = step(0.5, fract(ang * 48.0));\n  vec3 col = bg;\n  float c1 = (1.0 - smoothstep(0.0, lw, abs(sdDisc(q)))) * step(ang, eOut(ramp(0.4, 0.95)));\n  float v = (1.0 - smoothstep(0.0, lw, abs(abs(q.x) - 0.278))) * step(abs(q.y), 1.25 * eOut(ramp(0.6, 1.0)));\n  float a1 = length(q - vec2(-0.637, 0.0)), a2 = length(q - vec2(0.637, 0.0));\n  float arcs = (1.0 - smoothstep(0.0, lw, min(abs(a1 - 0.634), abs(a2 - 0.634)))) * ramp(0.85, 1.15) * dash;\n  float cross_ = (1.0 - smoothstep(0.0, lw, min(abs(q.x), abs(q.y)))) * step(length(q), 1.35) * ramp(0.45, 0.75) * 0.5;\n  col = mix(col, MP_CYAN, max(max(c1, v), max(arcs, cross_)) * (1.0 - 0.6 * ramp(1.5, 1.9)));\n  vec4 lg = mpLogo(p, c, r, 0.0, 1.0);\n  col = mix(col, lg.rgb, lg.a * step(q.x, mix(-1.1, 1.1, eInOut(ramp(1.2, 1.7)))));\n  col = mix(col, MP_WHITE, textFill(wordmark, uv) * ramp(1.6, 2.0));\n  // \"Get it on GitHub\" in a cyan tag, the address under it.\n  vec2 k0 = ctaBox.xy - vec2(0.014, 0.02), k1 = ctaBox.zw + vec2(0.014, 0.02);\n  vec2 kc = (k0 + k1) * 0.5, kh = (k1 - k0) * 0.5;\n  float tagA = eOut(ramp(2.0, 2.4));\n  float pill = cover(sdRBox((uv - kc) * vec2(aspect, 1.0), kh * vec2(aspect, 1.0) * vec2(mix(0.6, 1.0, tagA), 1.0), 0.03), px()) * tagA;\n  col = mix(col, MP_CYAN, pill);\n  col = mix(col, MP_DEEP, textFill(cta, uv) * pill);\n  col = mix(col, MP_WHITE * 0.8, textFill(url, uv) * ramp(2.3, 2.7));\n  col *= 1.0 - ramp(uDuration - 0.6, uDuration);\n  fragColor = vec4(col, eOut(ramp(0.0, 0.6)));\n}\n"
+ }
+]

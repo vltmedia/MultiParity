@@ -386,10 +386,24 @@
   },
   {
    "id": "invite",
-   "text": "Everything lives in Admin. To add someone, invite them by email and pick their role. They get a link, set a password, and they're in.",
-   "assetId": "asset_01M8DF55AQ55W5YD2Y1ZDTW6KY",
-   "path": "audio/generated/Everything-lives-in-Admin-To-add-4t485c-generatedSpeech.mp3",
-   "dur": 8.673
+   "text": "Everything lives in Admin. To add someone, open Invites, type their email and pick their role. They get a link, set a password, and they're in.",
+   "assetId": "asset_01M8FC1Z58XMEAWQ745FNKS7HT",
+   "path": "audio/generated/Everything-lives-in-Admin-To-add-c7x87x-generatedSpeech.mp3",
+   "dur": 9.561
+  },
+  {
+   "id": "email",
+   "text": "Emailed invites need the server's email set up first. That's a few lines in its settings: who it's from, and your SMTP server, or a SendGrid key. [aside] The Email video walks through it.",
+   "assetId": "asset_01M8FC25CZMPW4KDJPBMHR5044",
+   "path": "audio/generated/Emailed-invites-need-the-server-s-email-aj8z98-generatedSpeech.mp3",
+   "dur": 11.311
+  },
+  {
+   "id": "link",
+   "text": "No email set up? Pick By link instead. You get one link to send however you like, in chat or a message, and it works just the same.",
+   "assetId": "asset_01M8FC2BEBH23R1RS10ZY8N5ND",
+   "path": "audio/generated/No-email-set-up-Pick-By-link-instead-j39x4r-generatedSpeech.mp3",
+   "dur": 7.471
   },
   {
    "id": "projects",
@@ -975,6 +989,80 @@
    "assetId": "asset_01M8E68BYXMQYK676N26X2QS8T",
    "path": "audio/generated/It-only-ever-sees-what-you-can-see-And-ch3h05-generatedSpeech.mp3",
    "dur": 4.989
+  }
+ ],
+ "t20-invite-link": [
+  {
+   "id": "hello",
+   "text": "[friendly] No email on your server, or bringing in a freelancer over chat? An invite link is the quickest way in.",
+   "assetId": "asset_01M8FC5YK8BBJGAS8XH1DEYP91",
+   "path": "audio/generated/friendly-No-email-on-your-server-or-24mt4r-generatedSpeech.mp3",
+   "dur": 6.191
+  },
+  {
+   "id": "make",
+   "text": "In Admin, open Invites and pick By link. Choose their role, and how long the link should keep working. Then make the link.",
+   "assetId": "asset_01M8FC64XYYTGN62J906ZBDVRF",
+   "path": "audio/generated/In-Admin-open-Invites-and-pick-By-link-7j75fr-generatedSpeech.mp3",
+   "dur": 8.438
+  },
+  {
+   "id": "copy",
+   "text": "Copy it and send it however you like: chat, a message, anything. It works once, for one person, and stops when it runs out. Changed your mind? Revoke it from the list.",
+   "assetId": "asset_01M8FC6B1YED12XEDJN5ZF1SHG",
+   "path": "audio/generated/Copy-it-and-send-it-however-you-like-kvm4nj-generatedSpeech.mp3",
+   "dur": 11.076
+  },
+  {
+   "id": "join",
+   "text": "Here's what they see. Their name, their email, a password, and that's it.",
+   "assetId": "asset_01M8FC6FEKDZ5F5E14JKC6VJP6",
+   "path": "audio/generated/Here-s-what-they-see-Their-name-their-svc1ep-generatedSpeech.mp3",
+   "dur": 4.441
+  },
+  {
+   "id": "done",
+   "text": "[warmly] They're in, with the role you picked. No email server needed.",
+   "assetId": "asset_01M8FC6KYT4Z2V9Q4R0EBKFN1Z",
+   "path": "audio/generated/warmly-They-re-in-with-the-role-you-fhbq65-generatedSpeech.mp3",
+   "dur": 3.788
+  }
+ ],
+ "t21-themes": [
+  {
+   "id": "hello",
+   "text": "[friendly] MultiParity comes with forty-seven looks, and you can switch whenever you like. They're in Accounts, under Look.",
+   "assetId": "asset_01M8FCZ28B8T47XPYNY9PDETJM",
+   "path": "audio/generated/friendly-MultiParity-comes-with-forty-k64fff-generatedSpeech.mp3",
+   "dur": 5.564
+  },
+  {
+   "id": "pick",
+   "text": "Filter by style, and click one. It changes right away, and only for you. Nobody else's screen moves.",
+   "assetId": "asset_01M8FCZ6VS44WFJA1CVXPQMTJK",
+   "path": "audio/generated/Filter-by-style-and-click-one-It-rgf17t-generatedSpeech.mp3",
+   "dur": 8.751
+  },
+  {
+   "id": "tour",
+   "text": "There are clean light and dark ones, glass, a few editor themes you might know, high contrast, and some that are just for fun.",
+   "assetId": "asset_01M8FCZCW6V8WA8B5BGV9X9MB7",
+   "path": "audio/generated/There-are-clean-light-and-dark-ones-636wee-generatedSpeech.mp3",
+   "dur": 7.001
+  },
+  {
+   "id": "auto",
+   "text": "Automatic follows your computer, light by day and dark at night. And if a project has its own look, you'll see that while it's open.",
+   "assetId": "asset_01M8FCZJBYAF637VESENCHM3S8",
+   "path": "audio/generated/Automatic-follows-your-computer-light-w4gdp6-generatedSpeech.mp3",
+   "dur": 7.236
+  },
+  {
+   "id": "web",
+   "text": "The web app has the same looks, under your name, then Look. [warmly] Go find yours.",
+   "assetId": "asset_01M8FCZPC7F1B98JAQ0KW3N31V",
+   "path": "audio/generated/The-web-app-has-the-same-looks-under-6jbapz-generatedSpeech.mp3",
+   "dur": 4.833
   }
  ]
 }

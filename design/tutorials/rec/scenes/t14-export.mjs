@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import { DESK, WEB, as, daemon, webSignIn } from './lib.mjs';
 import { ensureSynced } from './desk.mjs';
-import { scopeCinder } from './web.mjs';
+import { rowMenu, scopeCinder } from './web.mjs';
 
 const FROST = 'D:/Work/Frostline';
 const INTO = 'D:/Exports/Deliveries';
@@ -36,10 +36,7 @@ export default async function scene(r) {
 
   await r.beat('admin');
   await r.open(`${WEB}/admin/projects`, 2200);
-  const row = await r.eval(`[...document.querySelectorAll('tbody tr')].findIndex((tr) => tr.textContent.includes('Frostline') && tr.querySelector('button'))`);
-  const exportIndex = await r.eval(`[...document.querySelectorAll('tbody tr')].slice(0, ${row}).reduce((n, tr) => n + [...tr.querySelectorAll('button')].filter((b) => b.textContent.trim().startsWith('Export')).length, 0)`);
-  await r.callout('ring', { text: 'Export…', sel: 'button', index: exportIndex }, { dur: 1.8 });
-  await r.click({ text: 'Export…', sel: 'button', index: exportIndex }, { after: 1400 });
+  await rowMenu(r, 'Frostline', 'Export…', { after: 1400 });
   await r.at(0.55);
   await r.choose({ css: '[role=dialog] select, dialog select', index: 1 }, 'delivery');
   await r.callout('tag', { css: '[role=dialog] select, dialog select', index: 1 }, { label: 'An S3 bucket', dur: 2.4 });

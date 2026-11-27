@@ -2,7 +2,7 @@ import { api } from '../../api/client';
 import type { Claim } from '../../api/types';
 import { useSession } from '../../lib/session';
 import { baseName, clock, firstName, held, personColors, plural, when } from '../../lib/format';
-import { Empty, Thumb, useAction, useUi } from '../../components/ui';
+import { Empty, Thumb, useAction, useUi, Who } from '../../components/ui';
 import { useProject, ViewHead } from './context';
 
 export default function People() {
@@ -68,12 +68,17 @@ export default function People() {
         {(holders > 0 || unpublished > 0) && (
           <div className="wall">
             {(mine || unpublished > 0) && (
-              <section className="p" style={{ ['--c' as string]: '#ffe1cf' }}>
-                <h2>You</h2>
-                <p>
-                  {unpublished ? `${plural(unpublished, 'file')} not published` : 'Nothing unpublished'}
-                  {mine ? `, ${plural(mine.claims.length, 'claim')}` : ''}
-                </p>
+              <section className="p" style={{ ['--c' as string]: personColors(me?.id || '').bg }}>
+                <div className="p-head">
+                  {me && <Who id={me.id} name={me.name} size={34} />}
+                  <div>
+                    <h2>You</h2>
+                    <p>
+                      {unpublished ? `${plural(unpublished, 'file')} not published` : 'Nothing unpublished'}
+                      {mine ? `, ${plural(mine.claims.length, 'claim')}` : ''}
+                    </p>
+                  </div>
+                </div>
                 <ul>
                   {mine?.claims.map((c) => (
                     <li key={c.path}>
@@ -95,9 +100,14 @@ export default function People() {
             {others.map((o) => {
               const oldest = o.claims.reduce((a, c) => (c.created_at < a ? c.created_at : a), o.claims[0].created_at);
               return (
-                <section key={o.id} className="p" style={{ ['--c' as string]: personColors(o.id).wall }}>
-                  <h2>{firstName(o.name)}</h2>
-                  <p>Working for {held(oldest)}</p>
+                <section key={o.id} className="p" style={{ ['--c' as string]: personColors(o.id).bg }}>
+                  <div className="p-head">
+                    <Who id={o.id} name={o.name} size={34} />
+                    <div>
+                      <h2>{firstName(o.name)}</h2>
+                      <p>Working for {held(oldest)}</p>
+                    </div>
+                  </div>
                   <ul>
                     {o.claims.map((c) => (
                       <li key={c.path}>

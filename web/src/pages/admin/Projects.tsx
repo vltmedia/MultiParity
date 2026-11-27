@@ -4,7 +4,7 @@ import { api } from '../../api/client';
 import type { CheckpointSetting, OrgStructure, Production, ProjectStorage, ProjectSummary, StorageLocation } from '../../api/types';
 import { useAsync } from '../../lib/useAsync';
 import { STORAGE_KIND_LABEL, movePercent, moveStatus, plural, since, size } from '../../lib/format';
-import { Dialog, Empty, ErrorNote, Loading, Parity, useAction, useUi } from '../../components/ui';
+import { Dialog, Empty, ErrorNote, Loading, Menu, Parity, useAction, useUi } from '../../components/ui';
 import { AdminHead, useAdmin } from './AdminLayout';
 import ThemePicker from '../../components/ThemePicker';
 import ExportDialog from './ExportDialog';
@@ -145,6 +145,8 @@ export default function AdminProjects() {
 
   const rows = (list.data || []).filter((p) => showArchived || !p.archived);
   const archivedCount = (list.data || []).filter((p) => p.archived).length;
+  // Where file data lives only matters once there is more than one place it could be.
+  const manyStores = locations.length > 1 || rows.some((p) => p.storage_moving);
 
   return (
     <>
@@ -167,7 +169,7 @@ export default function AdminProjects() {
         {rows.length > 0 && (
           <table className="t">
             <thead>
-              <tr><th>Project</th>{orgIds.length > 1 && <th>Organization</th>}<th className="r">Size</th><th className="r">Files</th><th className="r">Change</th><th>Last change</th><th>Stored in</th><th>Keep checkpoints</th><th /></tr>
+              <tr><th>Project</th>{orgIds.length > 1 && <th>Organization</th>}<th className="r">Size</th><th className="r">Files</th><th className="r">Changes</th><th>Last change</th>{manyStores && <th>Stored in</th>}<th>Checkpoints kept</th><th /></tr>
             </thead>
             <tbody>
               {orgIds.map((oid) => {
@@ -178,7 +180,7 @@ export default function AdminProjects() {
                 const orgName = orgs.find((o) => o.id === oid)?.name || ps[0]?.org.name || '';
                 const head = (key: string, depth: number, kind: 'org' | 'client' | 'production' | 'loose', label: string, note: string, acts?: ReactNode) => (
                   <tr key={key} className={`grp ${kind}`}>
-                    <td colSpan={orgIds.length > 1 ? 9 : 8} style={{ paddingLeft: 12 + depth * 22 }}>
+                    <td colSpan={7 + (orgIds.length > 1 ? 1 : 0) + (manyStores ? 1 : 0)} style={{ paddingLeft: 12 + depth * 22 }}>
                       <span className="grp-name" data-ic={{ org: 'building-2', client: 'briefcase', production: 'clapperboard', loose: 'folders' }[kind]}>{label}</span>
                       {note && <span className="fine">{note}</span>}
                       {acts && <span className="grp-acts">{acts}</span>}
@@ -197,36 +199,57 @@ export default function AdminProjects() {
                   <td className="r">{p.file_count.toLocaleString()}</td>
                   <td className="r">{p.head_change}</td>
                   <td>{p.last_change ? since(p.last_change.created_at) : <span className="mute">Never</span>}</td>
+                  {manyStores && (
+                    <td>
+                      {p.storage}
+                      {p.storage_moving && <span className="badge hold" style={{ marginLeft: 8 }}>Moving…</span>}
+                    </td>
+                  )}
                   <td>
-                    {p.storage}
-                    {p.storage_moving && <span className="badge hold" style={{ marginLeft: 8 }}>Moving…</span>}
-                  </td>
-                  <td>
-                    <select className="select sm" title="Automatic: on the server once the project is 20 GB or larger, on each computer before that" aria-label={`Keep checkpoints for ${p.name}`} value={p.checkpoint_setting} disabled={busy === 'keep:' + p.id} onChange={(e) => keep(p, e.target.value as CheckpointSetting)}>
-                      {KEEP.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                    </select>
-                    {p.checkpoint_setting === 'auto' && <><br /><span className="fine">Now {KEPT[p.checkpoint_storage]}</span></>}
-                    <br />
-                    <label className="check-label fine" title="Off by default: most art tools already autosave, and copying big files every few minutes costs disk, battery and upload.">
-                      <input type="checkbox" checked={p.auto_checkpoints} disabled={busy === 'auto:' + p.id} onChange={(e) => automatic(p, e.target.checked)} />
-                      Also take them automatically
-                    </label>
+                    <span className="row" style={{ gap: 6, flexWrap: 'nowrap' }}>
+                      <select
+                        className="select sm"
+                        title={p.checkpoint_setting === 'auto' ? `Automatic: on the server once the project is 20 GB or larger, on each computer before that. Now ${KEPT[p.checkpoint_storage]}.` : undefined}
+                        aria-label={`Keep checkpoints for ${p.name}`}
+                        value={p.checkpoint_setting}
+                        disabled={busy === 'keep:' + p.id}
+                        onChange={(e) => keep(p, e.target.value as CheckpointSetting)}
+                      >
+                        {KEEP.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                      </select>
+                      {p.auto_checkpoints && <span className="badge mute" title="Checkpoints are also taken automatically">Timed</span>}
+                    </span>
                   </td>
                   <td className="r">
-                    <span className="row proj-acts" style={{ justifyContent: 'flex-end', flexWrap: 'wrap', gap: 6, minWidth: 300, maxWidth: 420, marginLeft: 'auto' }}>
-                      <button className="btn sm" onClick={() => open({ kind: 'rename', p })}>Rename</button>
+                    <span className="row proj-acts">
                       <button className="btn sm" onClick={() => setWho(p)}>Who can see…</button>
-                      <button className="btn sm" onClick={() => setSedit({ kind: 'file', p })}>File under…</button>
-                      {p.production && !p.is_main && !p.archived && <button className="btn sm" disabled={busy === 'main:' + p.id} onClick={() => makeMain(p)}>Make main</button>}
-                      <button className="btn sm" onClick={() => setLook(p)}>Look…</button>
-                      {orgs.length > 1 && <button className="btn sm" onClick={() => open({ kind: 'move', p })}>Move</button>}
-                      {isServerAdmin && locations.length > 1 && <button className="btn sm" onClick={() => setStor(p)}>Change storage…</button>}
-                      <button className="btn sm" onClick={() => setExp(p)}>Export…</button>
-                      {p.archived ? (
-                        <button className="btn sm" disabled={busy === 'arch:' + p.id} onClick={() => restore(p)}>Restore</button>
-                      ) : (
-                        <button className="btn sm danger" disabled={busy === 'arch:' + p.id} onClick={() => archive(p)}>Archive</button>
-                      )}
+                      <Menu label={`More for ${p.name}`} button={<span data-ic="ellipsis">More</span>} align="right" className="btn sm proj-more">
+                        {(close) => {
+                          const item = (label: string, ic: string, act: () => void, opts: { danger?: boolean; disabled?: boolean; note?: string } = {}) => (
+                            <button data-ic={ic} className={opts.danger ? 'danger' : undefined} disabled={opts.disabled} onClick={() => { close(); act(); }}>
+                              {label}
+                              {opts.note && <small>{opts.note}</small>}
+                            </button>
+                          );
+                          return (
+                            <>
+                              {item('Rename…', 'pencil', () => open({ kind: 'rename', p }))}
+                              {item('File under…', 'folder-input', () => setSedit({ kind: 'file', p }))}
+                              {p.production && !p.is_main && !p.archived && item('Make main', 'star', () => makeMain(p), { disabled: busy === 'main:' + p.id })}
+                              {item('Look…', 'palette', () => setLook(p))}
+                              {orgs.length > 1 && item('Move to another organization…', 'building-2', () => open({ kind: 'move', p }))}
+                              {isServerAdmin && locations.length > 1 && item('Change storage…', 'hard-drive', () => setStor(p))}
+                              {item('Export…', 'download', () => setExp(p))}
+                              <hr />
+                              {item('Take checkpoints automatically', 'clock', () => automatic(p, !p.auto_checkpoints), { disabled: busy === 'auto:' + p.id, note: p.auto_checkpoints ? 'On' : 'Off' })}
+                              <hr />
+                              {p.archived
+                                ? item('Restore', 'rotate-ccw', () => restore(p), { disabled: busy === 'arch:' + p.id })
+                                : item('Archive…', 'archive', () => archive(p), { danger: true, disabled: busy === 'arch:' + p.id })}
+                            </>
+                          );
+                        }}
+                      </Menu>
                     </span>
                   </td>
                 </tr>

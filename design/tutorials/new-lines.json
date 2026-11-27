@@ -1,58 +1,252 @@
 {
-  "t12-your-work": [
-    { "id": "hello", "text": "[friendly] Changed a lot of files? Your work helps you find the ones you want to publish." },
-    { "id": "search", "text": "Type in the search box to narrow the list. Filter by the kind of change, or by type of file, like textures or models. And sort by name, size or date." },
-    { "id": "pick", "text": "Select all visible ticks just what you can see. Clear visible unticks it. [lightly] And shift-click ticks a whole run at once." },
-    { "id": "thumbs", "text": "[curious] Those little pictures are the files themselves. Click one for a big preview, without opening anything." },
-    { "id": "hidden", "text": "If your filters hide something you ticked, it still goes. The app says so, right by Publish." }
-  ],
-  "t13-size-map": [
-    { "id": "hello", "text": "[curious] Ever wondered what's actually taking up all the space in a project?" },
-    { "id": "open", "text": "Open Files, and switch to Size map." },
-    { "id": "read", "text": "Every block is a file. The bigger the block, the bigger the file, and the colour tells you what kind it is. Folders are the frames around them." },
-    { "id": "zoom", "text": "Click a folder to zoom in. Right-click a file for the same menu as in the list." },
-    { "id": "web", "text": "[lightly] It's in the web app too, under Files." }
-  ],
-  "t14-export": [
-    { "id": "hello", "text": "[friendly] Handing a project over, or keeping a copy just as it is today? Export it." },
-    { "id": "desk", "text": "In the desktop app, open the project and click Export. Pick a folder, and choose one zip file, or a folder of files." },
-    { "id": "how", "text": "It takes the published files as they are right now. Files you already have are copied from your folder, and the rest are downloaded." },
-    { "id": "admin", "text": "Admins can export from the web app too, in Admin, Projects. To the server, to a NAS, or straight to an S3 bucket." },
-    { "id": "archive", "text": "[lightly] Tick Archive afterwards, and the project's closed once the export is done." }
-  ],
-  "t15-clients": [
-    { "id": "hello", "text": "[friendly] Once you've got a few projects, it helps to file them. By client, and by production." },
-    { "id": "client", "text": "In the web app, go to Admin, Projects, and click New client. Give it a name." },
-    { "id": "production", "text": "Then make a production under it. That's the show, the game, or the campaign." },
-    { "id": "file", "text": "Now use File under to put a project in it. Art, audio and code can each be their own project, with their own history." },
-    { "id": "main", "text": "Make one of them the main project. It's listed first, and opening the production takes you there." },
-    { "id": "see", "text": "[lightly] Everyone sees the same grouping on their Projects page, on the web and in the desktop app." }
-  ],
-  "t16-sync-production": [
-    { "id": "hello", "text": "[friendly] Working across a whole production? You can sync all of it in one go." },
-    { "id": "button", "text": "On the Projects page, every production has a Sync production button." },
-    { "id": "pick", "text": "Choose one folder for it. Each project gets its own folder inside, and you tick the ones you want." },
-    { "id": "done", "text": "[lightly] Projects you already have stay right where they are. And that's the whole production, on your computer." }
-  ],
-  "t17-policies": [
-    { "id": "hello", "text": "[confident] Not everyone needs everything. Policies decide who can see what, and who can change it." },
-    { "id": "start", "text": "Go to Admin, Policies. Everyone in the organization starts with All members, which can change everything. Make a new policy for a team." },
-    { "id": "rules", "text": "Each rule says no access, look, or change, on the whole organization, a client, a production or one project. The most specific rule wins." },
-    { "id": "people", "text": "Then click People, and choose who has it. It applies straight away." },
-    { "id": "who", "text": "[curious] Not sure who can see a project? In Admin, Projects, click Who can see. It lists everyone, and why." }
-  ],
-  "t18-plugins": [
-    { "id": "hello", "text": "[friendly] Plugins add to MultiParity. Checks before you publish, actions on files, even whole new pages." },
-    { "id": "browse", "text": "Go to Plugins, then Browse. These come from the official plugins on GitHub, plus any sources you add." },
-    { "id": "version", "text": "Click Install, and pick a version. The newest release, or the newest commit." },
-    { "id": "check", "text": "Before anything's installed, you see exactly what it does, and what it can reach." },
-    { "id": "use", "text": "[curious] Now it's part of the app. Right-click a picture, and there's Image size. And the project has a new tab." }
-  ],
-  "t19-ai": [
-    { "id": "hello", "text": "[friendly] You can let an AI assistant, like Claude, work with MultiParity as you." },
-    { "id": "token", "text": "In the web app, open your account menu, and choose Access tokens. Give one a name, and make it." },
-    { "id": "setup", "text": "Copy the line it shows you into Claude Code, or into your assistant's settings. That's all the setup." },
-    { "id": "ask", "text": "[curious] Then just ask. Who has the hero files claimed? What changed in Emberfall this week? It can claim files for you, too." },
-    { "id": "safe", "text": "It only ever sees what you can see. And you can revoke the token here, whenever you like." }
-  ]
+ "t12-your-work": [
+  {
+   "id": "hello",
+   "text": "[friendly] Changed a lot of files? Your work helps you find the ones you want to publish."
+  },
+  {
+   "id": "search",
+   "text": "Type in the search box to narrow the list. Filter by the kind of change, or by type of file, like textures or models. And sort by name, size or date."
+  },
+  {
+   "id": "pick",
+   "text": "Select all visible ticks just what you can see. Clear visible unticks it. [lightly] And shift-click ticks a whole run at once."
+  },
+  {
+   "id": "thumbs",
+   "text": "[curious] Those little pictures are the files themselves. Click one for a big preview, without opening anything."
+  },
+  {
+   "id": "hidden",
+   "text": "If your filters hide something you ticked, it still goes. The app says so, right by Publish."
+  }
+ ],
+ "t13-size-map": [
+  {
+   "id": "hello",
+   "text": "[curious] Ever wondered what's actually taking up all the space in a project?"
+  },
+  {
+   "id": "open",
+   "text": "Open Files, and switch to Size map."
+  },
+  {
+   "id": "read",
+   "text": "Every block is a file. The bigger the block, the bigger the file, and the colour tells you what kind it is. Folders are the frames around them."
+  },
+  {
+   "id": "zoom",
+   "text": "Click a folder to zoom in. Right-click a file for the same menu as in the list."
+  },
+  {
+   "id": "web",
+   "text": "[lightly] It's in the web app too, under Files."
+  }
+ ],
+ "t14-export": [
+  {
+   "id": "hello",
+   "text": "[friendly] Handing a project over, or keeping a copy just as it is today? Export it."
+  },
+  {
+   "id": "desk",
+   "text": "In the desktop app, open the project and click Export. Pick a folder, and choose one zip file, or a folder of files."
+  },
+  {
+   "id": "how",
+   "text": "It takes the published files as they are right now. Files you already have are copied from your folder, and the rest are downloaded."
+  },
+  {
+   "id": "admin",
+   "text": "Admins can export from the web app too, in Admin, Projects. To the server, to a NAS, or straight to an S3 bucket."
+  },
+  {
+   "id": "archive",
+   "text": "[lightly] Tick Archive afterwards, and the project's closed once the export is done."
+  }
+ ],
+ "t15-clients": [
+  {
+   "id": "hello",
+   "text": "[friendly] Once you've got a few projects, it helps to file them. By client, and by production."
+  },
+  {
+   "id": "client",
+   "text": "In the web app, go to Admin, Projects, and click New client. Give it a name."
+  },
+  {
+   "id": "production",
+   "text": "Then make a production under it. That's the show, the game, or the campaign."
+  },
+  {
+   "id": "file",
+   "text": "Now use File under to put a project in it. Art, audio and code can each be their own project, with their own history."
+  },
+  {
+   "id": "main",
+   "text": "Make one of them the main project. It's listed first, and opening the production takes you there."
+  },
+  {
+   "id": "see",
+   "text": "[lightly] Everyone sees the same grouping on their Projects page, on the web and in the desktop app."
+  }
+ ],
+ "t16-sync-production": [
+  {
+   "id": "hello",
+   "text": "[friendly] Working across a whole production? You can sync all of it in one go."
+  },
+  {
+   "id": "button",
+   "text": "On the Projects page, every production has a Sync production button."
+  },
+  {
+   "id": "pick",
+   "text": "Choose one folder for it. Each project gets its own folder inside, and you tick the ones you want."
+  },
+  {
+   "id": "done",
+   "text": "[lightly] Projects you already have stay right where they are. And that's the whole production, on your computer."
+  }
+ ],
+ "t17-policies": [
+  {
+   "id": "hello",
+   "text": "[confident] Not everyone needs everything. Policies decide who can see what, and who can change it."
+  },
+  {
+   "id": "start",
+   "text": "Go to Admin, Policies. Everyone in the organization starts with All members, which can change everything. Make a new policy for a team."
+  },
+  {
+   "id": "rules",
+   "text": "Each rule says no access, look, or change, on the whole organization, a client, a production or one project. The most specific rule wins."
+  },
+  {
+   "id": "people",
+   "text": "Then click People, and choose who has it. It applies straight away."
+  },
+  {
+   "id": "who",
+   "text": "[curious] Not sure who can see a project? In Admin, Projects, click Who can see. It lists everyone, and why."
+  }
+ ],
+ "t18-plugins": [
+  {
+   "id": "hello",
+   "text": "[friendly] Plugins add to MultiParity. Checks before you publish, actions on files, even whole new pages."
+  },
+  {
+   "id": "browse",
+   "text": "Go to Plugins, then Browse. These come from the official plugins on GitHub, plus any sources you add."
+  },
+  {
+   "id": "version",
+   "text": "Click Install, and pick a version. The newest release, or the newest commit."
+  },
+  {
+   "id": "check",
+   "text": "Before anything's installed, you see exactly what it does, and what it can reach."
+  },
+  {
+   "id": "use",
+   "text": "[curious] Now it's part of the app. Right-click a picture, and there's Image size. And the project has a new tab."
+  }
+ ],
+ "t19-ai": [
+  {
+   "id": "hello",
+   "text": "[friendly] You can let an AI assistant, like Claude, work with MultiParity as you."
+  },
+  {
+   "id": "token",
+   "text": "In the web app, open your account menu, and choose Access tokens. Give one a name, and make it."
+  },
+  {
+   "id": "setup",
+   "text": "Copy the line it shows you into Claude Code, or into your assistant's settings. That's all the setup."
+  },
+  {
+   "id": "ask",
+   "text": "[curious] Then just ask. Who has the hero files claimed? What changed in Emberfall this week? It can claim files for you, too."
+  },
+  {
+   "id": "safe",
+   "text": "It only ever sees what you can see. And you can revoke the token here, whenever you like."
+  }
+ ],
+ "t11-admin": [
+  {
+   "id": "hello",
+   "text": "[confident] If you look after the server, this one's for you."
+  },
+  {
+   "id": "invite",
+   "text": "Everything lives in Admin. To add someone, open Invites, type their email and pick their role. They get a link, set a password, and they're in."
+  },
+  {
+   "id": "email",
+   "text": "Emailed invites need the server's email set up first. That's a few lines in its settings: who it's from, and your SMTP server, or a SendGrid key. [aside] The Email video walks through it."
+  },
+  {
+   "id": "link",
+   "text": "No email set up? Pick By link instead. You get one link to send however you like, in chat or a message, and it works just the same."
+  },
+  {
+   "id": "projects",
+   "text": "Only admins can make projects, so things stay tidy. We covered making one back in the new project video. One extra thing here: if your server has more than one place to keep files, you choose which one when you make the project, and you can move it later."
+  },
+  {
+   "id": "look",
+   "text": "[playful] And yes, you can pick how it looks. Set a theme for the whole studio, or a different one per project, so everyone always knows where they are."
+  },
+  {
+   "id": "bye",
+   "text": "[warmly] That's it. Have fun making stuff."
+  }
+ ],
+ "t20-invite-link": [
+  {
+   "id": "hello",
+   "text": "[friendly] No email on your server, or bringing in a freelancer over chat? An invite link is the quickest way in."
+  },
+  {
+   "id": "make",
+   "text": "In Admin, open Invites and pick By link. Choose their role, and how long the link should keep working. Then make the link."
+  },
+  {
+   "id": "copy",
+   "text": "Copy it and send it however you like: chat, a message, anything. It works once, for one person, and stops when it runs out. Changed your mind? Revoke it from the list."
+  },
+  {
+   "id": "join",
+   "text": "Here's what they see. Their name, their email, a password, and that's it."
+  },
+  {
+   "id": "done",
+   "text": "[warmly] They're in, with the role you picked. No email server needed."
+  }
+ ],
+ "t21-themes": [
+  {
+   "id": "hello",
+   "text": "[friendly] MultiParity comes with forty-seven looks, and you can switch whenever you like. They're in Accounts, under Look."
+  },
+  {
+   "id": "pick",
+   "text": "Filter by style, and click one. It changes right away, and only for you. Nobody else's screen moves."
+  },
+  {
+   "id": "tour",
+   "text": "There are clean light and dark ones, glass, a few editor themes you might know, high contrast, and some that are just for fun."
+  },
+  {
+   "id": "auto",
+   "text": "Automatic follows your computer, light by day and dark at night. And if a project has its own look, you'll see that while it's open."
+  },
+  {
+   "id": "web",
+   "text": "The web app has the same looks, under your name, then Look. [warmly] Go find yours."
+  }
+ ]
 }

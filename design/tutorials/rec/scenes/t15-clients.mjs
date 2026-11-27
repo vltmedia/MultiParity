@@ -1,5 +1,5 @@
 import { WEB, webSignIn } from './lib.mjs';
-import { rowButton, scopeCinder, webApi } from './web.mjs';
+import { rowButton, rowMenu, scopeCinder, webApi } from './web.mjs';
 
 /** As before the take: no Saltmarsh client, Frostline back in Northwind Games > Emberfall. */
 async function tidy(r, org) {
@@ -38,17 +38,13 @@ export default async function scene(r) {
   await r.click({ text: 'Make production', sel: 'button' }, { after: 1400 });
 
   await r.beat('file');
-  const fu = await rowButton(r, 'Frostline', 'File under');
-  await r.callout('ring', { text: 'File under…', sel: 'button', index: fu }, { dur: 1.6 });
-  await r.click({ text: 'File under…', sel: 'button', index: fu }, { after: 900 });
+  await rowMenu(r, 'Frostline', 'File under…');
   await r.choose({ css: '[role=dialog] select, dialog select' }, 'Saltmarsh Studios › Tidewrack');
   await r.at(0.6);
   await r.click({ text: 'File it here', sel: 'button' }, { after: 1500 });
 
   await r.beat('main');
-  const mm = await rowButton(r, 'Frostline', 'Make main');
-  await r.callout('ring', { text: 'Make main', sel: 'button', index: mm }, { dur: 1.6 });
-  await r.click({ text: 'Make main', sel: 'button', index: mm }, { after: 1400 });
+  await rowMenu(r, 'Frostline', 'Make main', { after: 1400 });
   await r.callout('tag', { text: 'Main', sel: '.badge' }, { label: 'Listed first', dur: 2.4 });
 
   await r.beat('see');

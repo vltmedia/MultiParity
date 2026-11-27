@@ -38,3 +38,12 @@ export async function scopeCinder(r) {
   await r.eval(`sessionStorage.setItem('mp.admin.scope', ${JSON.stringify(cinder.id)})`);
   return cinder.id;
 }
+
+/** Open a project row's More menu on the admin Projects page and pick an item from it (with a ring on each). */
+export async function rowMenu(r, rowText, item, { ring = true, after = 900 } = {}) {
+  const i = await rowButton(r, rowText, 'More');
+  if (ring) await r.callout('ring', { text: 'More', sel: 'button', index: i }, { dur: 1.2 });
+  await r.click({ text: 'More', sel: 'button', index: i }, { after: 500 });
+  if (ring) await r.callout('ring', { text: item, sel: '.menu button' }, { dur: 1.2 });
+  await r.click({ text: item, sel: '.menu button' }, { after });
+}

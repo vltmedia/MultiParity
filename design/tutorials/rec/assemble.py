@@ -1,5 +1,5 @@
 """Cut a recorded tutorial on a Kitlig timeline: the screen recording on V1, each voice line at its
-beat on A1, the GLSL callouts on V2 and the title on V3. Then export it.
+beat on A1, the GLSL callouts on V2 and the cards on V3 (logo card, intro title, end card). Then export it.
 
     python assemble.py t01-setup [--export]
 
@@ -14,6 +14,15 @@ OUT = os.path.join(HERE, "..", "out")
 LINES = json.load(open(os.path.join(HERE, "..", "vo-lines.json"), encoding="utf8"))
 GLSL = {n: open(os.path.join(HERE, "glsl", n + ".glsl"), encoding="utf8").read() for n in ["common", "ring", "spot", "sweep", "tag"]}
 ACCENT = "#26caf3"
+# The opening and closing cards (design/tutorials/cards, built into cards.json by cards/build.py):
+# the logo card, then the intro title, which dissolves into the tutorial over its last half second;
+# the end card comes up over the tutorial's last second.
+CARDS_DIR = os.path.join(HERE, "..", "cards")
+CARDS = {c["id"]: c for c in json.load(open(os.path.join(CARDS_DIR, "cards.json"), encoding="utf8"))}
+CARD_GLSL = open(os.path.join(CARDS_DIR, "mp.glsl"), encoding="utf8").read()
+LOGO_CARD, INTRO_CARD, END_CARD = "logo-10", "intro-02", "end-11"
+LEAD = CARDS[LOGO_CARD]["dur"] + CARDS[INTRO_CARD]["dur"] - 0.5  # where the tutorial starts
+END_OVERLAP = 1.0
 FW, FH = 1920, 1080
 TITLES = {
     "t01-setup": "Getting set up", "t02-new-project": "Starting a brand-new project", "t03-first-publish": "Your first publish",
@@ -25,7 +34,7 @@ TITLES = {
     "s08-cli": "Build machines and the command line",
     "t12-your-work": "Finding what you changed", "t13-size-map": "Seeing what takes up space", "t14-export": "Exporting a project",
     "t15-clients": "Clients and productions", "t16-sync-production": "Syncing a whole production", "t17-policies": "Who can see what",
-    "t18-plugins": "Plugins", "t19-ai": "AI assistants",
+    "t18-plugins": "Plugins", "t19-ai": "AI assistants", "t20-invite-link": "Inviting with a link", "t21-themes": "Themes",
 }
 
 
@@ -79,6 +88,13 @@ def callout_clip(seq, track, c):
                                   "label": f"{style}: {c.get('label') or ''}".strip(": "), "source": src, "inputs": inputs})
 
 
+def card_clip(seq, track, cid, start, words=None):
+    c = CARDS[cid]
+    inputs = [dict(i, value=(words or {}).get(i["name"], i["value"])) for i in c["inputs"]]
+    return call("add_glsl_clip", {"sequenceId": seq, "trackId": track, "startSec": round(start, 3), "durationSec": c["dur"],
+                                  "label": f"{cid}: {c['name']}", "source": CARD_GLSL + "\n" + c["src"], "inputs": inputs})
+
+
 def first_id(x):
     """The first asset id anywhere in a tool result."""
     if isinstance(x, dict):
@@ -120,20 +136,19 @@ def main(sid, export):
     seq = seq.get("sequenceId") if isinstance(seq, dict) else seq
     s = call("get_sequence", {"sequenceId": seq})
     v1, a1 = find_track(s, "video"), find_track(s, "audio")
-    call("add_media_clip", {"sequenceId": seq, "assetId": vid, "trackId": v1, "startSec": 0, "streams": "video"})
+    call("add_media_clip", {"sequenceId": seq, "assetId": vid, "trackId": v1, "startSec": LEAD, "streams": "video"})
     for b in tl["beats"]:
         l = lines[b["id"]]
-        call("add_media_clip", {"sequenceId": seq, "assetId": l["assetId"], "trackId": a1, "startSec": round(b["t"] + 0.05, 3), "streams": "audio"})
+        call("add_media_clip", {"sequenceId": seq, "assetId": l["assetId"], "trackId": a1, "startSec": round(LEAD + b["t"] + 0.05, 3), "streams": "audio"})
     v2 = call("add_track", {"sequenceId": seq, "kind": "video", "name": "Callouts"})
     v2 = v2.get("trackId") if isinstance(v2, dict) else v2.strip()
     for c in tl["callouts"]:
-        callout_clip(seq, v2, c)
-    v3 = call("add_track", {"sequenceId": seq, "kind": "video", "name": "Title"})
+        callout_clip(seq, v2, dict(c, t=c["t"] + LEAD))
+    v3 = call("add_track", {"sequenceId": seq, "kind": "video", "name": "Cards"})
     v3 = v3.get("trackId") if isinstance(v3, dict) else v3.strip()
-    call("add_title_clip", {"sequenceId": seq, "trackId": v3, "startSec": 0.3, "durationSec": 3.6, "presetId": "lower-third-1",
-                            "lines": [{"role": "header", "text": "MultiParity tutorial", "sizePct": 2.4, "color": "#26caf3"},
-                                      {"role": "body", "text": TITLES[sid], "sizePct": 5.2, "bold": True, "color": "#eef6fb"}],
-                            "fontId": "space-grotesk", "bar": {"color": "#071e2e", "opacity": 0.88}})
+    card_clip(seq, v3, LOGO_CARD, 0.0)
+    card_clip(seq, v3, INTRO_CARD, CARDS[LOGO_CARD]["dur"], {"title": TITLES[sid]})
+    card_clip(seq, v3, END_CARD, LEAD + tl["duration"] - END_OVERLAP)
     print(json.dumps({"sequenceId": seq, "callouts": len(tl["callouts"]), "beats": len(tl["beats"])}))
     if export:
         r = call("export_sequence", {"sequenceId": seq, "codec": "h264", "waitSeconds": 900})

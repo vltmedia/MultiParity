@@ -78,3 +78,9 @@ ul.rule-edit li .select.lvl { width: 150px; flex: none; }
 ul.people-pick { list-style: none; padding: 0; margin: 10px 0; max-height: 50vh; overflow: auto; }
 ul.people-pick li .check-label { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; padding: 6px 2px; border-bottom: 1px solid var(--line); }
 .t.who-t { width: 100%; } .t.who-t td { white-space: normal; vertical-align: top; } .t.who-t td:last-child { min-width: 220px; }
+
+/* Admin projects: one visible action per row, the rest in its More menu. */
+.proj-acts { justify-content: flex-end; flex-wrap: nowrap; gap: 6px; white-space: nowrap; }
+.proj-acts .menu { min-width: 250px; text-align: left; }
+.menu button.danger { color: var(--bad); }
+.menu button:disabled { opacity: 0.5; cursor: default; }

@@ -1,4 +1,18 @@
-import { webReady } from './web.mjs';
+import { WEB } from './lib.mjs';
+import { TERM, cd, cmd, edit, line } from './term.mjs';
+import { rowButton, rowMenu, webReady } from './web.mjs';
+
+// The server's email settings, filled in (the password is left for the person to type).
+const SMTP_ENV = `# Email: invites, "forgot password" links, requests to release, failed backups.
+MP_EMAIL_FROM="MultiParity <multiparity@cinderworks.studio>"
+# SMTP:
+MP_SMTP_HOST=smtp.cinderworks.studio
+MP_SMTP_PORT=587
+MP_SMTP_SECURITY=starttls
+MP_SMTP_USER=multiparity@cinderworks.studio
+MP_SMTP_PASSWORD=
+# or SendGrid:
+# MP_SENDGRID_API_KEY=`;
 
 export default async function scene(r) {
   await webReady(r, '/admin');
@@ -18,6 +32,26 @@ export default async function scene(r) {
   await r.callout('ring', { text: 'Make invites', sel: 'button' }, { dur: 1.8 });
   await r.click({ text: 'Make invites', sel: 'button' }, { after: 1500 });
 
+  // Emailed invites need the server's email: a look at those lines in its settings.
+  await r.beat('email');
+  await r.open(TERM, 600);
+  await cd(r, '~/MultiParity');
+  await cmd(r, 'nano .env', 26);
+  await edit(r, '.env', SMTP_ENV);
+  await r.callout('spot', { css: '#code' }, { label: 'Needed for emailed invites', dur: 3.4, pad: 0 });
+  await r.at(0.45);
+  await r.callout('code', line(4), { label: 'Your SMTP server', dur: 2.4 });
+  await r.at(0.72);
+  await r.callout('code', line(10), { label: 'Or a SendGrid key', dur: 2.4 });
+
+  // No email: an invite link instead.
+  await r.beat('link');
+  await r.open(`${WEB}/admin/invites`, 1600);
+  await r.callout('ring', { text: 'By link', sel: 'button' }, { dur: 1.8 });
+  await r.click({ text: 'By link', sel: 'button' }, { after: 900 });
+  await r.callout('ring', { text: 'Make invite link', sel: 'button' }, { dur: 2.2 });
+  await r.hover({ text: 'Make invite link', sel: 'button' }, { after: 600 });
+
   await r.beat('projects');
   await r.click({ text: 'Projects', sel: 'a' }, { after: 1200 });
   await r.callout('tag', { text: 'New project', sel: 'button' }, { label: 'Admins only', dur: 3 });
@@ -26,12 +60,15 @@ export default async function scene(r) {
   await r.hover({ text: 'Store file data in', sel: 'label span' }, { after: 500 });
   await r.at(0.75);
   await r.click({ text: 'Cancel', sel: 'button' }, { after: 600 });
-  await r.callout('ring', { text: 'Change storage…', sel: 'button' }, { dur: 2.2 });
-  await r.hover({ text: 'Change storage…', sel: 'button' }, { after: 400 });
+  // Change storage lives in each project's More menu: show it, then close the menu.
+  const more = await rowButton(r, 'Emberfall', 'More');
+  await r.click({ text: 'More', sel: 'button', index: more }, { after: 500 });
+  await r.callout('ring', { text: 'Change storage…', sel: '.menu button' }, { dur: 2.2 });
+  await r.hover({ text: 'Change storage…', sel: '.menu button' }, { after: 400 });
+  await r.press('Escape');
 
   await r.beat('look');
-  await r.callout('ring', { text: 'Look…', sel: 'button' }, { dur: 2 });
-  await r.click({ text: 'Look…', sel: 'button' }, { after: 1400 });
+  await rowMenu(r, 'Emberfall', 'Look…', { after: 1400 });
   await r.callout('spot', { css: 'dialog, [role=dialog]' }, { dur: 3.4, pad: 0 });
   await r.park(900, 450, 900);
   await r.at(0.85);

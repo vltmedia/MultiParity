@@ -1,4 +1,4 @@
-import { webReady } from './web.mjs';
+import { rowMenu, webReady } from './web.mjs';
 import { ENV, TERM, cmd, cd, edit, line, replaceValue, typeAt } from './term.mjs';
 
 const MORE = ENV + `
@@ -34,8 +34,7 @@ export default async function scene(r) {
   await typeAt(r, 22, '"nas=mount:/data/nas archive=s3:bucket=mp-archive;..."', 22);
   await r.callout('code', line(22), { label: 'More than one place', dur: 2.6 });
   await webReady(r, '/admin/projects');
-  await r.callout('ring', { text: 'Change storage…', sel: 'button' }, { dur: 2 });
-  await r.click({ text: 'Change storage…', sel: 'button' }, { after: 1200 });
+  await rowMenu(r, 'Emberfall', 'Change storage…', { after: 1200 });
   await r.callout('spot', { css: 'dialog, [role=dialog]' }, { label: 'Live, no downtime', dur: 3.6, pad: 0 });
   await r.park(900, 450, 900);
   await r.end(1.6);
