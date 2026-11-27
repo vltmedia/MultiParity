@@ -13,16 +13,17 @@ export default defineConfig({
   // The docs are copied from the repository's docs/ folder on every build (scripts/sync-docs.mjs).
   srcExclude: ['README.md', 'scripts/**'],
   head: [
-    ['link', { rel: 'icon', type: 'image/png', href: '/MultiParity/icon.png' }],
+    ['link', { rel: 'icon', type: 'image/svg+xml', href: '/MultiParity/favicon.svg' }],
+    ['link', { rel: 'apple-touch-icon', href: '/MultiParity/icon.png' }],
     ['link', { rel: 'preconnect', href: 'https://fonts.googleapis.com' }],
     ['link', { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' }],
     ['link', { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Oxanium:wght@400;600;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=Martian+Mono:wght@400;500&display=swap' }],
     ['meta', { property: 'og:title', content: 'MultiParity' }],
     ['meta', { property: 'og:description', content: 'Self-hosted version control for game and art teams.' }],
-    ['meta', { name: 'theme-color', content: '#0094ff' }],
+    ['meta', { name: 'theme-color', content: '#071e2e' }],
   ],
   themeConfig: {
-    logo: { src: '/icon.png', alt: '' },
+    logo: { src: '/favicon.svg', alt: '' },
     siteTitle: 'MultiParity',
     nav: [
       { text: 'Guide', link: '/guide/', activeMatch: '/guide/' },
