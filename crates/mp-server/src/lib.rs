@@ -15,6 +15,7 @@ pub mod routes;
 pub mod store;
 pub mod thumbs;
 pub mod util;
+pub mod webhooks;
 
 use std::sync::Arc;
 
@@ -132,6 +133,7 @@ pub async fn serve(config: Config) -> Result<()> {
         backup::spawn_scheduler(state.clone(), b);
     }
     thumbs::spawn_worker(state.clone());
+    webhooks::spawn(state.clone());
     let listener = tokio::net::TcpListener::bind(&listen).await.with_context(|| format!("binding {listen}"))?;
     axum::serve(listener, app.into_make_service_with_connect_info::<std::net::SocketAddr>()).with_graceful_shutdown(shutdown()).await?;
     Ok(())

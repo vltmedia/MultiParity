@@ -103,6 +103,30 @@ impl Api {
         Ok(resp)
     }
 
+    /// Call `on` with each event (its JSON) until the stream ends or goes quiet for 90 s (the
+    /// server sends a keep-alive every 20 s). Reconnecting is the caller's choice.
+    pub async fn each_event(&self, mut on: impl FnMut(Value)) -> Result<()> {
+        let mut resp = self.events().await?;
+        let mut buf = String::new();
+        loop {
+            match tokio::time::timeout(Duration::from_secs(90), resp.chunk()).await {
+                Ok(Ok(Some(bytes))) => {
+                    buf.push_str(&String::from_utf8_lossy(&bytes));
+                    while let Some(end) = buf.find("\n\n") {
+                        let block: String = buf.drain(..end + 2).collect();
+                        let data: Vec<&str> = block.lines().filter_map(|l| l.strip_prefix("data:")).map(str::trim_start).collect();
+                        if let Ok(v) = serde_json::from_str::<Value>(&data.join("\n")) {
+                            on(v);
+                        }
+                    }
+                }
+                Ok(Ok(None)) => return Ok(()),
+                Ok(Err(e)) => return Err(e).context("the event stream broke"),
+                Err(_) => anyhow::bail!("the event stream went quiet"),
+            }
+        }
+    }
+
     /// Any call, for passing requests through (the desktop app's screens). `path` may carry a
     /// query string.
     pub async fn raw(&self, method: Method, path: &str, body: Option<Value>) -> Result<Value> {

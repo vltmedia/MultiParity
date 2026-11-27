@@ -7,6 +7,8 @@
 
 use std::path::PathBuf;
 
+mod automate;
+
 use anyhow::{Context, Result};
 use clap::{Args, Parser, Subcommand};
 use mp_client::accounts::{Account, Accounts};
@@ -214,6 +216,28 @@ enum Cmd {
     /// Administration (people, invites, claims, storage).
     #[command(subcommand)]
     Admin(AdminCmd),
+    /// Print events as they happen (one JSON line each), or run a command for each one with the
+    /// event as JSON on stdin and in MP_EVENT_* variables.
+    Watch {
+        /// Only this project (name or id).
+        #[arg(long)]
+        project: Option<String>,
+        /// Only these events, like change.published or change.* (repeatable).
+        #[arg(long = "event")]
+        events: Vec<String>,
+        /// Run this through the shell for each event instead of printing it.
+        #[arg(long)]
+        exec: Option<String>,
+        /// Which signed-in account, when there are several.
+        #[arg(long)]
+        account: Option<String>,
+    },
+    /// Serve MultiParity to AI assistants (Claude and others) over the Model Context Protocol, on
+    /// stdin and stdout. Add it to an assistant as a command: `mp mcp`.
+    Mcp {
+        #[arg(long)]
+        account: Option<String>,
+    },
     /// Run the background daemon: local API for the desktop app, auto-claim, auto-checkpoints.
     Daemon {
         #[arg(long, default_value = "127.0.0.1:18519", env = "MP_DAEMON_LISTEN")]
@@ -975,6 +999,8 @@ async fn run(cli: Cli) -> Result<()> {
         }
         Cmd::Tag(t) => tag_cmd(&ctx, t).await?,
         Cmd::Admin(a) => admin_cmd(&ctx, a).await?,
+        Cmd::Watch { project, events, exec, account } => automate::watch(account, project, events, exec).await?,
+        Cmd::Mcp { account } => automate::mcp(account).await?,
         Cmd::Daemon { listen, interval } => mp_daemon::run(&listen, interval).await?,
     }
     Ok(())

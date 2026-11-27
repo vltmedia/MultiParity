@@ -380,6 +380,18 @@ on('POST', '/api/auth/reset', ({ body }) => {
   if (body?.token === 'used') throw new Fail(422, 'invalid', 'This link has expired or was already used. Ask for a new one.');
   return { email: 'justin@cinderworks.example' };
 });
+const mockHooks: Array<Record<string, unknown>> = [];
+on('GET', '/api/admin/orgs/:org/webhooks', () => mockHooks);
+on('POST', '/api/admin/orgs/:org/webhooks', ({ body }) => {
+  const secret = 'whsec_' + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+  const h = { id: 'wh' + (mockHooks.length + 1), url: body?.url, events: body?.events || [], project_id: null, active: true, secret_hint: '…' + secret.slice(-4),
+    created_at: new Date().toISOString(), last_at: null, last_status: null, last_error: null, failures: 0 };
+  mockHooks.push(h);
+  return { ...h, secret };
+});
+on('PATCH', '/api/admin/webhooks/:id', ({ m, body }) => { const h = mockHooks.find((x) => x.id === m[1])!; Object.assign(h, body); return h; });
+on('DELETE', '/api/admin/webhooks/:id', ({ m }) => { mockHooks.splice(mockHooks.findIndex((x) => x.id === m[1]), 1); return {}; });
+on('POST', '/api/admin/webhooks/:id/test', ({ m }) => { const h = mockHooks.find((x) => x.id === m[1])!; Object.assign(h, { last_at: new Date().toISOString(), last_status: 204, last_error: null }); return { ok: true, status: 204, error: null }; });
 on('GET', '/api/admin/email', () => ({ configured: true, kind: 'smtp', via: 'SMTP smtp.example.com:587 (starttls)', from: 'MultiParity <multiparity@cinderworks.example>' }));
 on('POST', '/api/admin/email/test', ({ headers }) => ({ sent_to: who(headers).email }));
 on('GET', '/api/desktop', () => ({

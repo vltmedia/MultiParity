@@ -8,6 +8,7 @@ import { Empty, ErrorNote, Loading, Who, useAction, useUi } from '../../componen
 import { AdminHead, useAdmin } from './AdminLayout';
 import BackupsSection from './Backups';
 import EmailSection from './Email';
+import WebhooksSection from './Webhooks';
 
 const AGES: Array<[number, string]> = [
   [24, 'More than a day'],
@@ -265,6 +266,7 @@ export default function AdminFixing() {
 
           {isServerAdmin && <BackupsSection />}
           {isServerAdmin && <EmailSection />}
+          <WebhooksSection />
 
           <section className="section">
             <h2>Where file data is kept</h2>

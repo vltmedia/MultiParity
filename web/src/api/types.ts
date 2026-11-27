@@ -141,6 +141,22 @@ export type ChangeDetail = Change & { files: ChangeFile[] };
 
 export type History = { changes: number[]; files: Array<{ path: string; changes: number[] }> };
 
+export type Webhook = {
+  id: string;
+  url: string;
+  events: string[];
+  project_id: string | null;
+  active: boolean;
+  secret_hint: string;
+  /** Only in the answer to adding one. */
+  secret?: string;
+  created_at: string;
+  last_at: string | null;
+  last_status: number | null;
+  last_error: string | null;
+  failures: number;
+};
+
 /** One published version of a file: the change that added, edited or deleted it. */
 export type FileVersion = {
   change: number;

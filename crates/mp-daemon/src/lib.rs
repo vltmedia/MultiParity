@@ -154,6 +154,7 @@ pub async fn run(listen: &str, interval: u64) -> Result<()> {
         .route("/local/accounts/:id", axum::routing::delete(account_logout))
         .route("/local/accounts/:id/session", get(account_session))
         .route("/local/projects", get(all_projects))
+        .route("/local/file", get(file_info))
         .route("/local/notifications", get(notifications))
         .route("/local/notifications/settings", get(notify_settings).put(set_notify_settings))
         .route("/local/behind", get(behind))
@@ -685,6 +686,67 @@ async fn rewind(State(s): State<DState>, Path(id): Path<String>, Json(b): Json<R
     let api = ops::api_for(&ws)?;
     let (undo, n) = checkpoints::rewind(&api, &ws, &b.checkpoint, &b.paths).await?;
     Ok(Json(json!({ "files": n, "undo": undo.map(|c| c.id) })))
+}
+
+#[derive(Deserialize)]
+struct FileQuery {
+    path: String,
+}
+
+/// What MultiParity knows about one file on this computer, by its full path: which synced
+/// folder it is in, whether it is new or edited, who has it claimed, and whether the server has
+/// a newer version. For plugins in art tools (the Blender add-on).
+async fn file_info(Query(q): Query<FileQuery>) -> DResult<Json<Value>> {
+    let abs = std::fs::canonicalize(&q.path).unwrap_or_else(|_| PathBuf::from(&q.path));
+    let mut found = None;
+    for root in Registry::workspaces()? {
+        let canon = std::fs::canonicalize(&root).unwrap_or(root.clone());
+        if abs.starts_with(&canon) {
+            if let Ok(ws) = Workspace::open(&root) {
+                found = Some((ws, canon));
+                break;
+            }
+        }
+    }
+    let Some((ws, canon)) = found else {
+        return Ok(Json(json!({ "synced": false })));
+    };
+    let rel = scan::rel_of(&canon, &abs);
+    let (st, ws) = tokio::task::spawn_blocking(move || -> Result<_> {
+        let st = scan::status(&ws, &[])?;
+        Ok((st, ws))
+    })
+    .await
+    .map_err(|e| anyhow::anyhow!(e))??;
+    let state = if st.new.iter().any(|f| f.path == rel) {
+        "new"
+    } else if st.edited.iter().any(|f| f.path == rel) {
+        "edited"
+    } else if st.deleted.iter().any(|f| f.path == rel) {
+        "deleted"
+    } else if ws.index.files.contains_key(&rel) {
+        "unchanged"
+    } else {
+        "ignored"
+    };
+    let mine = ws.config.account_email.clone();
+    let claim = match ops::api_for(&ws) {
+        Ok(api) => api
+            .claims(&ws.config.project_id)
+            .await
+            .unwrap_or_default()
+            .into_iter()
+            .find(|c| c.path == rel)
+            .map(|c| json!({ "user": c.user.as_ref().map(|u| u.name.clone()), "mine": c.user.as_ref().map(|u| u.email == mine).unwrap_or(false), "since": c.created_at })),
+        Err(_) => None,
+    };
+    let local_change = ws.index.files.get(&rel).map(|i| i.change).unwrap_or(0);
+    let server_change = ws.remote.files.get(&rel).map(|r| r.change).unwrap_or(0);
+    Ok(Json(json!({
+        "synced": true, "workspace_id": ws.config.id, "project": ws.config.project_name, "branch": ws.config.branch_name,
+        "branch_id": ws.config.branch_id, "root": display_path(&ws.root), "path": rel, "state": state, "claim": claim,
+        "change": local_change, "newer_on_server": server_change > local_change, "server_change": server_change,
+    })))
 }
 
 #[derive(Deserialize)]

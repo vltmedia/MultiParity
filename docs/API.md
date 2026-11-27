@@ -274,6 +274,7 @@ web UI origin and from the desktop app. No auth: it is bound to loopback only.
 | POST | `/local/workspaces/{id}/drafts/{draft}/restore` | | `{files}`: the draft's files written into the folder (current work checkpointed first) |
 | POST | `/local/workspaces/{id}/branch` | `{branch_id}` | `{branch, downloaded, removed, workspace}`; `409` while there is unpublished work |
 | GET, POST | `/local/workspaces/{id}/versions` | `path` / `{path, change, to: 'folder'\|'copy'\|'latest'}` | versions, or what was done |
+| GET | `/local/file` | `path` (full path on this computer) | `{synced, workspace_id?, project?, branch?, branch_id?, path?, state?: 'new'\|'edited'\|'unchanged'\|'deleted'\|'ignored', claim?: {user, mine, since}, change?, newer_on_server?, server_change?}`, for plugins |
 | GET | `/local/notifications` | `after?` | `{notifications: Notice[], last}`: newer than `after` (none without it; start from `last`). `Notice = {id, kind: 'newer'\|'nudge', title, body, workspace_id?, project_id?}`. The daemon follows each account's `/api/events` and keeps others' publishes and merges to a branch one of your folders is on, and requests to release your claimed files. |
 | GET, PUT | `/local/notifications/settings` | `{newer, nudges}` | which kinds to keep (saved in the config folder) |
 | GET | `/local/behind` | | `{workspace_id: files behind}` for folders whose branch has newer files |

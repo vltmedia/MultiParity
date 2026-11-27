@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
-"""Catch email for tests: a bare SMTP server and a fake SendGrid API, both writing each message
-it gets to a folder as a file (SMTP: the raw message; SendGrid: the JSON body plus the API key).
+"""Catch email and webhooks for tests: a bare SMTP server, a fake SendGrid API and a webhook
+receiver, each writing what it gets to a folder as a file (SMTP: the raw message; SendGrid: the
+JSON body plus the API key; webhook: the headers and the raw body).
 
     mail-sink.py smtp <port> <folder>
     mail-sink.py sendgrid <port> <folder>
+    mail-sink.py webhook <port> <folder>     (answers 500 to paths starting /fail)
 """
 import json
 import os
@@ -80,8 +82,23 @@ class SendGrid(BaseHTTPRequestHandler):
         pass
 
 
+class Webhook(BaseHTTPRequestHandler):
+    def do_POST(self):
+        body = self.rfile.read(int(self.headers.get("content-length", 0)))
+        if self.path.startswith("/fail"):
+            self.send_response(500)
+            self.end_headers()
+            return
+        save("hook", json.dumps({"headers": {k.lower(): v for k, v in self.headers.items()}, "body": body.decode()}).encode())
+        self.send_response(204)
+        self.end_headers()
+
+    def log_message(self, *a):
+        pass
+
+
 if mode == "smtp":
     socketserver.ThreadingTCPServer.allow_reuse_address = True
     socketserver.ThreadingTCPServer(("127.0.0.1", port), Smtp).serve_forever()
 else:
-    HTTPServer(("127.0.0.1", port), SendGrid).serve_forever()
+    HTTPServer(("127.0.0.1", port), SendGrid if mode == "sendgrid" else Webhook).serve_forever()

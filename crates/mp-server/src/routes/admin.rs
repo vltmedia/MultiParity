@@ -895,3 +895,141 @@ pub async fn email_test(State(s): State<AppState>, user: CurrentUser) -> ApiResu
         .map_err(|e| ApiError::new(axum::http::StatusCode::BAD_GATEWAY, "email_failed", format!("The email was not sent: {e:#}")))?;
     Ok(Json(json!({ "sent_to": user.email })))
 }
+
+// ---------------------------------------------------------------------------------------------
+// Webhooks (organization admins)
+
+fn webhook_json(r: &PgRow) -> Value {
+    let secret: String = r.get("secret");
+    json!({
+        "id": r.get::<Uuid,_>("id"), "url": r.get::<String,_>("url"), "events": r.get::<Vec<String>,_>("events"),
+        "project_id": r.get::<Option<Uuid>,_>("project_id"), "active": r.get::<bool,_>("active"),
+        "secret_hint": format!("…{}", &secret[secret.len().saturating_sub(4)..]),
+        "created_at": r.get::<DateTime<Utc>,_>("created_at"), "last_at": r.get::<Option<DateTime<Utc>>,_>("last_at"),
+        "last_status": r.get::<Option<i32>,_>("last_status"), "last_error": r.get::<Option<String>,_>("last_error"),
+        "failures": r.get::<i32,_>("failures"),
+    })
+}
+
+const WEBHOOK_COLS: &str = "id, url, events, project_id, active, secret, created_at, last_at, last_status, last_error, failures";
+
+pub async fn list_webhooks(State(s): State<AppState>, user: CurrentUser, Path(org): Path<Uuid>) -> ApiResult<Json<Vec<Value>>> {
+    access::org_admin(&s, &user, org).await?;
+    let rows = sqlx::query(&format!("SELECT {WEBHOOK_COLS} FROM webhooks WHERE org_id = $1 ORDER BY created_at")).bind(org).fetch_all(&s.db).await?;
+    Ok(Json(rows.iter().map(webhook_json).collect()))
+}
+
+#[derive(Deserialize)]
+pub struct WebhookBody {
+    url: Option<String>,
+    events: Option<Vec<String>>,
+    project_id: Option<Uuid>,
+    active: Option<bool>,
+}
+
+fn check_webhook_url(url: &str) -> ApiResult<()> {
+    let ok = url.parse::<reqwest::Url>().map(|u| matches!(u.scheme(), "http" | "https") && u.host().is_some()).unwrap_or(false);
+    if ok {
+        Ok(())
+    } else {
+        Err(ApiError::invalid("Give the full address the events go to, starting with https://"))
+    }
+}
+
+fn clean_events(events: Vec<String>) -> ApiResult<Vec<String>> {
+    let list: Vec<String> = events.into_iter().map(|e| e.trim().to_string()).filter(|e| !e.is_empty()).collect();
+    if let Some(bad) = list.iter().find(|e| !e.chars().all(|c| c.is_ascii_lowercase() || c == '.' || c == '_' || c == '*')) {
+        return Err(ApiError::invalid(format!("{bad} is not an event name; use names like change.published or change.*")));
+    }
+    Ok(list)
+}
+
+/// Add a webhook. The answer holds the signing secret; it is shown only this once.
+pub async fn create_webhook(State(s): State<AppState>, user: CurrentUser, Path(org): Path<Uuid>, Json(b): Json<WebhookBody>) -> ApiResult<Json<Value>> {
+    access::org_admin(&s, &user, org).await?;
+    let url = b.url.unwrap_or_default().trim().to_string();
+    check_webhook_url(&url)?;
+    let events = clean_events(b.events.unwrap_or_default())?;
+    if let Some(p) = b.project_id {
+        let same: bool = sqlx::query_scalar("SELECT EXISTS (SELECT 1 FROM projects WHERE id = $1 AND org_id = $2)").bind(p).bind(org).fetch_one(&s.db).await?;
+        if !same {
+            return Err(ApiError::invalid("That project is not in this organization."));
+        }
+    }
+    let secret = new_token();
+    let r = sqlx::query(&format!("INSERT INTO webhooks (org_id, url, events, project_id, secret, created_by) VALUES ($1,$2,$3,$4,$5,$6) RETURNING {WEBHOOK_COLS}"))
+        .bind(org)
+        .bind(&url)
+        .bind(&events)
+        .bind(b.project_id)
+        .bind(&secret)
+        .bind(user.id)
+        .fetch_one(&s.db)
+        .await?;
+    events::emit(&s.db, &s.events, Some(org), None, Some(user.id), "admin.webhook_added", json!({ "url": url })).await;
+    let mut v = webhook_json(&r);
+    v["secret"] = json!(secret);
+    Ok(Json(v))
+}
+
+async fn webhook_org(s: &AppState, user: &CurrentUser, id: Uuid) -> ApiResult<Uuid> {
+    let org: Uuid = sqlx::query_scalar("SELECT org_id FROM webhooks WHERE id = $1").bind(id).fetch_optional(&s.db).await?.ok_or_else(|| ApiError::not_found("That webhook"))?;
+    access::org_admin(s, user, org).await?;
+    Ok(org)
+}
+
+/// Change a webhook's address or events, or pause and resume it.
+pub async fn update_webhook(State(s): State<AppState>, user: CurrentUser, Path(id): Path<Uuid>, Json(b): Json<WebhookBody>) -> ApiResult<Json<Value>> {
+    webhook_org(&s, &user, id).await?;
+    if let Some(u) = &b.url {
+        check_webhook_url(u.trim())?;
+    }
+    let events = b.events.map(clean_events).transpose()?;
+    let r = sqlx::query(&format!(
+        "UPDATE webhooks SET url = COALESCE($2, url), events = COALESCE($3, events), active = COALESCE($4, active),
+           failures = CASE WHEN $4 THEN 0 ELSE failures END WHERE id = $1 RETURNING {WEBHOOK_COLS}"
+    ))
+    .bind(id)
+    .bind(b.url.map(|u| u.trim().to_string()))
+    .bind(events)
+    .bind(b.active)
+    .fetch_one(&s.db)
+    .await?;
+    Ok(Json(webhook_json(&r)))
+}
+
+pub async fn delete_webhook(State(s): State<AppState>, user: CurrentUser, Path(id): Path<Uuid>) -> ApiResult<Json<Value>> {
+    webhook_org(&s, &user, id).await?;
+    sqlx::query("DELETE FROM webhooks WHERE id = $1").bind(id).execute(&s.db).await?;
+    Ok(Json(json!({})))
+}
+
+/// Post a `webhook.test` event to the hook now and say how its server answered.
+pub async fn test_webhook(State(s): State<AppState>, user: CurrentUser, Path(id): Path<Uuid>) -> ApiResult<Json<Value>> {
+    let org = webhook_org(&s, &user, id).await?;
+    let r = sqlx::query("SELECT url, secret FROM webhooks WHERE id = $1").bind(id).fetch_one(&s.db).await?;
+    let (url, secret): (String, String) = (r.get("url"), r.get("secret"));
+    let body = serde_json::to_vec(&json!({
+        "id": 0, "kind": "webhook.test", "org_id": org, "project_id": null,
+        "actor": { "id": user.id, "name": user.name, "email": user.email }, "data": { "message": "A test from MultiParity" },
+        "created_at": Utc::now(), "server": s.config.public_url,
+    }))
+    .unwrap_or_default();
+    let http = reqwest::Client::builder().timeout(std::time::Duration::from_secs(15)).build().map_err(|e| anyhow::anyhow!(e))?;
+    let res = http
+        .post(&url)
+        .header("content-type", "application/json")
+        .header("x-multiparity-event", "webhook.test")
+        .header("x-multiparity-delivery", "0")
+        .header("x-multiparity-signature", crate::webhooks::sign(&secret, &body))
+        .body(body)
+        .send()
+        .await;
+    let (status, error) = match res {
+        Ok(r) if r.status().is_success() => (Some(r.status().as_u16() as i32), None),
+        Ok(r) => (Some(r.status().as_u16() as i32), Some(format!("answered {}", r.status()))),
+        Err(e) => (None, Some(e.to_string())),
+    };
+    sqlx::query("UPDATE webhooks SET last_at = now(), last_status = $2, last_error = $3 WHERE id = $1").bind(id).bind(status).bind(&error).execute(&s.db).await?;
+    Ok(Json(json!({ "ok": error.is_none(), "status": status, "error": error })))
+}

@@ -22,7 +22,7 @@ check() { local what="$1"; shift; if "$@"; then echo "   ok: $what"; else fail "
 same() { [ "$(sha256sum < "$1")" = "$(sha256sum < "$2")" ]; }
 alice() { MP_CONFIG_DIR="$WORK/cfg-alice" MP_DEVICE=alice-pc "$BIN/mp" "$@"; }
 bob() { MP_CONFIG_DIR="$WORK/cfg-bob" MP_DEVICE=bob-pc "$BIN/mp" "$@"; }
-cleanup() { for p in ${SPID:-} ${DPID:-} ${MPID:-} ${GPID:-} ${S2PID:-}; do kill "$p" 2>/dev/null || true; done; }
+cleanup() { for p in ${SPID:-} ${DPID:-} ${MPID:-} ${GPID:-} ${S2PID:-} ${HPID:-} ${WPID:-}; do kill "$p" 2>/dev/null || true; done; }
 # The plain text of a caught email (SMTP sink files are raw messages, often quoted-printable).
 mail_text() { python3 -c 'import sys, email, email.policy; m = email.message_from_bytes(open(sys.argv[1], "rb").read(), policy=email.policy.default); print(m["To"]); print(m["Subject"]); print(m.get_body(("plain",)).get_content())' "$1"; }
 # The newest caught email to an address, as text.
@@ -536,8 +536,70 @@ printf 'again\n' >> "$A2/Docs/for-bob.txt"
 alice -C "$A2" publish -m "Another note" Docs/for-bob.txt >/dev/null
 sleep 2
 check "turning off change notifications stops them" test "$(curl -fs "$D/notifications?after=$(echo "$NOTES" | jq .last)" | jq '[.notifications[] | select(.kind=="newer")] | length')" = 0
+check "a plugin can look up a synced file by its full path" test "$(curl -fs "$D/file?path=$(python3 -c 'import urllib.parse, sys; print(urllib.parse.quote(sys.argv[1]))' "$B/Docs/notes.txt")" | jq -c '[.synced, .path, .claim.mine, .project]')" = '[true,"Docs/notes.txt",true,"Emberfall"]'
+check "and is told when a file is not in a synced folder" test "$(curl -fs "$D/file?path=/etc/hostname" | jq .synced)" = false
 bob -C "$B" release Docs/notes.txt >/dev/null
 kill $DPID 2>/dev/null || true
+
+step "Automation: webhooks, mp watch event scripts, and mp mcp for AI assistants"
+HPORT=$((PORT+13))
+python3 "$ROOT/scripts/dev/mail-sink.py" webhook "$HPORT" "$WORK/hooks" &
+HPID=$!
+BTOK=$(jq -r '.accounts[0].token' "$WORK/cfg-bob/accounts.json")
+check "members cannot add webhooks" test "$(curl -s -o /dev/null -w '%{http_code}' -X POST "$SERVER/api/admin/orgs/$ORG_ID/webhooks" -H "authorization: Bearer $BTOK" -H 'content-type: application/json' -d '{"url":"http://127.0.0.1:1/x"}')" = 403
+check "a webhook needs a real address" test "$(curl -s -o /dev/null -w '%{http_code}' -X POST "$SERVER/api/admin/orgs/$ORG_ID/webhooks" -H "authorization: Bearer $TOKEN" -H 'content-type: application/json' -d '{"url":"not a url"}')" = 422
+H=$(curl -fs -X POST "$SERVER/api/admin/orgs/$ORG_ID/webhooks" -H "authorization: Bearer $TOKEN" -H 'content-type: application/json' -d "{\"url\":\"http://127.0.0.1:$HPORT/hook\",\"events\":[\"change.*\"]}")
+HSECRET=$(echo "$H" | jq -r .secret); HID=$(echo "$H" | jq -r .id)
+check "a new webhook shows its secret once" test "${#HSECRET}" -ge 20
+check "the list shows only a hint of it" test "$(curl -fs "$SERVER/api/admin/orgs/$ORG_ID/webhooks" -H "authorization: Bearer $TOKEN" | jq -r '.[0] | [(.secret // "hidden"), .secret_hint[-4:]] | join(" ")')" = "hidden ${HSECRET: -4}"
+bob watch --project Emberfall --event change.published --exec "cat >> '$WORK/watched.jsonl'; echo >> '$WORK/watched.jsonl'; echo \"\$MP_EVENT_KIND \$MP_EVENT_PROJECT_ID\" >> '$WORK/watched.txt'" > "$WORK/watch.log" 2>&1 &
+WPID=$!
+sleep 2
+printf 'hooked\n' > "$A2/Docs/hooked.txt"
+HN=$(alice -C "$A2" publish -m "Hooked" Docs/hooked.txt --json | jq .change.number)
+alice -C "$A2" claim Docs/hooked.txt >/dev/null
+for i in $(seq 1 40); do [ -n "$(ls "$WORK/hooks" 2>/dev/null)" ] && [ -s "$WORK/watched.txt" ] && break; sleep 0.25; done
+sleep 1
+HOOK=$(cat "$(ls -t "$WORK"/hooks/*.hook | tail -1)")
+check "the webhook got the publish" test "$(echo "$HOOK" | jq -r '.headers["x-multiparity-event"]')" = change.published
+check "with the change in its body" test "$(echo "$HOOK" | jq -r '.body | fromjson | .data.number')" = "$HN"
+check "signed with HMAC-SHA256 of the body" python3 -c '
+import hmac, hashlib, json, sys
+h = json.loads(sys.argv[1]); want = "sha256=" + hmac.new(sys.argv[2].encode(), h["body"].encode(), hashlib.sha256).hexdigest()
+sys.exit(0 if hmac.compare_digest(want, h["headers"]["x-multiparity-signature"]) else 1)' "$HOOK" "$HSECRET"
+check "the claim was not sent (the hook asked for change.* only)" bash -c "! grep -l 'claim.added' '$WORK'/hooks/*.hook"
+check "the event script ran for the publish" test "$(cat "$WORK/watched.txt")" = "change.published $PID"
+check "with the event as JSON on its stdin" test "$(head -1 "$WORK/watched.jsonl" | jq .data.number)" = "$HN"
+kill $WPID 2>/dev/null || true
+check "Test sends a signed test event" test "$(curl -fs -X POST "$SERVER/api/admin/webhooks/$HID/test" -H "authorization: Bearer $TOKEN" | jq .ok)" = true
+check "and it arrived" bash -c "grep -l 'webhook.test' '$WORK'/hooks/*.hook >/dev/null"
+curl -fs -X PATCH "$SERVER/api/admin/webhooks/$HID" -H "authorization: Bearer $TOKEN" -H 'content-type: application/json' -d '{"active":false}' >/dev/null
+N=$(ls "$WORK/hooks" | wc -l)
+printf 'again\n' >> "$A2/Docs/hooked.txt"
+alice -C "$A2" publish -m "Hooked again" Docs/hooked.txt >/dev/null
+sleep 1.5
+check "a paused webhook gets nothing" test "$(ls "$WORK/hooks" | wc -l)" = "$N"
+curl -fs -X DELETE "$SERVER/api/admin/webhooks/$HID" -H "authorization: Bearer $TOKEN" >/dev/null
+check "and can be deleted" test "$(curl -fs "$SERVER/api/admin/orgs/$ORG_ID/webhooks" -H "authorization: Bearer $TOKEN" | jq length)" = 0
+kill $HPID 2>/dev/null || true
+alice -C "$A2" claim Docs/hooked.txt >/dev/null
+MCP=$(printf '%s\n' \
+  '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"e2e","version":"1"}}}' \
+  '{"jsonrpc":"2.0","method":"notifications/initialized"}' \
+  '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' \
+  '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"claims","arguments":{"project":"emberfall"}}}' \
+  '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"file_history","arguments":{"project":"Emberfall","path":"Docs/hooked.txt"}}}' \
+  '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"release_files","arguments":{"project":"Emberfall","paths":["Docs/hooked.txt"]}}}' \
+  '{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"list_files","arguments":{"project":"no-such-project"}}}' \
+  '{"jsonrpc":"2.0","id":7,"method":"nope"}' | alice mcp)
+mcp() { echo "$MCP" | jq -c "select(.id == $1)"; }
+check "mcp: initialize names the server" test "$(mcp 1 | jq -r .result.serverInfo.name)" = multiparity
+check "mcp: tools are listed with schemas" test "$(mcp 2 | jq '[.result.tools[] | select(.inputSchema.type == "object")] | length')" -ge 10
+check "mcp: claims shows alice holding the file" test "$(mcp 3 | jq -r '.result.content[0].text | fromjson | map(select(.path == "Docs/hooked.txt")) | .[0].user.email')" = alice@example.com
+check "mcp: file_history lists both versions" test "$(mcp 4 | jq '.result.structuredContent.versions | length')" = 2
+check "mcp: release_files releases it" test "$(curl -fs "$SERVER/api/projects/$PID/claims" -H "authorization: Bearer $TOKEN" | jq '[.[] | select(.path == "Docs/hooked.txt")] | length')" = 0
+check "mcp: a mistake comes back as a tool error, not a crash" test "$(mcp 6 | jq -c '[.result.isError, (.result.content[0].text | test("no project called"))]')" = '[true,true]'
+check "mcp: unknown methods get a JSON-RPC error" test "$(mcp 7 | jq .error.code)" = -32601
 
 step "Thumbnails: pictures of images and Blender files"
 mkdir -p "$A2/Art/Pictures"
