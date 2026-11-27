@@ -59,9 +59,25 @@ $has = From-Mac "test -f $p12 && echo yes || echo no"
 if ($has -ne "yes") {
   throw "There is no $p12 on the Mac. Export the Developer ID Application certificate there (Keychain Access > Export… > .p12) and run this again."
 }
-Set-Secret "APPLE_CERTIFICATE" ((From-Mac "base64 -i $p12") -replace "\s", "")
-$secure = Read-Host "Password you gave the .p12 export" -AsSecureString
-Set-Secret "APPLE_CERTIFICATE_PASSWORD" ([Net.NetworkCredential]::new("", $secure).Password)
+$open = From-Mac "openssl pkcs12 -in $p12 -passin pass: -noout 2>/dev/null && echo empty || echo protected"
+if ($open -eq "empty") {
+  # Exported without a password. GitHub keeps no empty secrets, so wrap it again (on the Mac)
+  # with a random password that only GitHub keeps. 3DES, which every macOS imports.
+  $p12Password = -join ((48..57) + (65..90) + (97..122) | Get-Random -Count 32 | ForEach-Object { [char]$_ })
+  $wrap = @"
+set -e
+T=`$(mktemp -d); trap 'rm -rf "`$T"' EXIT
+openssl pkcs12 -in $p12 -passin pass: -nodes -out "`$T/all.pem"
+openssl pkcs12 -export -in "`$T/all.pem" -out "`$T/wrapped.p12" -passout 'pass:$p12Password' -keypbe PBE-SHA1-3DES -certpbe PBE-SHA1-3DES
+base64 -i "`$T/wrapped.p12"
+"@
+  Set-Secret "APPLE_CERTIFICATE" ((From-Mac $wrap) -replace "\s", "")
+  Set-Secret "APPLE_CERTIFICATE_PASSWORD" $p12Password
+} else {
+  Set-Secret "APPLE_CERTIFICATE" ((From-Mac "base64 -i $p12") -replace "\s", "")
+  $secure = Read-Host "Password you gave the .p12 export" -AsSecureString
+  Set-Secret "APPLE_CERTIFICATE_PASSWORD" ([Net.NetworkCredential]::new("", $secure).Password)
+}
 From-Mac "rm -f $p12" | Out-Null
 Write-Host "Deleted $p12 from the Mac."
 
