@@ -13,6 +13,7 @@ use serde::Serialize;
 
 use crate::accounts::Accounts;
 use crate::api::Api;
+use crate::progress;
 use crate::scan::{self, Status};
 use crate::types::*;
 use crate::workspace::{mtime_of, IndexEntry, RemoteEntry, RemoteTree, Workspace, WorkspaceConfig};
@@ -203,6 +204,7 @@ pub async fn write_manifest_to(api: &Api, ws: &Workspace, rel: &str, dest: &Path
     while let Some(raw) = stream.try_next().await? {
         hasher.update(&raw);
         f.write_all(&raw)?;
+        progress::bytes(raw.len() as u64);
     }
     f.flush()?;
     drop(f);
@@ -295,10 +297,14 @@ pub async fn bring_back_version(api: &Api, ws: &Workspace, rel: &str, change: i6
 /// Download these remote paths into the folder, updating the index.
 pub async fn download_paths(api: &Api, ws: &mut Workspace, paths: &[String], mut progress: impl FnMut(&str)) -> Result<usize> {
     let mut n = 0;
+    let total: u64 = paths.iter().filter_map(|p| ws.remote.files.get(p)).map(|r| r.size).sum();
+    progress::phase("Downloading", paths.len() as u64, total);
     for p in paths {
         let Some(r) = ws.remote.files.get(p).cloned() else { continue };
         progress(p);
+        progress::file(p);
         let meta = fetch_file(api, ws, p, &r.manifest_hash).await?;
+        progress::file_done();
         ws.index.files.insert(p.clone(), IndexEntry { file_hash: r.file_hash, manifest_hash: r.manifest_hash, size: meta.len(), mtime: mtime_of(&meta), change: r.change });
         n += 1;
         if n % 50 == 0 {
@@ -322,9 +328,13 @@ pub struct SyncReport {
 }
 
 pub async fn get_latest(api: &Api, ws: &mut Workspace, mut progress: impl FnMut(&str)) -> Result<SyncReport> {
+    progress::phase("Checking for newer files", 0, 0);
     let delta = api.tree(&ws.config.project_id, &ws.config.branch_id, ws.config.synced_change).await?;
     apply_delta(&mut ws.remote, &delta);
     let mut report = SyncReport { head: delta.head, ..Default::default() };
+    let todo: Vec<&TreeEntry> = delta.entries.iter().filter(|e| ws.in_scope(&e.path)).collect();
+    let bytes: u64 = todo.iter().filter(|e| e.manifest_hash.is_some()).map(|e| e.size as u64).sum();
+    progress::phase("Downloading", todo.len() as u64, bytes);
     for e in &delta.entries {
         if !ws.in_scope(&e.path) {
             continue;
@@ -350,19 +360,24 @@ async fn report_apply(api: &Api, ws: &mut Workspace, e: &TreeEntry, report: &mut
     match (&e.file_hash, &e.manifest_hash) {
         (Some(fh), Some(mh)) => {
             if local_hash.as_deref() == Some(fh.as_str()) {
+                progress::skip(e.size as u64);
                 let m = local.unwrap();
                 ws.index.files.insert(e.path.clone(), IndexEntry { file_hash: fh.clone(), manifest_hash: mh.clone(), size: m.len(), mtime: mtime_of(&m), change: e.change });
             } else if unchanged_locally {
                 progress(&e.path);
+                progress::file(&e.path);
                 let m = fetch_file(api, ws, &e.path, mh).await?;
+                progress::file_done();
                 ws.index.files.insert(e.path.clone(), IndexEntry { file_hash: fh.clone(), manifest_hash: mh.clone(), size: m.len(), mtime: mtime_of(&m), change: e.change });
                 report.downloaded.push(e.path.clone());
                 report.bytes += e.size as u64;
             } else {
+                progress::skip(e.size as u64);
                 report.kept_yours.push(e.path.clone());
             }
         }
         _ => {
+            progress::skip(0);
             if local.is_none() {
                 ws.index.files.remove(&e.path);
             } else if unchanged_locally && indexed.is_some() {
@@ -393,7 +408,10 @@ fn remove_empty_parents(ws: &Workspace, rel: &str) {
 /// Work out a file's manifest without storing anything.
 pub fn manifest_of(ws: &Workspace, rel: &str) -> Result<Manifest> {
     let f = std::fs::File::open(ws.abs(rel)).with_context(|| format!("reading {rel}"))?;
-    chunk_reader(std::io::BufReader::with_capacity(1 << 20, f), ChunkParams::default(), |_| Ok(()))
+    chunk_reader(std::io::BufReader::with_capacity(1 << 20, f), ChunkParams::default(), |c| {
+        progress::bytes(c.data.len() as u64);
+        Ok(())
+    })
 }
 
 /// Where to read one part from when uploading: a range of a file in the folder.
@@ -433,6 +451,8 @@ pub async fn upload_missing(api: &Api, ws: &Workspace, files: &BTreeMap<String, 
     let hashes: Vec<String> = sources.keys().cloned().collect();
     let missing = api.missing_chunks(&ws.config.project_id, &hashes).await?;
     let total = missing.len();
+    let send_bytes: u64 = missing.iter().filter_map(|h| sources.get(h)).map(|s| s.len).sum();
+    progress::phase("Sending", 0, send_bytes);
     let project = ws.config.project_id.clone();
     let mut done = 0;
     let mut bytes = 0u64;
@@ -446,6 +466,7 @@ pub async fn upload_missing(api: &Api, ws: &Workspace, files: &BTreeMap<String, 
                 let data = read_part(ws, &h, &src)?;
                 let n = data.len() as u64;
                 api.put_chunk(&project, &h, data).await?;
+                progress::bytes(src.len);
                 Ok::<_, anyhow::Error>(n)
             }
         })
@@ -487,6 +508,7 @@ pub async fn publish(api: &Api, ws: &mut Workspace, message: &str, only: &[Strin
     progress("Sending file data");
     let (uploaded_chunks, uploaded_bytes) = upload_missing(api, ws, &manifests, |_, _| {}).await?;
     progress("Publishing");
+    progress::phase("Publishing", 0, 0);
     let change = api.publish(&ws.config.project_id, &ws.config.branch_id, message, &entries).await?;
     for e in &entries {
         if e.op == "delete" {
@@ -511,9 +533,13 @@ pub async fn publish(api: &Api, ws: &mut Workspace, message: &str, only: &[Strin
 pub fn build_entries(ws: &Workspace, st: &Status, progress: &mut impl FnMut(&str)) -> Result<(Vec<PublishEntry>, BTreeMap<String, Manifest>)> {
     let mut entries = Vec::new();
     let mut manifests = BTreeMap::new();
+    let n = (st.new.len() + st.edited.len()) as u64;
+    progress::phase("Checking your files", n, st.new.iter().chain(&st.edited).map(|f| f.size).sum());
     for f in st.new.iter().chain(&st.edited) {
         progress(&f.path);
+        progress::file(&f.path);
         let m = manifest_of(ws, &f.path)?;
+        progress::file_done();
         entries.push(PublishEntry {
             path: f.path.clone(),
             op: "put".into(),

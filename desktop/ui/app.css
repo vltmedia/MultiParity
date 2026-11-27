@@ -221,6 +221,25 @@ dialog .pathrow input { flex: 1; border: var(--bw) solid var(--btn-line); paddin
 .toast { position: fixed; right: 22px; bottom: 22px; z-index: 30; background: var(--toast-bg); color: var(--toast-ink); padding: 12px 16px; max-width: 420px; font-size: 14px; box-shadow: var(--sh-toast); border-radius: var(--r-btn); }
 .toast.bad { box-shadow: var(--sh-toast-bad, 5px 5px 0 var(--warn)); }
 
+/* Progress dock: long work (get latest, publish, syncing, drafts), whichever screen is open. It
+   sits above the toast so both can show. */
+.pdock { position: fixed; right: 22px; bottom: 76px; z-index: 29; width: min(400px, calc(100vw - 44px)); }
+.pdock ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.pdock li { background: var(--card); border: var(--lw) solid var(--panel-line, var(--line)); border-radius: var(--r); padding: 12px 14px 11px; box-shadow: var(--sh-toast); transition: opacity .6s; }
+.pdock li.done { opacity: .75; }
+.pdock .ptop { display: flex; justify-content: space-between; gap: 10px; font-size: 14px; }
+.pdock .ptop span { font-variant-numeric: tabular-nums; color: var(--acc); font-weight: 600; }
+.pdock .pbar { display: block; height: 6px; margin: 8px 0 7px; background: var(--line); border-radius: 3px; overflow: hidden; }
+.pdock .pbar b { display: block; height: 100%; background: var(--acc); border-radius: 3px; transition: width .3s ease-out; }
+.pdock .pbar.wait b { width: 35% !important; animation: pwait 1.2s ease-in-out infinite alternate; }
+@keyframes pwait { from { transform: translateX(-60%); } to { transform: translateX(240%); } }
+@media (prefers-reduced-motion: reduce) { .pdock .pbar.wait b { animation: none; width: 100% !important; opacity: .4; } .pdock .pbar b { transition: none; } }
+.pdock .pmeta { display: flex; justify-content: space-between; gap: 10px; font-size: 12.5px; color: var(--mute); font-variant-numeric: tabular-nums; }
+.pdock .pmeta span:last-child { text-align: right; }
+.pdock small { display: block; margin-top: 4px; font-size: 12px; color: var(--mute); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#here button.busy span::after { content: ""; display: inline-block; width: 7px; height: 7px; margin-left: 8px; border-radius: 50%; background: var(--acc); vertical-align: middle; animation: pblink 1s ease-in-out infinite alternate; }
+@keyframes pblink { from { opacity: .3; } to { opacity: 1; } }
+
 /* Look (theme picker). Each card is drawn in its own theme's colours, not the current one. */
 .looks { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 14px; }
 .look { display: flex; flex-direction: column; background: var(--card); border: var(--lw) solid var(--line); border-radius: var(--r); overflow: hidden; text-align: left; }

@@ -18,6 +18,8 @@ const human = (b) => {
 const state = { accounts: [], groups: [], filter: "all", q: "", open: null, trees: {}, checked: {}, statuses: {} };
 
 async function api(path, opts = {}) {
+  // Long work started from here: show its progress straight away.
+  if (opts.method === "POST" && /\/(get-latest|publish|connect|draft)$/.test(path) && typeof watchProgress === "function") watchProgress();
   const res = await fetch(DAEMON + path, { ...opts, headers: { "content-type": "application/json", ...(opts.headers || {}) } });
   const body = await res.json().catch(() => ({}));
   if (!res.ok || body.error) {
@@ -501,6 +503,68 @@ $("#list").addEventListener("keydown", (e) => {
     onAction(act, e.target.closest(".proj").dataset.key, e.target);
   }
 });
+
+// ------------------------------------------------------------------ progress
+// Long work (get latest, publish, syncing a folder, saving a draft) shows in a dock in the corner,
+// whichever screen is open: what is happening, how much is done, how fast, and how long is left.
+
+const progress = { all: {}, timer: 0 };
+const VERB = { "get-latest": "Getting latest", publish: "Publishing", connect: "Syncing", draft: "Saving a draft" };
+
+function nameFor(key) {
+  const pid = key.startsWith("connect:") ? key.slice(8) : null;
+  for (const g of state.groups) for (const p of g.projects) {
+    if (pid ? p.project.id === pid : p.workspaces.some((w) => w.id === key)) return p.project.name;
+  }
+  return "";
+}
+
+const clock = (secs) => secs < 60 ? `${Math.max(1, Math.round(secs))} s` : secs < 3600 ? `${Math.round(secs / 60)} min` : `${(secs / 3600).toFixed(1)} h`;
+
+function progressCard(key, p) {
+  const name = nameFor(key);
+  const byBytes = p.bytes_total > 0;
+  // All the data is here or sent; the last checks and saving are left.
+  const wrapping = byBytes && p.bytes_done >= p.bytes_total && !p.finished;
+  const frac = p.finished ? 1 : byBytes ? Math.min(1, p.bytes_done / p.bytes_total) : p.files_total ? Math.min(1, p.files_done / p.files_total) : null;
+  const left = byBytes && p.rate > 0 && !p.finished && p.bytes_done < p.bytes_total ? (p.bytes_total - p.bytes_done) / p.rate : null;
+  const amount = p.finished ? "Done"
+    : byBytes ? `${human(p.bytes_done)} of ${human(p.bytes_total)}${p.files_total ? ` · ${p.files_done.toLocaleString()} of ${p.files_total.toLocaleString()} files` : ""}`
+    : p.files_total ? `${p.files_done.toLocaleString()} of ${p.files_total.toLocaleString()} files` : "";
+  const speed = !p.finished && !wrapping && p.rate > 0 ? `${human(p.rate)}/s` : "";
+  return `<li class="${p.finished ? "done" : ""}">
+    <div class="ptop"><b>${esc(VERB[p.op] || "Working on")}${name ? ` ${esc(name)}` : ""}</b><span>${frac === null ? "" : `${Math.floor(frac * 100)}%`}</span></div>
+    <i class="pbar ${frac === null ? "wait" : ""}"><b style="width:${frac === null ? 100 : (frac * 100).toFixed(1)}%"></b></i>
+    <div class="pmeta"><span>${esc(p.finished ? "Finished" : wrapping ? "Finishing" : p.phase)}</span><span>${[amount, speed, left !== null && left > 2 ? `about ${clock(left)} left` : ""].filter(Boolean).map(esc).join(" · ")}</span></div>
+    ${p.current && !p.finished ? `<small title="${esc(p.current)}">${esc(p.current.split("/").pop())}</small>` : ""}
+  </li>`;
+}
+
+function renderProgress() {
+  const dock = $("#pdock");
+  if (!dock) return;
+  const items = Object.entries(progress.all);
+  dock.hidden = !items.length;
+  dock.innerHTML = items.length ? `<ul>${items.map(([k, p]) => progressCard(k, p)).join("")}</ul>` : "";
+  // The sidebar marks folders with work under way.
+  document.querySelectorAll("#here button[data-ws]").forEach((b) => b.classList.toggle("busy", !!(progress.all[b.dataset.ws] && !progress.all[b.dataset.ws].finished)));
+}
+
+async function pollProgress() {
+  clearTimeout(progress.timer);
+  let busy = false;
+  if (!document.hidden) {
+    try {
+      progress.all = (await api("/progress")) || {};
+      busy = Object.values(progress.all).some((p) => !p.finished);
+    } catch (_) { progress.all = {}; }
+    renderProgress();
+  }
+  progress.timer = setTimeout(pollProgress, busy ? 350 : 2500);
+}
+/** Look at once (an operation was just started from this window). */
+function watchProgress() { setTimeout(pollProgress, 150); }
+pollProgress();
 
 load();
 setInterval(() => { if (!document.hidden && !$("#dlg").open && !$("#v-work").classList.contains("on")) load(); }, 30000);

@@ -441,6 +441,53 @@ impl Ctx {
     }
 }
 
+/// Run a long operation with one live progress line on a terminal (step, percent, amount, speed,
+/// time left, file). Elsewhere (a pipe, a log, --json) nothing extra is printed.
+async fn with_bar<F: std::future::Future>(show: bool, op: &str, f: F) -> F::Output {
+    use std::io::{IsTerminal, Write};
+    if !show || !std::io::stderr().is_terminal() {
+        return f.await;
+    }
+    let p = mp_client::progress::Progress::new(op);
+    let ticker = {
+        let p = p.clone();
+        tokio::spawn(async move {
+            let mut last = 0usize;
+            loop {
+                tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+                let s = p.snapshot();
+                let wrapping = s.bytes_total > 0 && s.bytes_done >= s.bytes_total;
+                let mut line = format!("  {}", if wrapping { "Finishing" } else { s.phase.as_str() });
+                if s.bytes_total > 0 && !wrapping {
+                    let pct = (s.bytes_done as f64 / s.bytes_total as f64 * 100.0).min(100.0);
+                    line += &format!("  {pct:>3.0}%  {} of {}", human(s.bytes_done), human(s.bytes_total));
+                    if s.rate > 0 {
+                        line += &format!("  {}/s", human(s.rate));
+                        let left = (s.bytes_total.saturating_sub(s.bytes_done)) / s.rate.max(1);
+                        if left > 2 {
+                            line += &format!("  about {} left", if left < 90 { format!("{left} s") } else { format!("{} min", (left + 30) / 60) });
+                        }
+                    }
+                } else if s.files_total > 0 {
+                    line += &format!("  {} of {} files", s.files_done, s.files_total);
+                }
+                if let Some(c) = &s.current {
+                    line += &format!("  {}", c.rsplit('/').next().unwrap_or(c));
+                }
+                let shown: String = line.chars().take(118).collect();
+                let pad = last.saturating_sub(shown.chars().count());
+                eprint!("\r{shown}{}", " ".repeat(pad));
+                let _ = std::io::stderr().flush();
+                last = shown.chars().count();
+            }
+        })
+    };
+    let out = mp_client::progress::scope(p, f).await;
+    ticker.abort();
+    eprint!("\r{}\r", " ".repeat(120));
+    out
+}
+
 pub fn human(bytes: u64) -> String {
     let units = ["B", "KB", "MB", "GB", "TB"];
     let mut v = bytes as f64;
@@ -551,10 +598,14 @@ async fn run(cli: Cli) -> Result<()> {
             if !dry_run {
                 ctx.say(&format!("Connecting {} to {} …", proj.name, folder.display()));
             }
-            let (ws, report) = ops::connect(
-                &api,
-                &folder,
-                ops::ConnectOptions { account_id: &acct.id, project: &detail, branch: &br, include: only, exclude: skip, download: !no_download, dry_run },
+            let (ws, report) = with_bar(
+                !ctx.json && !dry_run,
+                "connect",
+                ops::connect(
+                    &api,
+                    &folder,
+                    ops::ConnectOptions { account_id: &acct.id, project: &detail, branch: &br, include: only, exclude: skip, download: !no_download, dry_run },
+                ),
             )
             .await?;
             ctx.out(json!({ "report": report, "root": ws.as_ref().map(|w| w.root.display().to_string()) }), || {
@@ -613,11 +664,12 @@ async fn run(cli: Cli) -> Result<()> {
             let mut ws = ctx.ws()?;
             let api = ops::api_for(&ws)?;
             let json_mode = ctx.json;
-            let r = ops::get_latest(&api, &mut ws, |p| {
-                if !json_mode {
+            let live = !json_mode && std::io::IsTerminal::is_terminal(&std::io::stderr());
+            let r = with_bar(!json_mode, "get-latest", ops::get_latest(&api, &mut ws, |p| {
+                if !json_mode && !live {
                     eprintln!("  getting {p}");
                 }
-            })
+            }))
             .await?;
             ctx.out(json!(r), || {
                 let mut s = vec![format!("Up to date with change {}. {} downloaded ({}), {} removed.", r.head, r.downloaded.len(), human(r.bytes), r.removed.len())];
@@ -633,11 +685,12 @@ async fn run(cli: Cli) -> Result<()> {
             let only = rel_paths(&ws, &ctx.dir, &paths);
             let keep = rel_paths(&ws, &ctx.dir, &keep_mine);
             let json_mode = ctx.json;
-            let r = ops::publish(&api, &mut ws, &message, &only, &keep, |p| {
-                if !json_mode {
+            let live = !json_mode && std::io::IsTerminal::is_terminal(&std::io::stderr());
+            let r = with_bar(!json_mode, "publish", ops::publish(&api, &mut ws, &message, &only, &keep, |p| {
+                if !json_mode && !live {
                     eprintln!("  {p}");
                 }
-            })
+            }))
             .await?;
             ctx.out(json!(r), || format!("Published change {}: {} file(s), {} sent.", r.change.number, r.files, human(r.uploaded_bytes)));
         }

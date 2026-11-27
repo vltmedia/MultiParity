@@ -39,12 +39,46 @@ struct DState {
     notices: Arc<Mutex<HashMap<String, String>>>,
     /// Notifications for the desktop app (others' changes, requests to release).
     alerts: notify::Notices,
+    /// Long operations running now (get latest, publish, connect, drafts), by folder id or
+    /// `connect:<project id>`, for the app's progress bars. Kept a few seconds after they end.
+    running: Arc<std::sync::Mutex<HashMap<String, mp_client::progress::Progress>>>,
 }
 
 impl DState {
     async fn lock_for(&self, id: &str) -> Arc<Mutex<()>> {
         self.locks.lock().await.entry(id.to_string()).or_default().clone()
     }
+
+    /// Run `f` with its progress readable at /local/progress under `key`.
+    async fn tracked<F: std::future::Future>(&self, key: &str, op: &str, f: F) -> F::Output {
+        use mp_client::progress::{scope, Progress};
+        let p = Progress::new(op);
+        self.running.lock().unwrap().insert(key.to_string(), p.clone());
+        let out = scope(p.clone(), f).await;
+        p.finish();
+        // Long enough for a polling app to see the end.
+        let running = self.running.clone();
+        let key = key.to_string();
+        tokio::spawn(async move {
+            tokio::time::sleep(std::time::Duration::from_secs(6)).await;
+            let mut r = running.lock().unwrap();
+            if r.get(&key).map(|q| q.snapshot().finished).unwrap_or(false) {
+                r.remove(&key);
+            }
+        });
+        out
+    }
+}
+
+/// Everything running now, by folder id (or `connect:<project id>`).
+async fn progress_all(State(s): State<DState>) -> Json<Value> {
+    let r = s.running.lock().unwrap();
+    Json(json!(r.iter().map(|(k, p)| (k.clone(), p.snapshot())).collect::<HashMap<_, _>>()))
+}
+
+/// What is running in this folder now, or null.
+async fn progress_one(State(s): State<DState>, Path(id): Path<String>) -> Json<Value> {
+    Json(json!(s.running.lock().unwrap().get(&id).map(|p| p.snapshot())))
 }
 
 struct DErr(StatusCode, String);
@@ -131,6 +165,8 @@ pub async fn run(listen: &str, interval: u64) -> Result<()> {
         .route("/local/workspaces/:id/status", get(status))
         .route("/local/workspaces/:id/folders", get(folders))
         .route("/local/workspaces/:id/sync", put(set_sync))
+        .route("/local/progress", get(progress_all))
+        .route("/local/workspaces/:id/progress", get(progress_one))
         .route("/local/workspaces/:id/get-latest", post(get_latest))
         .route("/local/workspaces/:id/publish", post(publish))
         .route("/local/workspaces/:id/checkpoint", post(checkpoint))
@@ -406,10 +442,16 @@ async fn set_sync(State(s): State<DState>, Path(id): Path<String>, Json(b): Json
 
 async fn get_latest(State(s): State<DState>, Path(id): Path<String>) -> DResult<Json<Value>> {
     let mut ws = find_ws(&id)?;
-    let lock = s.lock_for(&ws.config.id).await;
-    let _g = lock.lock().await;
-    let api = ops::api_for(&ws)?;
-    let r = ops::get_latest(&api, &mut ws, |_| {}).await?;
+    let key = ws.config.id.clone();
+    let r = s
+        .tracked(&key, "get-latest", async {
+            mp_client::progress::phase("Waiting for this folder's other work to finish", 0, 0);
+            let lock = s.lock_for(&ws.config.id).await;
+            let _g = lock.lock().await;
+            let api = ops::api_for(&ws)?;
+            Ok::<_, DErr>(ops::get_latest(&api, &mut ws, |_| {}).await?)
+        })
+        .await?;
     Ok(Json(json!({ "downloaded": r.downloaded.len(), "bytes": r.bytes, "removed": r.removed.len(), "kept_yours": r.kept_yours, "head": r.head })))
 }
 
@@ -425,12 +467,13 @@ struct PublishBody {
 async fn publish(State(s): State<DState>, Path(id): Path<String>, Json(b): Json<PublishBody>) -> Response {
     let run = async {
         let mut ws = find_ws(&id)?;
+        mp_client::progress::phase("Waiting for this folder's other work to finish", 0, 0);
         let lock = s.lock_for(&ws.config.id).await;
         let _g = lock.lock().await;
         let api = ops::api_for(&ws)?;
         Ok::<_, DErr>(ops::publish(&api, &mut ws, &b.message, &b.paths, &b.keep_mine, |_| {}).await)
     };
-    match run.await {
+    match s.tracked(&id, "publish", run).await {
         Err(e) => e.into_response(),
         Ok(Ok(r)) => Json(json!({ "change": r.change, "files": r.files })).into_response(),
         Ok(Err(e)) => match mp_client::api::conflict_details(&e) {
@@ -617,7 +660,7 @@ fn yes() -> bool {
 
 /// Connect a project to a folder. With `dry_run`, report what is already in the folder (matched,
 /// different, only here, to download) and change nothing.
-async fn connect(Json(b): Json<ConnectBody>) -> DResult<Json<Value>> {
+async fn connect(State(s): State<DState>, Json(b): Json<ConnectBody>) -> DResult<Json<Value>> {
     let accounts = Accounts::load()?;
     let a = accounts.by_id(&b.account_id).map_err(|e| DErr(StatusCode::NOT_FOUND, e.to_string()))?;
     let api = mp_client::Api::for_account(a);
@@ -631,12 +674,12 @@ async fn connect(Json(b): Json<ConnectBody>) -> DResult<Json<Value>> {
     if !folder.is_absolute() {
         return Err(DErr(StatusCode::UNPROCESSABLE_ENTITY, "Choose a full folder path.".into()));
     }
-    let (ws, report) = ops::connect(
-        &api,
-        &folder,
-        ops::ConnectOptions { account_id: &a.id, project: &project, branch: &branch, include: b.include, exclude: b.exclude, download: b.download, dry_run: b.dry_run },
-    )
-    .await?;
+    let opts = ops::ConnectOptions { account_id: &a.id, project: &project, branch: &branch, include: b.include, exclude: b.exclude, download: b.download, dry_run: b.dry_run };
+    let (ws, report) = if b.dry_run {
+        ops::connect(&api, &folder, opts).await?
+    } else {
+        s.tracked(&format!("connect:{}", project.id), "connect", ops::connect(&api, &folder, opts)).await?
+    };
     Ok(Json(json!({ "report": report, "workspace": ws.as_ref().map(ws_json) })))
 }
 
@@ -648,10 +691,15 @@ struct DraftBody {
 /// Save this folder's unpublished work as a draft on the server.
 async fn save_draft(State(s): State<DState>, Path(id): Path<String>, Json(b): Json<DraftBody>) -> DResult<Json<Value>> {
     let ws = find_ws(&id)?;
-    let lock = s.lock_for(&ws.config.id).await;
-    let _g = lock.lock().await;
-    let api = ops::api_for(&ws)?;
-    Ok(Json(ops::save_draft(&api, &ws, &b.title).await?))
+    let v = s
+        .tracked(&ws.config.id, "draft", async {
+            let lock = s.lock_for(&ws.config.id).await;
+            let _g = lock.lock().await;
+            let api = ops::api_for(&ws)?;
+            Ok::<_, DErr>(ops::save_draft(&api, &ws, &b.title).await?)
+        })
+        .await?;
+    Ok(Json(v))
 }
 
 /// One checkpoint with its files, for the rewind screen. Works for checkpoints kept on the
