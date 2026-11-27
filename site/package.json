@@ -1,0 +1,14 @@
+{
+  "name": "multiparity-site",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "docs": "node scripts/sync-docs.mjs",
+    "dev": "node scripts/sync-docs.mjs && vitepress dev",
+    "build": "node scripts/sync-docs.mjs && vitepress build",
+    "preview": "vitepress preview"
+  },
+  "devDependencies": {
+    "vitepress": "1.6.4"
+  }
+}

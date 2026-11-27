@@ -1,0 +1,116 @@
+/* MultiParity site: the app's own default looks. Light is Ice Lab (white, blue linework, an
+   engineering grid); dark is Orbital HUD (near-black, cyan, cut corners). */
+
+:root {
+  --mp-ink: #0b2a40;
+  --mp-mute: #5b7a92;
+  --mp-paper: #fbfdff;
+  --mp-card: #ffffff;
+  --mp-line: #cfe4f3;
+  --mp-acc: #0094ff;
+  --mp-acc-ink: #ffffff;
+  --mp-hold: #7a5cff;
+  --mp-hold-bg: #f1edff;
+  --mp-new: #00a37a;
+  --mp-warn: #e0334f;
+  --mp-grid: rgba(0, 148, 255, 0.07);
+  --mp-cut: 7px;
+
+  --vp-font-family-base: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --vp-font-family-mono: 'Martian Mono', ui-monospace, Consolas, monospace;
+  --vp-c-brand-1: #0078d0;
+  --vp-c-brand-2: #0094ff;
+  --vp-c-brand-3: #0094ff;
+  --vp-c-brand-soft: rgba(0, 148, 255, 0.12);
+  --vp-c-bg: var(--mp-paper);
+  --vp-c-bg-alt: #f2f8fd;
+  --vp-c-bg-soft: #eef6fc;
+  --vp-c-divider: var(--mp-line);
+  --vp-c-gutter: var(--mp-line);
+  --vp-c-text-1: var(--mp-ink);
+  --vp-c-text-2: #3c5a70;
+  --vp-c-text-3: var(--mp-mute);
+  --vp-button-brand-bg: var(--mp-acc);
+  --vp-button-brand-hover-bg: #0078d0;
+  --vp-code-font-size: 0.84em;
+  --vp-home-hero-name-color: var(--mp-ink);
+}
+
+.dark {
+  --mp-ink: #d9f6ff;
+  --mp-mute: #6f98a8;
+  --mp-paper: #05080d;
+  --mp-card: #0b121c;
+  --mp-line: #123444;
+  --mp-acc: #00e5ff;
+  --mp-acc-ink: #00141a;
+  --mp-hold: #ffb020;
+  --mp-hold-bg: rgba(255, 176, 32, 0.1);
+  --mp-new: #3ef0a0;
+  --mp-warn: #ff4d6d;
+  --mp-grid: rgba(0, 229, 255, 0.05);
+  --mp-cut: 9px;
+
+  --vp-c-brand-1: #00e5ff;
+  --vp-c-brand-2: #5ef0ff;
+  --vp-c-brand-3: #00b8cc;
+  --vp-c-brand-soft: rgba(0, 229, 255, 0.12);
+  --vp-c-bg: var(--mp-paper);
+  --vp-c-bg-alt: #070b12;
+  --vp-c-bg-soft: #0b121c;
+  --vp-c-divider: var(--mp-line);
+  --vp-c-gutter: #0b121c;
+  --vp-c-text-1: var(--mp-ink);
+  --vp-c-text-2: #a9cfdc;
+  --vp-c-text-3: var(--mp-mute);
+  --vp-button-brand-bg: var(--mp-acc);
+  --vp-button-brand-text: var(--mp-acc-ink);
+  --vp-button-brand-hover-bg: #5ef0ff;
+  --vp-button-brand-hover-text: var(--mp-acc-ink);
+}
+
+/* Headings in the Ice Lab face; Orbital HUD squares them up. */
+.vp-doc h1,
+.vp-doc h2,
+.vp-doc h3,
+.VPNavBarTitle .title {
+  font-family: 'Oxanium', var(--vp-font-family-base);
+  letter-spacing: -0.01em;
+}
+.dark .vp-doc h1,
+.dark .vp-doc h2,
+.dark .VPNavBarTitle .title {
+  letter-spacing: 0.02em;
+}
+.vp-doc h1 { font-weight: 700; }
+.vp-doc h2 { font-weight: 600; border-top-color: var(--mp-line); }
+.vp-doc table { font-size: 14.5px; }
+.vp-doc th { font-family: 'Oxanium', var(--vp-font-family-base); font-weight: 600; }
+.vp-doc a { text-underline-offset: 3px; }
+
+/* The engineering grid behind the doc pages, faintly. */
+.VPContent.has-sidebar,
+.VPPage {
+  background-image: linear-gradient(var(--mp-grid) 1px, transparent 1px), linear-gradient(90deg, var(--mp-grid) 1px, transparent 1px);
+  background-size: 16px 16px;
+}
+.VPContent.is-home,
+.VPContent:not(.has-sidebar) .VPPage { background: none; }
+
+/* Orbital HUD sets its big headings in capitals. */
+.dark .mp h1,
+.dark .mp h2 { text-transform: uppercase; letter-spacing: 0.04em; }
+
+/* Code written as indented blocks in docs/ (not fenced): the same box as fenced code, scrolling
+   inside itself instead of widening the page. */
+.vp-doc pre:not(.shiki) {
+  margin: 16px 0;
+  padding: 14px 18px;
+  overflow-x: auto;
+  background: var(--vp-code-block-bg);
+  border: 1px solid var(--mp-line);
+  font-size: 13px;
+  line-height: 1.7;
+}
+.vp-doc pre:not(.shiki) code { background: none; padding: 0; font-size: inherit; color: var(--vp-c-text-1); }
+.vp-doc li > pre:not(.shiki) { margin: 10px 0; }

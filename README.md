@@ -4,6 +4,9 @@ Self-hosted version control for game and art teams: a friendlier Perforce. Big b
 claims instead of merge conflicts, branches that stay simple, and apps that artists can use
 without learning version control. Unlimited users; deploy it with Docker Compose.
 
+**Website and docs:** https://vltmedia.github.io/MultiParity/ (built from `site/` and `docs/`).
+**Download the desktop app:** https://github.com/vltmedia/MultiParity/releases/latest
+
 | Word | What it means | Perforce |
 |---|---|---|
 | Claim / Release | Reserve a file so nobody else can publish it / give it back | Check out / unlock |
@@ -28,6 +31,7 @@ The full product spec is [docs/SPEC.md](docs/SPEC.md); the HTTP API is [docs/API
 | `web/` | The web UI (React), served by the server |
 | `desktop/` | The desktop app for Windows, macOS and Linux (Tauri), with the daemon built in: every project from every account, and per project Your work, Files (claims, older versions), History, Branches and Drafts; system notifications when others publish to your branch or ask for your file, and a tray count of projects with newer files |
 | `plugins/blender/` | The Blender add-on: claim, publish, checkpoint and get latest from inside Blender (docs/AUTOMATION.md) |
+| `site/` | The website and docs (VitePress), published to GitHub Pages by `.github/workflows/site.yml` |
 | `design/concepts/` | The UI concept rounds |
 | `scripts/dev/` | Build-host loop and the end-to-end test |
 
