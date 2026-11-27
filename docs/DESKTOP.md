@@ -50,7 +50,8 @@ operating system trusting the installer: see [SIGNING.md](SIGNING.md).
    `scripts/release/build-desktop.sh --universal` on a Mac), collecting into one folder with the
    release's address:
 
-       node scripts/release/desktop-latest.mjs --out ~/mp-release --notes "What changed"          --base-url https://github.com/vltmedia/MultiParity/releases/download/v0.2.0
+       node scripts/release/desktop-latest.mjs --out ~/mp-release --notes "What changed" \
+         --base-url https://github.com/vltmedia/MultiParity/releases/download/v0.2.0
 
 3. Make the release with everything in that folder:
 
