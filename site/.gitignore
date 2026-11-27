@@ -1,3 +1,5 @@
 /docs/
 /.vitepress/cache/
 /.vitepress/dist/
+/screenshots-raw/
+shots-*.json

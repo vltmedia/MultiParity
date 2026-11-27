@@ -2,8 +2,11 @@
 // (embedded in the app) and to the app shell for folder pickers and server windows.
 "use strict";
 
-const DAEMON = "http://127.0.0.1:18519/local";
 const tauri = window.__TAURI__ && window.__TAURI__.core;
+// Opened in a browser for development or screenshots, ?daemon=<port> points at another daemon
+// (the app itself always uses its own, and its security policy allows no other).
+const DAEMON_PORT = (!tauri && /^\d{4,5}$/.test(new URLSearchParams(location.search).get("daemon") || "")) ? new URLSearchParams(location.search).get("daemon") : "18519";
+const DAEMON = `http://127.0.0.1:${DAEMON_PORT}/local`;
 const $ = (s, el = document) => el.querySelector(s);
 const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const human = (b) => {

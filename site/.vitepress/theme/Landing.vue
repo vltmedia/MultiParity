@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed, ref } from 'vue';
 import { withBase } from 'vitepress';
 
 const RELEASES = 'https://github.com/vltmedia/MultiParity/releases/latest';
@@ -27,6 +28,56 @@ const day = [
   ['Save checkpoints', 'Before the risky retopo, save a checkpoint. It is private, costs almost nothing for big files, and you can rewind to it whenever you like.'],
   ['Publish', 'Tick the files, say what you changed, and it goes to everyone as one change. Your claims are handed back. Every earlier version stays one right-click away.'],
 ];
+
+const shot = (name: string, scheme: 'light' | 'dark') => withBase(`/shots/${name}-${scheme}.webp`);
+
+// The four things people notice first, each with the screen that shows it.
+const features = [
+  {
+    shot: 'desk-work', app: 'Desktop app', w: 1360, h: 860,
+    title: 'Everything you changed, in one list',
+    body: 'Your work shows every file you edited, added or deleted, with a thumbnail and its size. Tick what is ready, say what you did, and publish it as one change. Checkpoints you saved along the way sit right below.',
+    points: ['Claims taken for you on first edit', 'Checkpoints and rewind, private to you', 'Notified the moment someone publishes'],
+  },
+  {
+    shot: 'web-files', app: 'Web app', w: 1600, h: 1000,
+    title: 'See who has what before you open it',
+    body: 'Every file shows its state: edited by you, claimed by someone else, new, or newer on the server. Blender scenes and images get real thumbnails, and the side bar shows who is working on what right now.',
+    points: ['Claims you can see before you start', 'Tags like Approved or Needs review', 'Find any file by name'],
+  },
+  {
+    shot: 'web-versions', app: 'Web app', w: 1600, h: 1000,
+    title: 'Every version, one click back',
+    body: 'Each file keeps every version ever published. Download an old one, put it back in your folder, or make it the latest again. Going back loses nothing: newer versions stay in the history.',
+    points: ['Who changed it, when, and why', 'Download, Put back or Make latest', 'Stored once, however many versions'],
+  },
+  {
+    shot: 'desk-projects', app: 'Desktop app', w: 1360, h: 860,
+    title: 'Every project, every studio, one app',
+    body: 'Sign in to as many servers as you work with. Each project lives in the folder you choose, and the app keeps them all up to date in the background from the tray.',
+    points: ['Several accounts side by side', 'Folders anywhere on your disks', 'Updates itself'],
+  },
+];
+
+// More screens, grouped by what they are for.
+const gallery = [
+  { key: 'today', label: 'Today', shot: 'web-today', w: 1600, h: 1000, cap: 'What happened today across the project: changes, claims and who is working on what.' },
+  { key: 'history', label: 'History', shot: 'web-history', w: 1600, h: 1000, cap: 'Every change ever published, with its files and message, searchable.' },
+  { key: 'branches', label: 'Branches', shot: 'desk-branches', w: 1360, h: 860, cap: 'Work on a lighting pass on its own branch, then bring it into Main when it is ready.' },
+  { key: 'files', label: 'Files on disk', shot: 'desk-files', w: 1360, h: 860, cap: 'Browse the project folder from the desktop app, with state and thumbnails for every file.' },
+  { key: 'admin', label: 'Administration', shot: 'web-admin', w: 1600, h: 1000, cap: 'People, roles, invites, storage and backups for the whole studio, from the browser.' },
+  { key: 'look', label: 'Themes', shot: 'web-look', w: 1600, h: 1000, cap: 'Pick a look for yourself, or set one for an organization or a project.' },
+];
+const tab = ref(gallery[0].key);
+const current = computed(() => gallery.find((g) => g.key === tab.value)!);
+function onTabKey(e: KeyboardEvent, i: number) {
+  const d = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
+  if (!d) return;
+  e.preventDefault();
+  const next = gallery[(i + d + gallery.length) % gallery.length];
+  tab.value = next.key;
+  (document.getElementById(`tab-${next.key}`) as HTMLElement | null)?.focus();
+}
 
 const pieces = [
   ['Server', 'One Docker Compose file on a studio machine or in the cloud. File data on its disks, a NAS or any S3 storage, nightly backups, email, webhooks. Unlimited people.', withBase('/guide/server')],
@@ -79,6 +130,54 @@ const pieces = [
           <span>wolf_howl_03.wav: louder tail</span>
         </div>
       </figure>
+    </section>
+
+    <figure class="studio">
+      <picture>
+        <source media="(max-width: 900px)" :srcset="withBase('/shots/studio-small.webp')" />
+        <img :src="withBase('/shots/studio.webp')" width="2200" height="1228" loading="lazy"
+          alt="An artist's desk at night: the MultiParity desktop app open on a laptop next to a drawing tablet" />
+      </picture>
+      <figcaption>
+        <h2>Made for the people who make the files</h2>
+        <p>Artists, animators and sound designers, not just the build engineer. No command line, no workspace specs, no locking rituals.</p>
+      </figcaption>
+    </figure>
+
+    <section class="tour">
+      <article v-for="(f, i) in features" :key="f.shot" class="feat" :class="{ flip: i % 2 === 1 }">
+        <div class="feat-copy">
+          <p class="app">{{ f.app }}</p>
+          <h2>{{ f.title }}</h2>
+          <p>{{ f.body }}</p>
+          <ul><li v-for="p in f.points" :key="p">{{ p }}</li></ul>
+        </div>
+        <div class="frame" :class="f.app === 'Desktop app' ? 'desk' : 'web'">
+          <div class="bar" aria-hidden="true"><i></i><i></i><i></i><span>{{ f.app === 'Desktop app' ? 'MultiParity' : 'mp.cinderworks.studio' }}</span></div>
+          <img class="only-light" :src="shot(f.shot, 'light')" :width="f.w" :height="f.h" loading="lazy" :alt="`${f.app}: ${f.title}`" />
+          <img class="only-dark" :src="shot(f.shot, 'dark')" :width="f.w" :height="f.h" loading="lazy" alt="" />
+        </div>
+      </article>
+    </section>
+
+    <section class="gallery">
+      <div class="sec-head">
+        <h2>More of the apps</h2>
+        <p>Every screen comes in Ice Lab by day and Orbital HUD by night. Switch the site’s theme to see both.</p>
+      </div>
+      <div class="tabs" role="tablist" aria-label="Screens">
+        <button v-for="(g, i) in gallery" :id="`tab-${g.key}`" :key="g.key" role="tab" type="button"
+          :aria-selected="tab === g.key" :tabindex="tab === g.key ? 0 : -1" aria-controls="gallery-panel"
+          @click="tab = g.key" @keydown="onTabKey($event, i)">{{ g.label }}</button>
+      </div>
+      <div id="gallery-panel" class="g-panel" role="tabpanel" :aria-labelledby="`tab-${current.key}`">
+        <div class="frame" :class="current.shot.startsWith('desk') ? 'desk' : 'web'">
+          <div class="bar" aria-hidden="true"><i></i><i></i><i></i><span>{{ current.shot.startsWith('desk') ? 'MultiParity' : 'mp.cinderworks.studio' }}</span></div>
+          <img class="only-light" :src="shot(current.shot, 'light')" :width="current.w" :height="current.h" :alt="current.cap" />
+          <img class="only-dark" :src="shot(current.shot, 'dark')" :width="current.w" :height="current.h" alt="" />
+        </div>
+        <p class="g-cap">{{ current.cap }}</p>
+      </div>
     </section>
 
     <section class="words">
@@ -149,12 +248,11 @@ docker compose up -d</code></pre>
 <style scoped>
 .mp {
   --cut: polygon(var(--mp-cut) 0, 100% 0, 100% calc(100% - var(--mp-cut)), calc(100% - var(--mp-cut)) 100%, 0 100%, 0 var(--mp-cut));
-  max-width: 1160px;
-  margin: 0 auto;
   overflow-x: clip;
   padding: 0 24px 96px;
   color: var(--mp-ink);
 }
+.mp > section { max-width: 1112px; margin-left: auto; margin-right: auto; }
 h1, h2, h3 { font-family: 'Oxanium', var(--vp-font-family-base); color: var(--mp-ink); }
 
 .btn {
@@ -228,6 +326,55 @@ h1, h2, h3 { font-family: 'Oxanium', var(--vp-font-family-base); color: var(--mp
 @keyframes arrive { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .toast { animation: none; } }
 
+/* ---------- studio photo band ---------- */
+.studio {
+  position: relative; margin: 0 -24px; background: #050d14; overflow: hidden;
+}
+.studio img { display: block; width: 100%; height: clamp(360px, 52vw, 680px); object-fit: cover; object-position: 50% 40%; }
+.studio figcaption {
+  display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 48px; align-items: end;
+  padding: 36px max(24px, calc(50vw - 556px)) 48px; background: #050d14;
+}
+.studio h2 { color: #eef6fb; font-size: clamp(26px, 3.2vw, 38px); font-weight: 700; line-height: 1.15; margin: 0; letter-spacing: -0.015em; }
+.studio p { color: #b9cfdd; font-size: 17px; margin: 0; max-width: 34em; line-height: 1.55; }
+.studio + section { margin-top: 112px; }
+
+/* ---------- framed screenshots ---------- */
+.frame {
+  position: relative; background: var(--mp-card); border: 1px solid var(--mp-line);
+  box-shadow: 0 1px 0 var(--mp-line), 0 40px 80px -40px rgba(11, 42, 64, 0.45);
+  overflow: hidden;
+}
+.frame .bar { display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border-bottom: 1px solid var(--mp-line); background: var(--vp-c-bg-soft); }
+.frame .bar i { width: 9px; height: 9px; border-radius: 50%; background: var(--mp-line); }
+.frame .bar span { margin-left: 10px; font-family: var(--vp-font-family-mono); font-size: 11px; color: var(--mp-mute); }
+.frame img { display: block; width: 100%; height: auto; }
+
+/* ---------- feature tour ---------- */
+.tour { display: flex; flex-direction: column; gap: 120px; }
+.feat { display: grid; grid-template-columns: minmax(0, 0.78fr) minmax(0, 1.22fr); gap: 56px; align-items: center; }
+.feat.flip .feat-copy { order: 2; }
+.feat-copy .app { margin: 0 0 10px; font-family: 'Oxanium', sans-serif; font-weight: 600; font-size: 14px; color: var(--mp-acc); }
+.feat-copy h2 { font-size: clamp(26px, 3vw, 36px); line-height: 1.12; font-weight: 700; margin: 0 0 16px; letter-spacing: -0.015em; }
+.feat-copy > p:not(.app) { color: var(--vp-c-text-2); font-size: 16.5px; line-height: 1.65; margin: 0 0 20px; }
+.feat-copy ul { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--mp-line); }
+.feat-copy li { padding: 10px 0 10px 22px; border-bottom: 1px solid var(--mp-line); font-size: 15px; position: relative; }
+.feat-copy li::before { content: ''; position: absolute; left: 2px; top: 17px; width: 8px; height: 8px; background: var(--mp-acc); clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
+/* Let the screenshot run off the page edge a little, so it reads as a window, not a thumbnail. */
+.feat:not(.flip) .frame { margin-right: -64px; }
+.feat.flip .frame { margin-left: -64px; }
+
+/* ---------- gallery ---------- */
+.tabs { display: flex; flex-wrap: wrap; gap: 0; border-bottom: 1px solid var(--mp-line); margin-bottom: 24px; }
+.tabs button {
+  padding: 10px 16px; font: 600 15px 'Oxanium', sans-serif; color: var(--mp-mute); background: none;
+  border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px; cursor: pointer;
+}
+.tabs button:hover { color: var(--mp-ink); }
+.tabs button[aria-selected='true'] { color: var(--mp-ink); border-bottom-color: var(--mp-acc); }
+.tabs button:focus-visible { outline: 2px solid var(--mp-hold); outline-offset: -2px; }
+.g-cap { color: var(--vp-c-text-2); font-size: 15.5px; margin: 16px 0 0; }
+
 /* ---------- sections ---------- */
 section + section { margin-top: 96px; }
 .sec-head { margin-bottom: 28px; }
@@ -271,6 +418,10 @@ section + section { margin-top: 96px; }
   .day li:nth-child(3) { padding-left: 0; border-left: 0; }
   .day li { padding-bottom: 24px; }
   .big { grid-template-columns: 1fr; }
+  .feat { grid-template-columns: 1fr; gap: 28px; }
+  .feat.flip .feat-copy { order: 0; }
+  .feat:not(.flip) .frame, .feat.flip .frame { margin: 0; }
+  .tour { gap: 88px; }
 }
 @media (max-width: 640px) {
   .mp { padding: 0 16px 72px; }
@@ -285,5 +436,10 @@ section + section { margin-top: 96px; }
   .piece:nth-child(even) { padding-left: 0; }
   .words td.p4, .words th:last-child { display: none; }
   section + section { margin-top: 72px; }
+  .studio { margin: 0 -16px; }
+  .studio figcaption { grid-template-columns: 1fr; gap: 12px; padding: 24px 16px 32px; }
+  .studio img { height: 260px; }
+  .tabs { flex-wrap: nowrap; overflow-x: auto; }
+  .tabs button { white-space: nowrap; }
 }
 </style>

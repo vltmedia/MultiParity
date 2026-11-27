@@ -114,3 +114,9 @@
 }
 .vp-doc pre:not(.shiki) code { background: none; padding: 0; font-size: inherit; color: var(--vp-c-text-1); }
 .vp-doc li > pre:not(.shiki) { margin: 10px 0; }
+
+/* Screenshots come in pairs; show the one that matches the site's theme. (Global on purpose:
+   Vue's scoped :global(.dark) would compile to a bare .dark rule.) */
+.mp .only-dark { display: none !important; }
+.dark .mp .only-dark { display: block !important; }
+.dark .mp .only-light { display: none !important; }
