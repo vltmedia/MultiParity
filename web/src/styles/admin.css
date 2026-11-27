@@ -47,3 +47,12 @@ a.stat:hover { border-color: var(--ink); }
 @media (max-width: 1180px) { .grid2 { grid-template-columns: 1fr; } }
 .grid2.inv { grid-template-columns: minmax(320px, 0.8fr) minmax(0, 1.4fr); }
 @media (max-width: 1500px) { .grid2.inv { grid-template-columns: 1fr; } .grid2.inv .panel { max-width: 640px; } }
+
+/* Admin > Projects grouped by client and production */
+.t tr.grp td { background: var(--panel2, var(--bg)); border-top: 1px solid var(--line); }
+.t tr.grp .grp-name { display: inline-flex; align-items: center; gap: 7px; font-weight: 600; margin-right: 10px; }
+.t tr.grp.org .grp-name { font-size: 1.05em; }
+.t tr.grp.loose .grp-name { font-weight: 500; color: var(--mute); }
+.t tr.grp .grp-acts { display: inline-flex; gap: 6px; vertical-align: middle; }
+.t tr.grp td { white-space: nowrap; }
+.t tr.grp .fine { margin-right: 8px; }

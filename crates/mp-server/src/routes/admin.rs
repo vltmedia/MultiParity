@@ -646,6 +646,11 @@ pub struct UpdateProject {
     /// Theme ids for light and dark mode; "" clears one (back to the organization's).
     theme_light: Option<String>,
     theme_dark: Option<String>,
+    /// Where it is filed; null takes it out. A production decides the client.
+    #[serde(default, deserialize_with = "super::structure::some_or_null")]
+    client: Option<Option<Uuid>>,
+    #[serde(default, deserialize_with = "super::structure::some_or_null")]
+    production: Option<Option<Uuid>>,
 }
 
 pub async fn update_project(State(s): State<AppState>, user: CurrentUser, Path(p): Path<Uuid>, Json(b): Json<UpdateProject>) -> ApiResult<Json<Value>> {
@@ -683,8 +688,18 @@ pub async fn update_project(State(s): State<AppState>, user: CurrentUser, Path(p
         sqlx::query("DELETE FROM project_access WHERE project_id = $1").bind(p).execute(&mut *tx).await?;
         sqlx::query("UPDATE tags SET org_id = $2 WHERE project_id = $1").bind(p).bind(to).execute(&mut *tx).await?;
         sqlx::query("DELETE FROM path_tags pt USING tags t WHERE pt.tag_id = t.id AND pt.project_id = $1 AND t.project_id IS NULL").bind(p).execute(&mut *tx).await?;
+        // Clients and productions belong to the old organization too.
+        super::structure::place_project(&mut tx, to, p, None, None).await?;
     }
-    let ev = events::record(&mut *tx, Some(b.org.unwrap_or(acc.org_id)), Some(p), Some(user.id), "admin.project_changed", json!({ "name": b.name, "org": b.org, "checkpoints": b.checkpoints, "auto_checkpoints": b.auto_checkpoints })).await?;
+    if b.client.is_some() || b.production.is_some() {
+        let org = b.org.unwrap_or(acc.org_id);
+        let current: Option<Uuid> = sqlx::query_scalar("SELECT client_id FROM projects WHERE id = $1").bind(p).fetch_one(&mut *tx).await?;
+        let production = b.production.flatten();
+        // Only a client given: filed straight under it, out of any production.
+        let client = match b.client { Some(c) => c, None => current };
+        super::structure::place_project(&mut tx, org, p, client, production).await?;
+    }
+    let ev = events::record(&mut *tx, Some(b.org.unwrap_or(acc.org_id)), Some(p), Some(user.id), "admin.project_changed", json!({ "name": b.name, "org": b.org, "checkpoints": b.checkpoints, "auto_checkpoints": b.auto_checkpoints, "client": b.client, "production": b.production })).await?;
     tx.commit().await?;
     events::publish_saved(&s.db, &s.events, ev).await;
     project_detail(&s, &user, p).await.map(Json)

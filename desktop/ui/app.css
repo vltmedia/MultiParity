@@ -418,3 +418,10 @@ dialog:has(.versions) { width: min(920px, 94vw); }
 .tm-legend i { display: inline-block; width: 12px; height: 12px; margin-right: 6px; vertical-align: -1px; border-radius: 3px; background: var(--c); }
 .tm-legend b { color: var(--ink); font-weight: 600; }
 .ftools .viewsw { margin-left: 8px; }
+
+/* Bands by client and production inside an organization */
+.group .band { display: flex; align-items: center; gap: 8px; padding: 10px 4px 6px; font-size: 13px; color: var(--mute); }
+.group .band .ic { width: 15px; height: 15px; margin-right: 5px; vertical-align: -3px; }
+.group .band .b-prod { color: var(--ink); font-weight: 600; }
+.group .band .b-sep { opacity: .7; }
+.proj .chip.main { font-size: 11px; padding: 1px 7px; margin-left: 6px; vertical-align: 2px; }

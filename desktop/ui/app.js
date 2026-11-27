@@ -205,7 +205,7 @@ function rows() {
       const ws = p.workspaces[0] || null;
       const st = ws ? state.statuses[ws.id] : null;
       const unpublished = st ? st.new.length + st.edited.length + st.deleted.length : 0;
-      const text = `${p.project.name} ${p.project.org.name} ${ws ? ws.root : ""}`.toLowerCase();
+      const text = `${p.project.name} ${p.project.org.name} ${p.project.client?.name || ""} ${p.project.production?.name || ""} ${ws ? ws.root : ""}`.toLowerCase();
       if (q && !text.includes(q)) continue;
       if (state.filter === "here" && !ws) continue;
       if (state.filter === "not" && ws) continue;
@@ -241,11 +241,35 @@ function renderProjects() {
   for (const { r, items } of groups.values()) {
     const a = r.g.account;
     html += `<section class="group"><h2><b>${esc(r.p.project.org.name)}</b>${esc(a.label || a.email)} · ${esc(a.server.replace(/^https?:\/\//, ""))}</h2>`;
-    for (const it of items) html += projectRow(it);
+    for (const band of bandsOf(items)) {
+      if (band.key) {
+        const c = band.client ? `<span class="b-client">${icon("briefcase")}${esc(band.client)}</span>` : "";
+        const pr = band.production ? `<span class="b-prod">${icon("clapperboard")}${esc(band.production)}</span>` : "";
+        html += `<div class="band">${c}${c && pr ? `<span class="b-sep">›</span>` : ""}${pr}${!c && !pr ? `<span class="b-other">Other projects</span>` : ""}</div>`;
+      }
+      for (const it of band.items) html += projectRow(it);
+    }
     html += `</section>`;
   }
   for (const g of state.groups) if (g.error) html += `<p class="acct-err">${esc(g.account.email)}: ${esc(g.error)}</p>`;
   list.innerHTML = html;
+}
+
+/** Projects in bands by client and production (main project first), unfiled ones last.
+ *  With nothing filed there is one band and no headings. */
+function bandsOf(items) {
+  const m = new Map();
+  for (const it of items) {
+    const pj = it.p.project;
+    const key = pj.production ? `pr:${pj.production.id}` : pj.client ? `cl:${pj.client.id}` : "";
+    if (!m.has(key)) m.set(key, { key, client: pj.client?.name, production: pj.production?.name, items: [] });
+    m.get(key).items.push(it);
+  }
+  const bands = [...m.values()];
+  for (const b of bands) b.items.sort((x, y) => Number(!!y.p.project.is_main) - Number(!!x.p.project.is_main) || x.p.project.name.localeCompare(y.p.project.name));
+  bands.sort((a, b) => Number(!a.key) - Number(!b.key) || (a.client || "\uffff").localeCompare(b.client || "\uffff") || (a.production || "").localeCompare(b.production || ""));
+  if (bands.length === 1 && !bands[0].key) return bands;
+  return bands.map((b) => (b.key ? b : { ...b, key: "other" }));
 }
 
 function projectRow({ g, p, ws, st, unpublished }) {
@@ -259,7 +283,7 @@ function projectRow({ g, p, ws, st, unpublished }) {
   ].join("");
   return `<article class="proj ${open ? "open" : ""}" data-key="${esc(key)}">
     <div class="row" data-act="toggle" tabindex="0" role="button" aria-expanded="${open}">
-      <div><strong>${esc(p.project.name)}</strong><small>Change ${p.project.head_change} · ${p.project.file_count} files · ${human(p.project.size)}</small></div>
+      <div><strong>${esc(p.project.name)}${p.project.is_main ? ` <span class="chip main" title="The main project of ${esc(p.project.production?.name || "")}">Main</span>` : ""}</strong><small>Change ${p.project.head_change} · ${p.project.file_count} files · ${human(p.project.size)}</small></div>
       <div class="meter">${ws ? `<span>${human(ws.local_bytes)} of ${human(ws.total_bytes)} here</span><i><b style="width:${pct}%"></b></i>` : `<span>Not on this computer</span>`}</div>
       <div class="chips">${chips}</div>
       <label class="switch" data-act="switch"><span>${ws ? "Enabled" : "Disabled"}</span><span role="switch" tabindex="0" aria-checked="${!!ws}" aria-label="Sync ${esc(p.project.name)} to this computer"></span></label>

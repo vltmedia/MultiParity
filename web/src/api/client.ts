@@ -2,6 +2,7 @@ import { MOCK, loadMock } from './mode';
 import type {
   AdminOverview,
   ExportTarget,
+  OrgStructure,
   ProjectExport,
   AdminUser,
   AdminUserDetail,
@@ -220,8 +221,8 @@ export const api = {
   orgs: () => request<Org[]>('GET', '/orgs'),
   createOrg: (name: string, slug?: string) => request<Org>('POST', '/orgs', { name, slug: slug || undefined }),
   projects: () => request<ProjectSummary[]>('GET', '/projects'),
-  createProject: (org: string, name: string, slug?: string, storage?: string) =>
-    request<Project>('POST', `/orgs/${enc(org)}/projects`, { name, slug: slug || undefined, storage: storage || undefined }),
+  createProject: (org: string, name: string, slug?: string, storage?: string, place?: { client?: string; production?: string }) =>
+    request<Project>('POST', `/orgs/${enc(org)}/projects`, { name, slug: slug || undefined, storage: storage || undefined, ...place }),
   project: (id: string) => request<Project>('GET', p(id)),
 
   // branches
@@ -296,8 +297,17 @@ export const api = {
     revokeInvite: (id: string) => request<object>('DELETE', `/admin/invites/${enc(id)}`),
     projects: (org?: string) => request<ProjectSummary[]>('GET', '/admin/projects', undefined, { org }),
     updateOrg: (org: string, body: { name?: string; theme_light?: string; theme_dark?: string }) => request<Org>('PATCH', `/admin/orgs/${enc(org)}`, body),
-    updateProject: (pid: string, body: { name?: string; org?: string; checkpoints?: CheckpointSetting; auto_checkpoints?: boolean; theme_light?: string; theme_dark?: string }) =>
+    updateProject: (pid: string, body: { name?: string; org?: string; checkpoints?: CheckpointSetting; auto_checkpoints?: boolean; theme_light?: string; theme_dark?: string; client?: string | null; production?: string | null }) =>
       request<Project>('PATCH', `/admin/projects/${enc(pid)}`, body),
+    structure: (org: string) => request<OrgStructure>('GET', `/admin/orgs/${enc(org)}/structure`),
+    createClient: (org: string, name: string) => request<{ id: string; name: string }>('POST', `/admin/orgs/${enc(org)}/clients`, { name }),
+    updateClient: (id: string, name: string) => request<object>('PATCH', `/admin/clients/${enc(id)}`, { name }),
+    deleteClient: (id: string) => request<object>('DELETE', `/admin/clients/${enc(id)}`),
+    createProduction: (org: string, name: string, client?: string) =>
+      request<{ id: string; name: string }>('POST', `/admin/orgs/${enc(org)}/productions`, { name, client: client || undefined }),
+    updateProduction: (id: string, body: { name?: string; client?: string | null; main_project?: string | null }) =>
+      request<object>('PATCH', `/admin/productions/${enc(id)}`, body),
+    deleteProduction: (id: string) => request<object>('DELETE', `/admin/productions/${enc(id)}`),
     archiveProject: (pid: string) => request<Project>('POST', `/admin/projects/${enc(pid)}/archive`),
     restoreProject: (pid: string) => request<Project>('POST', `/admin/projects/${enc(pid)}/restore`),
     claims: (q?: { older_than_hours?: number; org?: string }) =>

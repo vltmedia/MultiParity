@@ -48,6 +48,8 @@ import {
   type MChange,
   type MMove,
   type MProject,
+  clients,
+  productions,
   type MUser,
   type MWorkspace,
 } from './data';
@@ -147,6 +149,15 @@ function summary(p: MProject, u: MUser): ProjectSummary {
     checkpoint_storage: p.checkpoints === 'auto' ? (bytes >= 20 * GB ? 'server' : 'local') : p.checkpoints,
     storage: p.storage,
     storage_moving: advanceMoves().some((x) => x.project_id === p.id && x.status === 'running'),
+    ...(() => {
+      const c = clients.find((x) => x.id === p.client_id);
+      const pr = productions.find((x) => x.id === p.production_id);
+      return {
+        client: c ? { id: c.id, name: c.name } : null,
+        production: pr ? { id: pr.id, name: pr.name, main_project_id: pr.main_project_id } : null,
+        is_main: !!pr && pr.main_project_id === p.id,
+      };
+    })(),
     theme: (() => {
       const o = orgs.find((x) => x.id === p.org_id) as { theme_light?: string | null; theme_dark?: string | null } | undefined;
       const q = p as unknown as { theme_light?: string | null; theme_dark?: string | null };
@@ -479,6 +490,7 @@ on('POST', '/api/orgs/:org/projects', ({ headers, m, body }) => {
   };
   p.files.set(p.branches[0].id, []);
   projects.push(p);
+  if (body?.client || body?.production) place(p, body.client || null, body.production || null);
   emit({ kind: 'project.created', org_id: o.id, project_id: p.id, actor: userRef(u), data: { project: name } });
   return fullProject(p, u);
 });
@@ -793,6 +805,88 @@ on('GET', '/api/admin/overview', ({ headers, q }) => {
     suspended: us.filter((x) => x.status === 'suspended').length,
   };
 });
+// --- clients and productions ---
+function place(p: MProject, client: string | null, production: string | null) {
+  const pr = production ? productions.find((x) => x.id === production) : undefined;
+  if (production && (!pr || pr.org_id !== p.org_id)) throw new Fail(404, 'not_found', 'That production does not exist.');
+  if (!pr && client && !clients.some((c) => c.id === client && c.org_id === p.org_id)) throw new Fail(404, 'not_found', 'That client does not exist.');
+  for (const x of productions) if (x.main_project_id === p.id && x.id !== pr?.id) x.main_project_id = null;
+  p.production_id = pr ? pr.id : null;
+  p.client_id = pr ? pr.client_id : client;
+}
+const cleanName = (v: unknown, what: string) => {
+  const n = String(v || '').split(/\s+/).filter(Boolean).join(' ');
+  if (!n) throw new Fail(422, 'invalid', `Give the ${what} a name.`);
+  return n;
+};
+on('GET', '/api/admin/orgs/:org/structure', ({ headers, m }) => {
+  needAdmin(who(headers), m[1]);
+  const live = projects.filter((p) => !p.archived);
+  return {
+    clients: clients.filter((c) => c.org_id === m[1]).sort((a, b) => a.name.localeCompare(b.name)).map((c) => ({
+      ...c, productions: productions.filter((x) => x.client_id === c.id).length, projects: live.filter((p) => p.client_id === c.id).length,
+    })),
+    productions: productions.filter((x) => x.org_id === m[1]).sort((a, b) => a.name.localeCompare(b.name)).map((x) => ({
+      ...x, projects: live.filter((p) => p.production_id === x.id).length,
+    })),
+  };
+});
+on('POST', '/api/admin/orgs/:org/clients', ({ headers, m, body }) => {
+  needAdmin(who(headers), m[1]);
+  const name = cleanName(body?.name, 'client');
+  if (clients.some((c) => c.org_id === m[1] && c.name.toLowerCase() === name.toLowerCase())) throw new Fail(409, 'conflict', `There is already a client called ${name}.`);
+  const c = { id: uid('cl000009'), org_id: m[1], name, created_at: new Date().toISOString() };
+  clients.push(c);
+  return { id: c.id, name };
+});
+on('PATCH', '/api/admin/clients/:id', ({ headers, m, body }) => {
+  const c = clients.find((x) => x.id === m[1]);
+  if (!c) throw new Fail(404, 'not_found', 'That client does not exist.');
+  needAdmin(who(headers), c.org_id);
+  c.name = cleanName(body?.name, 'client');
+  return { id: c.id, name: c.name };
+});
+on('DELETE', '/api/admin/clients/:id', ({ headers, m }) => {
+  const c = clients.find((x) => x.id === m[1]);
+  if (!c) throw new Fail(404, 'not_found', 'That client does not exist.');
+  needAdmin(who(headers), c.org_id);
+  clients.splice(clients.indexOf(c), 1);
+  for (const x of productions) if (x.client_id === c.id) x.client_id = null;
+  for (const p of projects) if (p.client_id === c.id) p.client_id = null;
+  return { ok: true };
+});
+on('POST', '/api/admin/orgs/:org/productions', ({ headers, m, body }) => {
+  needAdmin(who(headers), m[1]);
+  const name = cleanName(body?.name, 'production');
+  const client = body?.client || null;
+  if (productions.some((x) => x.org_id === m[1] && x.client_id === client && x.name.toLowerCase() === name.toLowerCase())) throw new Fail(409, 'conflict', `There is already a production called ${name} there.`);
+  const x = { id: uid('pd000009'), org_id: m[1], client_id: client, name, main_project_id: null, created_at: new Date().toISOString() };
+  productions.push(x);
+  return { id: x.id, name, client_id: client };
+});
+on('PATCH', '/api/admin/productions/:id', ({ headers, m, body }) => {
+  const x = productions.find((y) => y.id === m[1]);
+  if (!x) throw new Fail(404, 'not_found', 'That production does not exist.');
+  needAdmin(who(headers), x.org_id);
+  if (body?.name !== undefined) x.name = cleanName(body.name, 'production');
+  if (body && 'client' in body) {
+    x.client_id = body.client || null;
+    for (const p of projects) if (p.production_id === x.id) p.client_id = x.client_id;
+  }
+  if (body && 'main_project' in body) {
+    if (body.main_project && !projects.some((p) => p.id === body.main_project && p.production_id === x.id)) throw new Fail(422, 'invalid', "The main project has to be one of this production's projects.");
+    x.main_project_id = body.main_project || null;
+  }
+  return { ok: true };
+});
+on('DELETE', '/api/admin/productions/:id', ({ headers, m }) => {
+  const x = productions.find((y) => y.id === m[1]);
+  if (!x) throw new Fail(404, 'not_found', 'That production does not exist.');
+  needAdmin(who(headers), x.org_id);
+  productions.splice(productions.indexOf(x), 1);
+  for (const p of projects) if (p.production_id === x.id) p.production_id = null;
+  return { ok: true };
+});
 on('GET', '/api/admin/users', ({ headers, q }) => {
   const u = who(headers);
   const org = q.get('org');
@@ -954,6 +1048,8 @@ on('PATCH', '/api/admin/projects/:p', ({ headers, m, body }) => {
     if (!canAdminOrg(u, o.id)) throw new Fail(403, 'forbidden', 'You need to be an admin of the organization you move it to.');
     p.org_id = o.id;
   }
+  if (body?.org) place(p, null, null);
+  if (body && ('client' in body || 'production' in body)) place(p, 'client' in body ? body.client : p.client_id || null, body.production || null);
   if (typeof body?.auto_checkpoints === 'boolean') p.auto_checkpoints = body.auto_checkpoints;
   for (const k of ['theme_light', 'theme_dark'] as const) if (typeof body?.[k] === 'string') (p as unknown as Record<string, string | null>)[k] = body[k] || null;
   if (body?.checkpoints) {

@@ -1,5 +1,5 @@
 import '../../styles/projects.css';
-import { useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../../api/client';
 import { daemon } from '../../api/daemon';
@@ -52,7 +52,7 @@ export default function ProjectsPage() {
     const t = q.trim().toLowerCase();
     return (list.data || [])
       .filter((p) => !p.archived)
-      .filter((p) => !t || p.name.toLowerCase().includes(t) || p.org.name.toLowerCase().includes(t) || p.slug.includes(t))
+      .filter((p) => !t || [p.name, p.org.name, p.client?.name, p.production?.name].some((x) => x?.toLowerCase().includes(t)) || p.slug.includes(t))
       .filter((p) => {
         const w = d.byProject(p.id);
         if (filter === 'here') return !!w && w.local_bytes > 0;
@@ -69,7 +69,7 @@ export default function ProjectsPage() {
       if (!m.has(p.org.id)) m.set(p.org.id, { org: p.org, items: [] });
       m.get(p.org.id)!.items.push(p);
     }
-    return [...m.values()].sort((a, b) => a.org.name.localeCompare(b.org.name));
+    return [...m.values()].sort((a, b) => a.org.name.localeCompare(b.org.name)).map((g) => ({ ...g, bands: bandsOf(g.items) }));
   }, [visible]);
 
   const local = d.workspaces.reduce((a, w) => a + w.local_bytes, 0);
@@ -172,7 +172,19 @@ export default function ProjectsPage() {
                     <span>Last change</span>
                     {d.available && <span>On this computer</span>}
                   </div>
-                  {g.items.map((p) => {
+                  {g.bands.map((band) => (
+                  <Fragment key={band.key}>
+                  {band.key && (
+                    <div className="psub">
+                      {band.client && <span className="psub-client" data-ic="briefcase">{band.client}</span>}
+                      {band.client && band.production && <span className="psub-sep" aria-hidden="true">›</span>}
+                      {band.production && (band.main
+                        ? <Link className="psub-prod" data-ic="clapperboard" to={`/p/${band.main}`} title={`Open ${band.production}'s main project`}>{band.production}</Link>
+                        : <span className="psub-prod" data-ic="clapperboard">{band.production}</span>)}
+                      {!band.client && !band.production && <span className="psub-other">Other projects</span>}
+                    </div>
+                  )}
+                  {band.items.map((p) => {
                     const w = d.byProject(p.id);
                     const behind = w ? Math.max(0, p.head_change - w.synced_change) : 0;
                     const un = unpublished(w);
@@ -183,6 +195,7 @@ export default function ProjectsPage() {
                           <Thumb seed={p.id} size={48} />
                           <div className="pname">
                             <Link to={`/p/${p.id}`} className="pl">{p.name}</Link>
+                            {p.is_main && <span className="badge good pmain" title={`The main project of ${p.production?.name}`}>Main</span>}
                             <small>
                               {p.org.name}
                               {p.branches > 1 && `, ${plural(p.branches, 'branch', 'branches')}`}
@@ -251,6 +264,8 @@ export default function ProjectsPage() {
                       </div>
                     );
                   })}
+                  </Fragment>
+                  ))}
                 </div>
               </section>
             );
@@ -259,4 +274,21 @@ export default function ProjectsPage() {
       </div>
     </>
   );
+}
+
+/** An organization's projects in bands by client and production (main project first), the
+ * ones not filed under either last. Without any filing there is one band and no headings. */
+function bandsOf(items: ProjectSummary[]) {
+  const m = new Map<string, { key: string; client?: string; production?: string; main?: string | null; items: ProjectSummary[] }>();
+  for (const p of items) {
+    const key = p.production ? `pr:${p.production.id}` : p.client ? `cl:${p.client.id}` : '';
+    if (!m.has(key)) m.set(key, { key, client: p.client?.name, production: p.production?.name, main: p.production?.main_project_id, items: [] });
+    m.get(key)!.items.push(p);
+  }
+  const bands = [...m.values()];
+  for (const b of bands) b.items.sort((x, y) => Number(!!y.is_main) - Number(!!x.is_main) || x.name.localeCompare(y.name));
+  bands.sort((a, b) => Number(!a.key) - Number(!b.key) || (a.client || '\uffff').localeCompare(b.client || '\uffff') || (a.production || '').localeCompare(b.production || ''));
+  // The unfiled band needs its "Other projects" heading only when there are other bands.
+  if (bands.length === 1 && !bands[0].key) return bands;
+  return bands.map((b) => (b.key ? b : { ...b, key: 'other' }));
 }

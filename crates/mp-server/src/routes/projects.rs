@@ -66,6 +66,9 @@ pub struct CreateProject {
     slug: Option<String>,
     /// Storage location for its file data (`main` unless given).
     storage: Option<String>,
+    /// Where to file it (optional): a production decides the client.
+    client: Option<Uuid>,
+    production: Option<Uuid>,
 }
 
 pub async fn create_project(State(s): State<AppState>, user: CurrentUser, Path(org): Path<Uuid>, Json(b): Json<CreateProject>) -> ApiResult<Json<Value>> {
@@ -92,7 +95,10 @@ pub async fn create_project(State(s): State<AppState>, user: CurrentUser, Path(o
             err => err,
         })?;
     sqlx::query("INSERT INTO branches (project_id, name, created_by) VALUES ($1,'Main',$2)").bind(pid).bind(user.id).execute(&mut *tx).await?;
-    let ev = events::record(&mut *tx, Some(org), Some(pid), Some(user.id), "project.created", json!({ "name": name, "storage": storage })).await?;
+    if b.client.is_some() || b.production.is_some() {
+        super::structure::place_project(&mut tx, org, pid, b.client, b.production).await?;
+    }
+    let ev = events::record(&mut *tx, Some(org), Some(pid), Some(user.id), "project.created", json!({ "name": name, "storage": storage, "client": b.client, "production": b.production })).await?;
     tx.commit().await?;
     events::publish_saved(&s.db, &s.events, ev).await;
     project_detail(&s, &user, pid).await.map(Json)
@@ -104,6 +110,7 @@ pub fn summary_sql(where_sql: &str) -> String {
     format!(
         "SELECT p.id, p.slug, p.name, p.archived_at IS NOT NULL AS archived, p.next_change - 1 AS head_change, p.checkpoints_on_server, p.auto_checkpoints, p.storage, p.storage_previous,
            p.theme_light, p.theme_dark, o.theme_light AS o_theme_light, o.theme_dark AS o_theme_dark,
+           cl.id AS cl_id, cl.name AS cl_name, pr.id AS pr_id, pr.name AS pr_name, pr.main_project_id AS pr_main,
            o.id AS o_id, o.slug AS o_slug, o.name AS o_name, o.created_at AS o_created_at,
            COALESCE(st.size, 0)::BIGINT AS size, COALESCE(st.files, 0)::BIGINT AS file_count,
            (SELECT count(*) FROM claims c WHERE c.project_id = p.id) AS claims,
@@ -112,12 +119,13 @@ pub fn summary_sql(where_sql: &str) -> String {
            lc.number AS lc_number, lc.message AS lc_message, lc.created_at AS lc_created_at,
            lc.u_id AS lc_id, lc.u_name AS lc_name, lc.u_email AS lc_email
          FROM projects p JOIN orgs o ON o.id = p.org_id
+         LEFT JOIN clients cl ON cl.id = p.client_id LEFT JOIN productions pr ON pr.id = p.production_id
          LEFT JOIN LATERAL (SELECT sum(t.size) AS size, count(*) AS files FROM tree_entries t JOIN branches b ON b.id = t.branch_id
               WHERE b.project_id = p.id AND b.parent_id IS NULL AND t.file_hash IS NOT NULL) st ON TRUE
          LEFT JOIN LATERAL (SELECT c.number, c.message, c.created_at, u.id AS u_id, u.name AS u_name, u.email AS u_email
               FROM changes c LEFT JOIN users u ON u.id = c.author_id WHERE c.project_id = p.id ORDER BY c.number DESC LIMIT 1) lc ON TRUE
          WHERE ($3::uuid[] IS NOT NULL) AND {where_sql}
-         ORDER BY o.name, p.name"
+         ORDER BY o.name, lower(cl.name) NULLS FIRST, lower(pr.name) NULLS FIRST, pr.main_project_id = p.id DESC NULLS LAST, lower(p.name)"
     )
 }
 
@@ -144,6 +152,11 @@ pub fn summary_json(r: &PgRow) -> Value {
         "storage_moving": r.get::<Option<String>,_>("storage_previous").is_some(),
         "id": r.get::<Uuid,_>("id"), "slug": r.get::<String,_>("slug"), "name": r.get::<String,_>("name"),
         "org": { "id": r.get::<Uuid,_>("o_id"), "slug": r.get::<String,_>("o_slug"), "name": r.get::<String,_>("o_name"), "created_at": r.get::<DateTime<Utc>,_>("o_created_at") },
+        // Where it is filed: Organization > Client > Production (both optional).
+        "client": r.get::<Option<Uuid>,_>("cl_id").map(|id| json!({ "id": id, "name": r.get::<String,_>("cl_name") })),
+        "production": r.get::<Option<Uuid>,_>("pr_id").map(|id| json!({ "id": id, "name": r.get::<String,_>("pr_name"),
+            "main_project_id": r.get::<Option<Uuid>,_>("pr_main") })),
+        "is_main": r.get::<Option<Uuid>,_>("pr_main") == Some(r.get::<Uuid,_>("id")),
         "archived": r.get::<bool,_>("archived"), "head_change": r.get::<i32,_>("head_change"),
         "size": r.get::<i64,_>("size"), "file_count": r.get::<i64,_>("file_count"),
         "claims": r.get::<i64,_>("claims"), "my_claims": r.get::<i64,_>("my_claims"),

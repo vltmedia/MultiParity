@@ -51,6 +51,12 @@ pub struct ProjectSummary {
     /// The project's look ({light, dark, own_light, own_dark}), from the project or its
     /// organization; passed through to the desktop app.
     pub theme: Option<serde_json::Value>,
+    /// Where it is filed: its client ({id, name}) and production ({id, name, main_project_id}),
+    /// both optional; passed through to the desktop app.
+    pub client: Option<serde_json::Value>,
+    pub production: Option<serde_json::Value>,
+    /// The main project of its production: listed first.
+    pub is_main: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]

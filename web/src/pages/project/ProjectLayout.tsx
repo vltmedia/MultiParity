@@ -130,7 +130,7 @@ export default function ProjectLayout() {
           <Link to="/" className="back">&larr; All projects</Link>
           <div>
             <div className="proj">
-              <small>{project.org.name}</small>
+              <small>{[project.org.name, project.client?.name, project.production?.name].filter(Boolean).join(' › ')}</small>
               <strong className="el">{project.name}</strong>
               {ws && ws.account_email !== me.email ? (
                 <span className="warn">Desktop app uses {ws.account_email}</span>

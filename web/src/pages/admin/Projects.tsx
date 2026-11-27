@@ -1,13 +1,14 @@
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../api/client';
-import type { CheckpointSetting, ProjectStorage, ProjectSummary, StorageLocation } from '../../api/types';
+import type { CheckpointSetting, OrgStructure, Production, ProjectStorage, ProjectSummary, StorageLocation } from '../../api/types';
 import { useAsync } from '../../lib/useAsync';
 import { STORAGE_KIND_LABEL, movePercent, moveStatus, plural, since, size } from '../../lib/format';
 import { Dialog, Empty, ErrorNote, Loading, Parity, useAction, useUi } from '../../components/ui';
 import { AdminHead, useAdmin } from './AdminLayout';
 import ThemePicker from '../../components/ThemePicker';
 import ExportDialog from './ExportDialog';
+import { PlaceSelect, StructureDialog, placeBody, useStructures, type StructEdit } from './Structure';
 import { DEFAULT_THEMES, themeById } from '../../lib/theme';
 
 const KEEP: Array<[CheckpointSetting, string]> = [
@@ -36,6 +37,10 @@ export default function AdminProjects() {
   const [stor, setStor] = useState<ProjectSummary | null>(null);
   const [exp, setExp] = useState<ProjectSummary | null>(null);
   const [look, setLook] = useState<ProjectSummary | null>(null);
+  const [sedit, setSedit] = useState<StructEdit | null>(null);
+  const [place, setPlace] = useState('');
+  const orgIds = scope ? [scope] : orgs.map((o) => o.id);
+  const structures = useStructures(orgIds);
 
   const open = (e: Edit) => {
     setErr('');
@@ -43,6 +48,7 @@ export default function AdminProjects() {
     setName(e.kind === 'rename' ? e.p.name : '');
     setOrg(e.kind === 'move' ? '' : e.kind === 'create' ? scope || orgs[0]?.id || '' : '');
     setWhere(locations.find((l) => l.main)?.name || '');
+    setPlace('');
   };
 
   async function save() {
@@ -52,7 +58,8 @@ export default function AdminProjects() {
       if (!name.trim()) return setErr('Give the project a name.');
       if (!org) return setErr('Choose which organization owns it.');
       const storeIn = locations.length > 1 ? where || undefined : undefined;
-      const r = await run('save', 'make the project', () => api.createProject(org, name.trim(), undefined, storeIn));
+      const pl = placeBody(place);
+      const r = await run('save', 'make the project', () => api.createProject(org, name.trim(), undefined, storeIn, { client: pl.client || undefined, production: pl.production || undefined }));
       if (r) toast(`Made ${r.name}. It starts with one branch, Main.`);
       if (!r) return;
     } else if (edit.kind === 'rename') {
@@ -77,6 +84,18 @@ export default function AdminProjects() {
     }
     setEdit(null);
     list.reload();
+    structures.reload();
+  }
+
+  async function makeMain(p: ProjectSummary) {
+    if (!p.production) return;
+    const pr = p.production;
+    const r = await run('main:' + p.id, `make ${p.name} the main project`, () => api.admin.updateProduction(pr.id, { main_project: p.id }));
+    if (r) {
+      toast(`${p.name} is now the main project of ${pr.name}: listed first, and where opening ${pr.name} lands.`);
+      list.reload();
+      structures.reload();
+    }
   }
 
   async function archive(p: ProjectSummary) {
@@ -127,7 +146,9 @@ export default function AdminProjects() {
 
   return (
     <>
-      <AdminHead title="Projects" sub={`Every project in ${scopeName}, including archived ones.`}>
+      <AdminHead title="Projects" sub={`Every project in ${scopeName}, by client and production, including archived ones.`}>
+        <button className="btn sm" onClick={() => setSedit({ kind: 'new-client', org: scope || undefined })}>New client</button>
+        <button className="btn sm" onClick={() => setSedit({ kind: 'new-production', org: scope || undefined })}>New production</button>
         <button className="btn pri sm" onClick={() => open({ kind: 'create' })}>New project</button>
       </AdminHead>
       <div className="view">
@@ -147,10 +168,26 @@ export default function AdminProjects() {
               <tr><th>Project</th><th>Organization</th><th className="r">Size</th><th className="r">Files</th><th className="r">Change</th><th>Last change</th><th>Stored in</th><th>Keep checkpoints</th><th /></tr>
             </thead>
             <tbody>
-              {rows.map((p) => (
+              {orgIds.map((oid) => {
+                const ps = rows.filter((p) => p.org.id === oid);
+                const st: OrgStructure = structures.data[oid] || { clients: [], productions: [] };
+                if (!ps.length && !st.clients.length && !st.productions.length) return null;
+                const filed = st.clients.length > 0 || st.productions.length > 0;
+                const orgName = orgs.find((o) => o.id === oid)?.name || ps[0]?.org.name || '';
+                const head = (key: string, depth: number, kind: 'org' | 'client' | 'production' | 'loose', label: string, note: string, acts?: ReactNode) => (
+                  <tr key={key} className={`grp ${kind}`}>
+                    <td colSpan={9} style={{ paddingLeft: 12 + depth * 22 }}>
+                      <span className="grp-name" data-ic={{ org: 'building-2', client: 'briefcase', production: 'clapperboard', loose: 'folders' }[kind]}>{label}</span>
+                      {note && <span className="fine">{note}</span>}
+                      {acts && <span className="grp-acts">{acts}</span>}
+                    </td>
+                  </tr>
+                );
+                const renderRow = (p: ProjectSummary, depth: number) => (
                 <tr key={p.id} style={p.archived ? { opacity: 0.65 } : undefined}>
-                  <td>
+                  <td style={{ paddingLeft: 12 + depth * 22 }}>
                     {p.archived ? p.name : <Link className="rowlink" to={`/p/${p.id}`}>{p.name}</Link>}
+                    {p.is_main && <span className="badge good" style={{ marginLeft: 8 }} title={`Listed first in ${p.production?.name}, and where opening it lands`}>Main</span>}
                     {p.archived && <span className="badge mute" style={{ marginLeft: 8 }}>Archived</span>}
                   </td>
                   <td>{p.org.name}</td>
@@ -176,6 +213,8 @@ export default function AdminProjects() {
                   <td className="r">
                     <span className="row" style={{ justifyContent: 'flex-end', flexWrap: 'nowrap' }}>
                       <button className="btn sm" onClick={() => open({ kind: 'rename', p })}>Rename</button>
+                      <button className="btn sm" onClick={() => setSedit({ kind: 'file', p })}>File under…</button>
+                      {p.production && !p.is_main && !p.archived && <button className="btn sm" disabled={busy === 'main:' + p.id} onClick={() => makeMain(p)}>Make main</button>}
                       <button className="btn sm" onClick={() => setLook(p)}>Look…</button>
                       {orgs.length > 1 && <button className="btn sm" onClick={() => open({ kind: 'move', p })}>Move</button>}
                       {isServerAdmin && locations.length > 1 && <button className="btn sm" onClick={() => setStor(p)}>Change storage…</button>}
@@ -188,7 +227,47 @@ export default function AdminProjects() {
                     </span>
                   </td>
                 </tr>
-              ))}
+                );
+                const count = (n: number) => (n ? plural(n, 'project') : 'No projects yet');
+                const prodBlock = (pr: Production, depth: number) => {
+                  const inside = ps.filter((p) => p.production?.id === pr.id).sort((a, b) => Number(!!b.is_main) - Number(!!a.is_main));
+                  return (
+                    <Fragment key={pr.id}>
+                      {head('pr' + pr.id, depth, 'production', pr.name, `${count(inside.length)}${inside.length && !pr.main_project_id ? ', no main project yet' : ''}`,
+                        <button className="btn sm" onClick={() => setSedit({ kind: 'production', org: oid, pr })}>Edit…</button>)}
+                      {inside.map((p) => renderRow(p, depth + 1))}
+                    </Fragment>
+                  );
+                };
+                // Anything not shown in a group above (also if the structure could not be loaded).
+                const shown = (p: ProjectSummary) =>
+                  p.production ? st.productions.some((pr) => pr.id === p.production!.id) : p.client ? st.clients.some((c) => c.id === p.client!.id) : false;
+                const loose = ps.filter((p) => !shown(p));
+                return (
+                  <Fragment key={oid}>
+                    {orgIds.length > 1 && head('o' + oid, 0, 'org', orgName, '')}
+                    {st.clients.map((c) => {
+                      const direct = ps.filter((p) => p.client?.id === c.id && !p.production);
+                      const prods = st.productions.filter((pr) => pr.client_id === c.id);
+                      const note = [prods.length ? plural(prods.length, 'production') : '', direct.length ? plural(direct.length, 'project') : ''].filter(Boolean).join(', ') || 'Nothing filed here yet';
+                      return (
+                        <Fragment key={c.id}>
+                          {head('c' + c.id, 0, 'client', c.name, note,
+                            <>
+                              <button className="btn sm" onClick={() => setSedit({ kind: 'new-production', org: oid, client: c.id })}>New production</button>
+                              <button className="btn sm" onClick={() => setSedit({ kind: 'client', org: oid, c })}>Edit…</button>
+                            </>)}
+                          {prods.map((pr) => prodBlock(pr, 1))}
+                          {direct.map((p) => renderRow(p, 1))}
+                        </Fragment>
+                      );
+                    })}
+                    {st.productions.filter((pr) => !pr.client_id).map((pr) => prodBlock(pr, 0))}
+                    {filed && loose.length > 0 && head('l' + oid, 0, 'loose', 'Not filed', 'Use File under… to put these in a client or production')}
+                    {loose.map((p) => renderRow(p, filed ? 1 : 0))}
+                  </Fragment>
+                );
+              })}
             </tbody>
           </table>
         )}
@@ -214,6 +293,12 @@ export default function AdminProjects() {
               </select>
             </label>
           )}
+          {edit.kind === 'create' && org && ((structures.data[org]?.clients.length || 0) + (structures.data[org]?.productions.length || 0) > 0) && (
+            <label className="field">
+              <span>File under</span>
+              <PlaceSelect s={structures.data[org]} value={place} onChange={setPlace} />
+            </label>
+          )}
           {edit.kind === 'create' && locations.length > 1 && (
             <label className="field">
               <span>Store file data in</span>
@@ -236,6 +321,15 @@ export default function AdminProjects() {
             </button>
           </div>
         </Dialog>
+      )}
+      {sedit && (
+        <StructureDialog
+          edit={sedit}
+          orgs={scope ? orgs.filter((o) => o.id === scope) : orgs}
+          structures={structures.data}
+          onClose={() => setSedit(null)}
+          onDone={() => { setSedit(null); list.reload(); structures.reload(); }}
+        />
       )}
       {exp && <ExportDialog p={exp} onClose={() => setExp(null)} onArchived={() => list.reload()} />}
       {stor && (

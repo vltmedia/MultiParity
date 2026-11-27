@@ -68,7 +68,16 @@ export type ProjectSummary = {
   storage: string;
   /** file data is being moved to another storage location right now */
   storage_moving: boolean;
+  /** Where it is filed: Organization > Client > Production > Project. Both levels are optional. */
+  client?: { id: Id; name: string } | null;
+  production?: { id: Id; name: string; main_project_id: Id | null } | null;
+  /** the main project of its production: listed first, and where opening the production lands */
+  is_main?: boolean;
 };
+
+export type Client = { id: Id; name: string; created_at: Time; productions: number; projects: number };
+export type Production = { id: Id; name: string; client_id: Id | null; main_project_id: Id | null; created_at: Time; projects: number };
+export type OrgStructure = { clients: Client[]; productions: Production[] };
 
 export type CheckpointSetting = 'auto' | 'server' | 'local';
 export type CheckpointStorage = 'server' | 'local';

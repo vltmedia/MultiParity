@@ -14,7 +14,7 @@ const SRC = path.join(ROOT, 'web', 'node_modules', 'lucide-static', 'icons');
 
 const NAMES = [
   // places
-  'folder', 'folder-open', 'folder-kanban', 'folders', 'folder-input', 'folder-sync', 'hard-drive', 'server', 'building-2', 'layers',
+  'folder', 'folder-open', 'folder-kanban', 'briefcase', 'clapperboard', 'star', 'folders', 'folder-input', 'folder-sync', 'hard-drive', 'server', 'building-2', 'layers',
   // people and accounts
   'user-round', 'users', 'user-plus', 'key-round', 'log-in', 'log-out', 'shield', 'shield-check', 'mail', 'mail-plus', 'settings', 'palette',
   // moving files

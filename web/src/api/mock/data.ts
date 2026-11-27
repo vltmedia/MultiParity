@@ -136,6 +136,9 @@ export type MProject = {
   changes: MChange[];
   branches: Branch[];
   merge: Map<string, MergeState>;
+  /** where it is filed (both optional; a production decides the client) */
+  client_id?: string | null;
+  production_id?: string | null;
 };
 export type MergeState = { updated: boolean; only_here: number; only_parent: number; auto: string[]; conflicts: Array<{ path: string; kind: 'text' | 'binary' }> };
 
@@ -359,6 +362,19 @@ build(PROTO, [{ path: 'Proto/test_level.umap', mb: 30, changes: [1, 40, 88] }], 
 PROTO.archived = true;
 
 export const projects: MProject[] = [EMBER, TIDE, HARBOR, PROTO];
+
+// --- clients and productions: Organization > Client > Production > Project ---
+export type MClient = { id: string; org_id: string; name: string; created_at: string };
+export type MProduction = { id: string; org_id: string; client_id: string | null; name: string; main_project_id: string | null; created_at: string };
+export const clients: MClient[] = [
+  { id: 'cl000001-0000-4000-8000-000000000001', org_id: CINDER.id, name: 'Ashgrove Publishing', created_at: ago(300 * DAY) },
+  { id: 'cl000002-0000-4000-8000-000000000002', org_id: CINDER.id, name: 'Saltmarsh Studios', created_at: ago(120 * DAY) },
+];
+export const productions: MProduction[] = [
+  { id: 'pd000001-0000-4000-8000-000000000001', org_id: CINDER.id, client_id: clients[0].id, name: 'Emberfall', main_project_id: EMBER.id, created_at: ago(300 * DAY) },
+];
+EMBER.client_id = clients[0].id;
+EMBER.production_id = productions[0].id;
 export const projectById = (id: string) => projects.find((p) => p.id === id || p.slug === id);
 
 export function filesOf(p: MProject, branchId: string): MFile[] {

@@ -54,3 +54,15 @@ button.twisty:hover { color: var(--ink); background: var(--paper); }
   .prow.local { grid-template-columns: 44px minmax(140px, 1fr) 64px 70px 100px 220px; }
   .prow.local .plast, .phead.local span:nth-child(6) { display: none; }
 }
+
+/* Bands by client and production inside an organization */
+.psub { display: flex; align-items: center; gap: 8px; padding: 9px 16px 7px; border-top: 1px solid var(--line); background: var(--panel2, var(--bg)); font-size: 13.5px; }
+.psub:first-of-type, .phead + .psub { border-top: 0; }
+.psub [data-ic] { display: inline-flex; align-items: center; }
+.psub-client { color: var(--mute); font-weight: 500; }
+.psub-sep { color: var(--mute); }
+.psub-prod { font-weight: 600; color: var(--ink); text-decoration: none; }
+a.psub-prod:hover { text-decoration: underline; }
+.psub-other { color: var(--mute); font-weight: 500; }
+.pname .pl { display: inline-block; }
+.pname .pmain { margin-left: 8px; vertical-align: 2px; }

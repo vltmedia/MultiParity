@@ -16,6 +16,7 @@ mod exports;
 mod files;
 mod projects;
 pub mod storage;
+mod structure;
 mod sync;
 mod tags;
 mod thumbs;
@@ -95,6 +96,11 @@ pub fn router() -> Router<AppState> {
         .route("/admin/orgs/:org/invites", get(admin::list_invites).post(admin::create_invites))
         .route("/admin/orgs/:org", patch(admin::update_org).delete(admin::delete_org))
         .route("/admin/invites/:id", delete(admin::revoke_invite))
+        .route("/admin/orgs/:org/structure", get(structure::structure))
+        .route("/admin/orgs/:org/clients", post(structure::create_client))
+        .route("/admin/clients/:id", patch(structure::update_client).delete(structure::delete_client))
+        .route("/admin/orgs/:org/productions", post(structure::create_production))
+        .route("/admin/productions/:id", patch(structure::update_production).delete(structure::delete_production))
         .route("/admin/projects", get(admin::list_projects))
         .route("/admin/projects/:p", patch(admin::update_project))
         .route("/admin/projects/:p/archive", post(admin::archive_project))
