@@ -1,0 +1,45 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Example</title>
+<link rel="stylesheet" href="style.css">
+<!-- The bridge to the app: window.mp. The page runs sandboxed and can only reach the app through it. -->
+<script src="/local/plugin-sdk.js"></script>
+<main>
+  <h1>Example plugin</h1>
+  <p id="where">Loading…</p>
+  <section>
+    <h2>Unpublished here</h2>
+    <p id="changes">…</p>
+  </section>
+  <section>
+    <h2>Run an operation</h2>
+    <p>Operations run on this computer, as you, and show progress in the app.</p>
+    <button id="count">Count file types</button>
+    <pre id="out"></pre>
+  </section>
+</main>
+<script>
+(async () => {
+  const ctx = await mp.context();
+  document.getElementById("where").textContent = ctx.workspace
+    ? `${ctx.workspace.project}, branch ${ctx.workspace.branch}, in ${ctx.workspace.root}.`
+    : "Not about a synced folder.";
+  try {
+    const st = await mp.local("status");
+    document.getElementById("changes").textContent =
+      `${st.new.length} new, ${st.edited.length} edited and ${st.deleted.length} deleted file(s).`;
+  } catch (e) {
+    document.getElementById("changes").textContent = e.message;
+  }
+  document.getElementById("count").onclick = async () => {
+    const out = document.getElementById("out");
+    out.textContent = "Counting…";
+    try {
+      const r = await mp.run("count-types");
+      out.textContent = JSON.stringify(r.counts, null, 2);
+    } catch (e) {
+      out.textContent = e.message;
+    }
+  };
+})();
+</script>

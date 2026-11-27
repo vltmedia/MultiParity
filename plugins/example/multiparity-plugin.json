@@ -1,0 +1,23 @@
+{
+  "id": "example-checks",
+  "name": "Example checks",
+  "version": "1.0.0",
+  "description": "Shows what a plugin can do: stops publishing files with spaces in their names, tells you an image's size, counts a project's file types, and adds a project tab and a page.",
+  "author": "MultiParity",
+  "homepage": "https://github.com/vltmedia/MultiParity/tree/main/plugins/example",
+  "run": {
+    "command": ["python3", "main.py"],
+    "windows": ["python", "main.py"],
+    "timeout": 60
+  },
+  "hooks": ["before_publish", "after_publish"],
+  "operations": [
+    { "id": "image-size", "title": "Image size", "description": "Width and height of PNG and JPEG images.", "files": ["*.png", "*.jpg", "*.jpeg"] },
+    { "id": "count-types", "title": "Count file types", "description": "How many files of each type the project folder has." }
+  ],
+  "views": [
+    { "id": "overview", "title": "Example", "page": "ui/index.html", "place": "project" },
+    { "id": "home", "title": "Example home", "page": "ui/home.html", "place": "app" }
+  ],
+  "permissions": ["files:read"]
+}

@@ -14,6 +14,7 @@ use clap::{Args, Parser, Subcommand};
 use mp_client::accounts::{Account, Accounts};
 use mp_client::api::{conflict_details, Api};
 use mp_client::ops;
+use mp_client::plugins;
 use mp_client::scan;
 use mp_client::types::*;
 use mp_client::workspace::{Registry, Workspace};
@@ -216,6 +217,9 @@ enum Cmd {
     /// Administration (people, invites, claims, storage).
     #[command(subcommand)]
     Admin(AdminCmd),
+    /// Plugins from GitHub: hooks around publishing, operations on files, views in the app.
+    #[command(subcommand)]
+    Plugin(PluginCmd),
     /// Print events as they happen (one JSON line each), or run a command for each one with the
     /// event as JSON on stdin and in MP_EVENT_* variables.
     Watch {
@@ -309,6 +313,33 @@ struct FoldersArgs {
     /// Leave out these folders (replaces the current list).
     #[arg(long = "skip")]
     skip: Option<Vec<String>>,
+}
+
+#[derive(Subcommand)]
+enum PluginCmd {
+    /// Installed plugins.
+    List,
+    /// Install from GitHub: owner/repo, owner/repo/folder, either with @tag, or a github.com address.
+    Install {
+        spec: String,
+        /// Install without asking (after showing what it can do).
+        #[arg(short, long)]
+        yes: bool,
+    },
+    /// Use a folder on this computer as a plugin, for making one. Edits apply straight away.
+    Link { folder: std::path::PathBuf },
+    /// Get the newest version of a plugin (or all of them).
+    Update {
+        id: Option<String>,
+        #[arg(short, long)]
+        yes: bool,
+    },
+    Remove { id: String },
+    /// Turn a plugin on or off.
+    On { id: String },
+    Off { id: String },
+    /// Run a plugin's operation on files in this folder (or on the project when it takes none).
+    Run { id: String, operation: String, paths: Vec<String> },
 }
 
 #[derive(Subcommand)]
@@ -1052,6 +1083,7 @@ async fn run(cli: Cli) -> Result<()> {
         }
         Cmd::Tag(t) => tag_cmd(&ctx, t).await?,
         Cmd::Admin(a) => admin_cmd(&ctx, a).await?,
+        Cmd::Plugin(c) => plugin_cmd(&ctx, c).await?,
         Cmd::Watch { project, events, exec, account } => automate::watch(account, project, events, exec).await?,
         Cmd::Mcp { account } => automate::mcp(account).await?,
         Cmd::Daemon { listen, interval } => mp_daemon::run(&listen, interval).await?,
@@ -1241,6 +1273,116 @@ async fn ignore_cmd(ctx: &Ctx, a: IgnoreArgs) -> Result<()> {
     let st = scan::status(&ws, &[])?;
     ctx.out(json!({ "ignored": st.ignored }), || if st.ignored.is_empty() { "Nothing is ignored.".into() } else { st.ignored.join("\n") });
     let _ = a.list;
+    Ok(())
+}
+
+/// What a plugin is about to be able to do, before it is installed or updated.
+fn describe_plugin(st: &plugins::Staged) -> String {
+    let m = &st.manifest;
+    let mut t = format!("{} {}{}\n  from {} at {}\n", m.name, m.version, if m.author.is_empty() { String::new() } else { format!(" by {}", m.author) }, st.source, &st.commit[..12.min(st.commit.len())]);
+    if !m.description.is_empty() {
+        t += &format!("  {}\n", m.description);
+    }
+    if let Some((v, c)) = &st.replaces {
+        t += &format!("  replaces version {v} ({})\n", &c[..12.min(c.len())]);
+    }
+    if !m.hooks.is_empty() {
+        t += &format!("  runs on: {}\n", m.hooks.join(", "));
+    }
+    for o in &m.operations {
+        t += &format!("  operation: {}{}\n", o.title, if o.files.is_empty() { String::new() } else { format!(" (on {})", o.files.join(", ")) });
+    }
+    for v in &m.views {
+        t += &format!("  view: {} ({})\n", v.title, if v.place == "app" { "a page in the app" } else { "a project tab" });
+    }
+    if let Some(c) = m.command() {
+        t += &format!("  runs as you: {}\n", c.join(" "));
+    }
+    for p in &m.permissions {
+        let what = plugins::PERMISSIONS.iter().find(|(k, _)| k == p).map(|(_, d)| *d).unwrap_or(p.as_str());
+        t += &format!("  {}can: {what}\n", if st.new_permissions.contains(p) && st.replaces.is_some() { "NEW, " } else { "" });
+    }
+    t
+}
+
+async fn plugin_cmd(ctx: &Ctx, c: PluginCmd) -> Result<()> {
+    let confirm = |yes: bool| -> Result<bool> { Ok(yes || prompt("Install it? It runs on this computer as you. [y/N] ")?.eq_ignore_ascii_case("y")) };
+    match c {
+        PluginCmd::List => {
+            let list = plugins::installed()?;
+            ctx.out(json!(list), || {
+                if list.is_empty() {
+                    return "No plugins. Install one with `mp plugin install owner/repo`.".into();
+                }
+                list.iter()
+                    .map(|p| format!("{} {} {}  {}  {}", if p.enabled { "on " } else { "off" }, p.manifest.id, p.manifest.version, p.source, if p.commit == "local" { "linked".into() } else { p.commit[..12.min(p.commit.len())].to_string() }))
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            });
+        }
+        PluginCmd::Install { spec, yes } => {
+            let st = plugins::fetch(&spec).await?;
+            eprint!("{}", describe_plugin(&st));
+            if !confirm(yes)? {
+                ctx.say("Not installed.");
+                return Ok(());
+            }
+            let p = plugins::install(st)?;
+            ctx.out(json!(p), || format!("Installed {} {}.", p.manifest.name, p.manifest.version));
+        }
+        PluginCmd::Link { folder } => {
+            let p = plugins::link(&folder)?;
+            ctx.out(json!(p), || format!("Linked {} from {}. Edits there apply straight away.", p.manifest.name, p.dir.display()));
+        }
+        PluginCmd::Update { id, yes } => {
+            let ids: Vec<String> = match id {
+                Some(i) => vec![i],
+                None => plugins::installed()?.into_iter().filter(|p| p.source.starts_with("github:")).map(|p| p.manifest.id).collect(),
+            };
+            for id in ids {
+                match plugins::fetch_update(&id).await? {
+                    None => ctx.say(&format!("{id} is up to date.")),
+                    Some(st) => {
+                        eprint!("{}", describe_plugin(&st));
+                        if !st.new_permissions.is_empty() || !yes {
+                            if !confirm(yes && st.new_permissions.is_empty())? {
+                                ctx.say("Not updated.");
+                                continue;
+                            }
+                        }
+                        let p = plugins::install(st)?;
+                        ctx.say(&format!("Updated {} to {}.", p.manifest.name, p.manifest.version));
+                    }
+                }
+            }
+        }
+        PluginCmd::Remove { id } => {
+            let p = plugins::remove(&id)?;
+            ctx.out(json!({ "removed": p.manifest.id }), || format!("Removed {}.", p.manifest.name));
+        }
+        PluginCmd::On { id } => {
+            let p = plugins::set_enabled(&id, true)?;
+            ctx.say(&format!("{} is on.", p.manifest.name));
+        }
+        PluginCmd::Off { id } => {
+            let p = plugins::set_enabled(&id, false)?;
+            ctx.say(&format!("{} is off.", p.manifest.name));
+        }
+        PluginCmd::Run { id, operation, paths } => {
+            let ws = ctx.ws()?;
+            // Paths as typed, relative to the folder: a/b.png or ./a/b.png or a full path inside it.
+            let rel: Vec<String> = paths
+                .iter()
+                .map(|x| {
+                    let abs = std::fs::canonicalize(ctx.dir.join(x)).unwrap_or_else(|_| ctx.dir.join(x));
+                    let root = std::fs::canonicalize(&ws.root).unwrap_or(ws.root.clone());
+                    abs.strip_prefix(&root).map(|r| r.to_string_lossy().replace('\\', "/")).unwrap_or_else(|_| x.replace('\\', "/"))
+                })
+                .collect();
+            let r = plugins::run_operation(&id, &operation, &ws, &rel).await?;
+            ctx.out(r.clone(), || r["message"].as_str().map(str::to_string).unwrap_or_else(|| "Done.".into()));
+        }
+    }
     Ok(())
 }
 

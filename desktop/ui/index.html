@@ -22,8 +22,10 @@
     <nav class="nav" aria-label="Sections">
       <button data-view="projects" aria-current="page">Projects</button>
       <button data-view="accounts">Accounts</button>
+      <button data-view="plugins">Plugins</button>
       <button data-view="admin" hidden>Admin</button>
     </nav>
+    <nav class="nav plugnav" id="plugnav" aria-label="Plugin pages" hidden></nav>
     <nav class="here" id="here" aria-label="Projects on this computer"></nav>
     <div class="totals" id="totals"></div>
     <div class="conn" id="conn">Starting…</div>
@@ -49,6 +51,9 @@
     </section>
 
     <section class="view" id="v-work" aria-live="polite"></section>
+    <div class="plug-host" id="plug-host" hidden></div>
+    <section class="view" id="v-plugins"></section>
+    <section class="view" id="v-plugin"></section>
 
 
     <section class="view" id="v-accounts">
@@ -93,5 +98,6 @@
 <script src="treemap.js"></script>
 <script src="project.js"></script>
 <script src="look.js"></script>
+<script src="plugins.js"></script>
 </body>
 </html>

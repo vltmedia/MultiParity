@@ -37,7 +37,8 @@ function tabsHtml() {
   const unpublished = files().length;
   const drafts = proj.drafts ? proj.drafts.length : 0;
   const badge = (k) => (k === "work" && unpublished ? `<b>${unpublished}</b>` : k === "drafts" && drafts ? `<b>${drafts}</b>` : "");
-  return `<nav class="tabs" role="tablist" aria-label="${esc(work.project.name)}">${TABS.map(([k, label]) =>
+  const tabs = [...TABS, ...(window.pluginViews ? pluginViews("project").map(({ v, key }) => [key, v.title]) : [])];
+  return `<nav class="tabs" role="tablist" aria-label="${esc(work.project.name)}">${tabs.map(([k, label]) =>
     `<button role="tab" data-tab="${k}" aria-selected="${work.tab === k}">${label}${badge(k)}</button>`).join("")}</nav>`;
 }
 
@@ -84,6 +85,8 @@ function switchTab(t) {
   if (work.tab === t) return;
   work.tab = t;
   if (t === "work") { renderWork(); refreshWork(); return; }
+  // A plugin's view: its page shows below the tabs (see plugins.js).
+  if (t.startsWith("plug:")) { renderWork(); return; }
   loadTab();
   refreshWork(false);
 }
@@ -178,6 +181,7 @@ function fileMenu(path, x, y, li) {
     items.push(["Open", () => invoke("open_path", { path: absPath(path) })]);
     items.push(["Show in folder", () => invoke("reveal_path", { path: absPath(path) })]);
   }
+  if (window.pluginFileItems && work.status && !work.status.deleted.some((z) => z.path === path)) items.push(...pluginFileItems([path]));
   showMenu(items, x, y, li);
 }
 

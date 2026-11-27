@@ -53,6 +53,7 @@ export default defineConfig({
           { text: 'Desktop app, updates, releases', link: '/docs/DESKTOP' },
           { text: 'Code signing', link: '/docs/SIGNING' },
           { text: 'Webhooks, scripts, AI, Blender', link: '/docs/AUTOMATION' },
+          { text: 'Plugins', link: '/docs/PLUGINS' },
         ],
       },
       {

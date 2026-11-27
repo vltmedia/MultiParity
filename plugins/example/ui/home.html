@@ -1,0 +1,25 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Example home</title>
+<link rel="stylesheet" href="style.css">
+<script src="/local/plugin-sdk.js"></script>
+<main>
+  <h1>Example home</h1>
+  <p>A page of its own in the app's sidebar. It lists the projects synced on this computer.</p>
+  <ul id="list"><li>Loading…</li></ul>
+  <button id="hello">Say hello</button>
+</main>
+<script>
+(async () => {
+  const ctx = await mp.context();
+  const ul = document.getElementById("list");
+  ul.innerHTML = "";
+  for (const w of ctx.workspaces) {
+    const li = document.createElement("li");
+    li.textContent = `${w.project} (${w.branch}) in ${w.root}`;
+    ul.appendChild(li);
+  }
+  if (!ctx.workspaces.length) ul.innerHTML = "<li>Nothing synced yet.</li>";
+  document.getElementById("hello").onclick = () => mp.toast("Hello from the example plugin.");
+})();
+</script>

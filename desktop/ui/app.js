@@ -19,7 +19,7 @@ const state = { accounts: [], groups: [], filter: "all", q: "", open: null, tree
 
 async function api(path, opts = {}) {
   // Long work started from here: show its progress straight away.
-  if (opts.method === "POST" && /\/(get-latest|publish|connect|draft|export)$/.test(path) && typeof watchProgress === "function") watchProgress();
+  if (opts.method === "POST" && /\/(get-latest|publish|connect|draft|export|run)$/.test(path) && typeof watchProgress === "function") watchProgress();
   const res = await fetch(DAEMON + path, { ...opts, headers: { "content-type": "application/json", ...(opts.headers || {}) } });
   const body = await res.json().catch(() => ({}));
   if (!res.ok || body.error) {
@@ -69,7 +69,7 @@ const LABEL_ICONS = [
   ["Show in folder", "folder-open"], ["Leave out of checkpoints", "bookmark"], ["Leave out", "bookmark"], ["Ignore", "x"], ["Put back", "rotate-ccw"],
   ["Save a copy", "copy"], ["Make latest", "check-check"], ["Restart to update", "refresh-cw"], ["Check for updates", "refresh-cw"],
   ["Show older changes", "history"], ["Space used", "hard-drive"],
-  ["Export", "archive"], ["Select all visible", "check-check"], ["Select all", "check-check"], ["Clear visible", "x"], ["Clear all", "x"], ["Show everything", "eye"],
+  ["Export", "archive"], ["Plugins", "puzzle"], ["Look it up", "search"], ["Check for update", "refresh-cw"], ["Install", "download"], ["Update", "download"], ["Select all visible", "check-check"], ["Select all", "check-check"], ["Clear visible", "x"], ["Clear all", "x"], ["Show everything", "eye"],
   ["Projects", "folder-kanban"], ["Accounts", "user-round"], ["Files", "files"], ["History", "history"], ["Branches", "git-branch"], ["Drafts", "file-clock"],
   ["All", "layers"], ["On this computer", "hard-drive"], ["Not on this computer", "cloud-download"], ["Has my work", "pencil-line"],
 ];
@@ -689,6 +689,9 @@ function showView(v) {
   // A project's own look shows only inside it.
   if (v !== "work") MPTheme.applyChosen(null);
   if (v === "accounts") renderAccounts();
+  if (v === "plugins" && window.renderPlugins) renderPlugins();
+  if (v !== "plugin" && window.plugins) { plugins.appView = null; renderPluginNav(); }
+  if (window.syncPluginTab) syncPluginTab();
   renderHere();
 }
 
@@ -741,10 +744,12 @@ $("#list").addEventListener("keydown", (e) => {
 // whichever screen is open: what is happening, how much is done, how fast, and how long is left.
 
 const progress = { all: {}, timer: 0 };
-const VERB = { "get-latest": "Getting latest", publish: "Publishing", connect: "Syncing", draft: "Saving a draft", export: "Exporting" };
+const VERB = { "get-latest": "Getting latest", publish: "Publishing", connect: "Syncing", draft: "Saving a draft", export: "Exporting", plugin: "Running" };
 
 function nameFor(key) {
   const pid = key.startsWith("connect:") ? key.slice(8) : null;
+  // A plugin's run: "<folder id>:plugin:<plugin id>".
+  if (key.includes(":plugin:")) key = key.split(":plugin:")[0];
   for (const g of state.groups) for (const p of g.projects) {
     if (pid ? p.project.id === pid : p.workspaces.some((w) => w.id === key)) return p.project.name;
   }
@@ -765,7 +770,7 @@ function progressCard(key, p) {
     : p.files_total ? `${p.files_done.toLocaleString()} of ${p.files_total.toLocaleString()} files` : "";
   const speed = !p.finished && !wrapping && p.rate > 0 ? `${human(p.rate)}/s` : "";
   return `<li class="${p.finished ? "done" : ""}">
-    <div class="ptop"><b>${icon({ "get-latest": "cloud-download", publish: "cloud-upload", connect: "folder-sync", draft: "save", export: "archive" }[p.op] || "loader-circle")}${esc(VERB[p.op] || "Working on")}${name ? ` ${esc(name)}` : ""}</b><span>${frac === null ? "" : `${Math.floor(frac * 100)}%`}</span></div>
+    <div class="ptop"><b>${icon({ "get-latest": "cloud-download", publish: "cloud-upload", connect: "folder-sync", draft: "save", export: "archive", plugin: "puzzle" }[p.op] || "loader-circle")}${esc(VERB[p.op] || "Working on")}${name ? ` ${esc(name)}` : ""}</b><span>${frac === null ? "" : `${Math.floor(frac * 100)}%`}</span></div>
     <i class="pbar ${frac === null ? "wait" : ""}"><b style="width:${frac === null ? 100 : (frac * 100).toFixed(1)}%"></b></i>
     <div class="pmeta"><span>${esc(p.finished ? "Finished" : wrapping ? "Finishing" : p.phase)}</span><span>${[amount, speed, left !== null && left > 2 ? `about ${clock(left)} left` : ""].filter(Boolean).map(esc).join(" · ")}</span></div>
     ${p.current && !p.finished ? `<small title="${esc(p.current)}">${esc(p.current.split("/").pop())}</small>` : ""}

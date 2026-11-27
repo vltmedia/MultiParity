@@ -186,6 +186,7 @@ function renderWork() {
         <button class="btn" data-w="web">Open on the web</button>
         <button class="btn" data-w="move-folder">Move folder…</button>
         <button class="btn" data-w="export">Export…</button>
+        ${window.projectOps && projectOps().length ? `<button class="btn" data-w="plugin-ops">Plugins…</button>` : ""}
       </div>
     </header>
     ${work.error ? `<div class="notice bad">${esc(work.error)}</div>` : ""}
@@ -226,6 +227,7 @@ function renderWork() {
   if (m && focused) { m.focus(); m.setSelectionRange(m.value.length, m.value.length); }
   const q2 = $("#p-q");
   if (q2 && qText !== null) { q2.value = qText; if (qFocused) { q2.focus(); q2.setSelectionRange(qText.length, qText.length); } }
+  if (window.syncPluginTab) syncPluginTab();
 }
 
 function fileRow(f) {
@@ -517,6 +519,7 @@ function openMenu(li, x, y) {
   if (kind !== "deleted") items.push(["Leave out of checkpoints…", () => patternDialog(path, "nocheckpoint")]);
   if (kind === "new") items.push(["Ignore…", () => patternDialog(path, "ignore")]);
   if (tauri && kind !== "deleted") items.push(["Show in folder", () => invoke("reveal_path", { path: absPath(path) })]);
+  if (kind !== "deleted" && window.pluginFileItems) items.push(...pluginFileItems([path]));
   showMenu(items, x, y, li);
 }
 
@@ -599,6 +602,10 @@ $("#v-work").addEventListener("click", (e) => {
   if (what === "space") return spaceDialog();
   if (what === "move-folder") return moveFolderDialog(work.ws, { project: work.project });
   if (what === "export") return exportDialog();
+  if (what === "plugin-ops") {
+    const r = el.getBoundingClientRect();
+    return showMenu(projectOps().map(({ p, o }) => [`${o.title} (${p.manifest.name})`, () => runPluginOp(p, o, [])]), r.left, r.bottom + 4, el);
+  }
 });
 
 $("#v-work").addEventListener("contextmenu", (e) => {

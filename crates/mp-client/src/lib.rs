@@ -14,6 +14,7 @@ pub mod accounts;
 pub mod api;
 pub mod checkpoints;
 pub mod export;
+pub mod plugins;
 pub mod ops;
 pub mod progress;
 pub mod scan;

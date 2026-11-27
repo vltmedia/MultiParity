@@ -343,6 +343,9 @@ pub async fn get_latest(api: &Api, ws: &mut Workspace, mut progress: impl FnMut(
     }
     ws.config.synced_change = delta.head;
     ws.save()?;
+    if !report.downloaded.is_empty() || !report.removed.is_empty() {
+        let _ = crate::plugins::hook("after_get_latest", ws, serde_json::json!({ "change": report.head, "downloaded": report.downloaded, "removed": report.removed })).await;
+    }
     Ok(report)
 }
 
@@ -499,6 +502,16 @@ pub async fn publish(api: &Api, ws: &mut Workspace, message: &str, only: &[Strin
     if st.is_clean() {
         anyhow::bail!("Nothing to publish: no new, edited or deleted files{}.", if only.is_empty() { "" } else { " in the paths you named" });
     }
+    // Plugins with a before_publish hook can stop it (a naming rule, a missing texture…).
+    let files: Vec<serde_json::Value> = st
+        .new
+        .iter()
+        .map(|f| (f, "add"))
+        .chain(st.edited.iter().map(|f| (f, "edit")))
+        .chain(st.deleted.iter().map(|f| (f, "delete")))
+        .map(|(f, op)| serde_json::json!({ "path": f.path, "abs": ws.abs(&f.path).display().to_string().trim_start_matches(r"\\?\"), "op": op, "size": f.size }))
+        .collect();
+    crate::plugins::hook("before_publish", ws, serde_json::json!({ "message": message, "files": files })).await?;
     let (mut entries, manifests) = build_entries(ws, &st, &mut progress)?;
     for e in entries.iter_mut() {
         if keep_mine.iter().any(|k| mp_core::paths::within(&e.path, k)) {
@@ -527,6 +540,8 @@ pub async fn publish(api: &Api, ws: &mut Workspace, message: &str, only: &[Strin
     ws.save()?;
     // Checkpoint parts that are now on the server no longer need a copy here.
     let _ = trim_cache(Some(api), ws).await;
+    let paths: Vec<&str> = entries.iter().map(|e| e.path.as_str()).collect();
+    let _ = crate::plugins::hook("after_publish", ws, serde_json::json!({ "change": change.number, "message": message, "paths": paths })).await;
     Ok(PublishReport { change, files: entries.len(), uploaded_chunks, uploaded_bytes })
 }
 

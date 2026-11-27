@@ -100,7 +100,13 @@ Tools (both ways, except where noted):
 
 It does not publish, discard, delete or change access: those stay with people.
 
-## Plugins: Blender
+## Plugins
+
+Plugins add hooks around publishing (which can stop a publish), operations on files and projects,
+and views in the desktop app. They install from GitHub (`mp plugin install owner/repo`, or the
+app's **Plugins** page) and are written in any language. See [PLUGINS](/docs/PLUGINS).
+
+## Blender add-on
 
 `plugins/blender/multiparity` is a Blender add-on (Blender 2.93 to 5.x). In the 3D view's sidebar
 (N), tab **MultiParity**, it shows the open file's state (up to date, edited, claimed by whom,

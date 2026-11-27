@@ -306,6 +306,15 @@ pub async fn run(listen: &str, interval: u64) -> Result<()> {
         .route("/local/notifications/settings", get(notify_settings).put(set_notify_settings))
         .route("/local/behind", get(behind))
         .route("/local/connect", post(connect))
+        .route("/local/plugins", get(plugins_list))
+        .route("/local/plugins/preview", post(plugin_preview))
+        .route("/local/plugins/install", post(plugin_install))
+        .route("/local/plugins/link", post(plugin_link))
+        .route("/local/plugins/:id", axum::routing::patch(plugin_set).delete(plugin_remove))
+        .route("/local/plugins/:id/update", post(plugin_update_preview))
+        .route("/local/plugins/:id/ui/*rest", get(plugin_page))
+        .route("/local/plugin-sdk.js", get(plugin_sdk))
+        .route("/local/workspaces/:id/plugins/:plugin/run", post(plugin_run))
         .layer(middleware::from_fn(origin_guard))
         .layer(cors)
         .with_state(state.clone());
@@ -1136,3 +1145,191 @@ async fn no_checkpoint_add(Path(id): Path<String>, Json(b): Json<IgnoreBody>) ->
     let file = checkpoints::add_no_checkpoint(&ws, &b.pattern, b.personal)?;
     Ok(Json(json!({ "file": file.display().to_string() })))
 }
+
+// ---------------------------------------------------------------------------------------------
+// Plugins (mp_client::plugins): installed from GitHub after the person has seen what they do.
+
+/// Fetched plugins waiting for the person to say yes, by a one-off key.
+static STAGED: std::sync::LazyLock<std::sync::Mutex<HashMap<String, mp_client::plugins::Staged>>> = std::sync::LazyLock::new(Default::default);
+
+fn plugin_json(p: &mp_client::plugins::Installed) -> Value {
+    json!({
+        "id": p.manifest.id, "manifest": p.manifest, "source": p.source, "git_ref": p.git_ref, "commit": p.commit,
+        "enabled": p.enabled, "installed_at": p.installed_at, "required_by": p.required_by,
+        "linked": p.source.starts_with("local:"), "dir": p.dir.display().to_string().trim_start_matches(r"\\?\"),
+        "has_command": p.manifest.command().is_some(),
+    })
+}
+
+fn staged_json(key: &str, st: &mp_client::plugins::Staged) -> Value {
+    let perms: Vec<Value> = st.manifest.permissions.iter().map(|k| json!({
+        "key": k, "text": mp_client::plugins::PERMISSIONS.iter().find(|(x, _)| x == k).map(|(_, d)| *d).unwrap_or(k.as_str()),
+        "new": st.replaces.is_some() && st.new_permissions.contains(k),
+    })).collect();
+    json!({
+        "stage": key, "manifest": st.manifest, "source": st.source, "git_ref": st.git_ref, "commit": st.commit,
+        "replaces": st.replaces.as_ref().map(|(v, c)| json!({ "version": v, "commit": c })),
+        "permissions": perms, "command": st.manifest.command(),
+    })
+}
+
+async fn plugins_list() -> DResult<Json<Value>> {
+    let list = mp_client::plugins::installed()?;
+    Ok(Json(json!(list.iter().map(plugin_json).collect::<Vec<_>>())))
+}
+
+#[derive(Deserialize)]
+struct PluginSpec {
+    spec: String,
+}
+
+/// Fetch and check a plugin; nothing is installed until `install` with the returned key.
+async fn plugin_preview(Json(b): Json<PluginSpec>) -> DResult<Json<Value>> {
+    let st = mp_client::plugins::fetch(&b.spec).await.map_err(|e| DErr(StatusCode::UNPROCESSABLE_ENTITY, format!("{e:#}")))?;
+    let key = uuid::Uuid::new_v4().simple().to_string();
+    let v = staged_json(&key, &st);
+    STAGED.lock().unwrap().insert(key, st);
+    Ok(Json(v))
+}
+
+#[derive(Deserialize)]
+struct StageKey {
+    stage: String,
+}
+
+async fn plugin_install(Json(b): Json<StageKey>) -> DResult<Json<Value>> {
+    let st = STAGED.lock().unwrap().remove(&b.stage).ok_or_else(|| DErr(StatusCode::GONE, "That download expired. Look the plugin up again.".into()))?;
+    let p = tokio::task::spawn_blocking(move || mp_client::plugins::install(st)).await.map_err(|e| anyhow::anyhow!(e))??;
+    Ok(Json(plugin_json(&p)))
+}
+
+#[derive(Deserialize)]
+struct LinkBody {
+    folder: String,
+}
+
+async fn plugin_link(Json(b): Json<LinkBody>) -> DResult<Json<Value>> {
+    let p = mp_client::plugins::link(std::path::Path::new(&b.folder)).map_err(|e| DErr(StatusCode::UNPROCESSABLE_ENTITY, format!("{e:#}")))?;
+    Ok(Json(plugin_json(&p)))
+}
+
+async fn plugin_update_preview(Path(id): Path<String>) -> DResult<Json<Value>> {
+    match mp_client::plugins::fetch_update(&id).await.map_err(|e| DErr(StatusCode::UNPROCESSABLE_ENTITY, format!("{e:#}")))? {
+        None => Ok(Json(json!({ "up_to_date": true }))),
+        Some(st) => {
+            let key = uuid::Uuid::new_v4().simple().to_string();
+            let v = staged_json(&key, &st);
+            STAGED.lock().unwrap().insert(key, st);
+            Ok(Json(v))
+        }
+    }
+}
+
+#[derive(Deserialize)]
+struct PluginSet {
+    enabled: bool,
+}
+
+async fn plugin_set(Path(id): Path<String>, Json(b): Json<PluginSet>) -> DResult<Json<Value>> {
+    Ok(Json(plugin_json(&mp_client::plugins::set_enabled(&id, b.enabled)?)))
+}
+
+async fn plugin_remove(Path(id): Path<String>) -> DResult<Json<Value>> {
+    let p = mp_client::plugins::remove(&id)?;
+    Ok(Json(json!({ "removed": p.manifest.id })))
+}
+
+#[derive(Deserialize)]
+struct RunBody {
+    operation: String,
+    #[serde(default)]
+    paths: Vec<String>,
+}
+
+async fn plugin_run(State(s): State<DState>, Path((id, plugin)): Path<(String, String)>, Json(b): Json<RunBody>) -> DResult<Json<Value>> {
+    let ws = find_ws(&id)?;
+    let r = s
+        .tracked(&format!("{}:plugin:{plugin}", ws.config.id), "plugin", async { mp_client::plugins::run_operation(&plugin, &b.operation, &ws, &b.paths).await })
+        .await
+        .map_err(|e| DErr(StatusCode::UNPROCESSABLE_ENTITY, format!("{e:#}")))?;
+    Ok(Json(r))
+}
+
+/// A plugin's own page or file, for its views. Shown by the app in a sandboxed frame, so the page
+/// cannot reach this API itself: it asks the app through the bridge in plugin-sdk.js.
+async fn plugin_page(Path((id, rest)): Path<(String, String)>) -> Response {
+    let Ok(p) = mp_client::plugins::find(&id) else { return DErr(StatusCode::NOT_FOUND, "No such plugin.".into()).into_response() };
+    if !p.enabled {
+        return DErr(StatusCode::FORBIDDEN, "That plugin is turned off.".into()).into_response();
+    }
+    let rel = rest.trim_start_matches('/');
+    if rel.split(['/', '\\']).any(|x| x == "..") {
+        return DErr(StatusCode::BAD_REQUEST, "Bad path.".into()).into_response();
+    }
+    let base = std::fs::canonicalize(&p.dir).unwrap_or(p.dir.clone());
+    let file = match std::fs::canonicalize(base.join(rel)) {
+        Ok(f) if f.starts_with(&base) && f.is_file() => f,
+        _ => return DErr(StatusCode::NOT_FOUND, "Not found.".into()).into_response(),
+    };
+    let ext = file.extension().and_then(|e| e.to_str()).unwrap_or("").to_ascii_lowercase();
+    let ct = match ext.as_str() {
+        "html" | "htm" => "text/html; charset=utf-8",
+        "js" | "mjs" => "text/javascript; charset=utf-8",
+        "css" => "text/css; charset=utf-8",
+        "json" => "application/json",
+        "svg" => "image/svg+xml",
+        "png" => "image/png",
+        "jpg" | "jpeg" => "image/jpeg",
+        "gif" => "image/gif",
+        "webp" => "image/webp",
+        "woff2" => "font/woff2",
+        "woff" => "font/woff",
+        "txt" | "md" => "text/plain; charset=utf-8",
+        _ => "application/octet-stream",
+    };
+    match std::fs::read(&file) {
+        Ok(b) => (
+            [
+                (axum::http::header::CONTENT_TYPE, ct),
+                (axum::http::header::CACHE_CONTROL, "no-store"),
+                // Only its own files and the SDK; no calls back to this computer's API.
+                (axum::http::header::CONTENT_SECURITY_POLICY, "default-src 'self' 'unsafe-inline' data: blob: https:; connect-src https:; frame-ancestors *"),
+            ],
+            b,
+        )
+            .into_response(),
+        Err(e) => DErr(StatusCode::NOT_FOUND, e.to_string()).into_response(),
+    }
+}
+
+async fn plugin_sdk() -> Response {
+    ([(axum::http::header::CONTENT_TYPE, "text/javascript; charset=utf-8"), (axum::http::header::CACHE_CONTROL, "no-store")], PLUGIN_SDK).into_response()
+}
+
+/// The page side of the bridge: `mp.context()`, `mp.run(op, paths)`, `mp.local(path)`,
+/// `mp.server(path)`, `mp.toast(text)`, `mp.open(path)`, `mp.reveal(path)`, `mp.on(event, fn)`.
+const PLUGIN_SDK: &str = r#"// MultiParity plugin page API. Include with <script src="/local/plugin-sdk.js"></script>.
+(function () {
+  let n = 0; const waiting = new Map(); const handlers = {};
+  window.addEventListener("message", (e) => {
+    const m = e.data; if (!m || m.mp !== 1) return;
+    if (m.event) { (handlers[m.event] || []).forEach((f) => f(m.data)); return; }
+    const w = waiting.get(m.id); if (!w) return; waiting.delete(m.id);
+    m.error ? w.reject(new Error(m.error)) : w.resolve(m.result);
+  });
+  const ask = (method, params) => new Promise((resolve, reject) => {
+    const id = ++n; waiting.set(id, { resolve, reject });
+    parent.postMessage({ mp: 1, id, method, params }, "*");
+  });
+  window.mp = {
+    context: () => ask("context"),
+    run: (operation, paths) => ask("run", { operation, paths: paths || [] }),
+    local: (path) => ask("local", { path }),
+    server: (path) => ask("server", { path }),
+    toast: (text, bad) => ask("toast", { text, bad: !!bad }),
+    open: (path) => ask("open", { path }),
+    reveal: (path) => ask("reveal", { path }),
+    on: (event, fn) => { (handlers[event] = handlers[event] || []).push(fn); },
+  };
+})();
+"#;
