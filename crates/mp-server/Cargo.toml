@@ -23,6 +23,8 @@ tracing.workspace = true
 tracing-subscriber.workspace = true
 blake3.workspace = true
 zstd.workspace = true
+zip = { version = "2", default-features = false }
+tokio-util = { version = "0.7", features = ["io"] }
 image = { version = "0.25", default-features = false, features = ["png", "jpeg", "gif", "webp", "bmp", "tga", "tiff", "exr", "hdr"] }
 hex.workspace = true
 rand.workspace = true

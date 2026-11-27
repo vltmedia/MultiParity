@@ -6,6 +6,7 @@
 //! - [`ignore`]: ignore-pattern suggestions for the right-click "Ignore" menu.
 //! - [`paths`]: project-relative path normalisation and validation.
 //! - [`merge`]: three-way text merge used when branches are updated.
+//! - [`thumbs`]: thumbnails and previews of images and Blender files.
 
 pub mod chunk;
 pub mod ignore;
@@ -13,6 +14,7 @@ pub mod kind;
 pub mod manifest;
 pub mod merge;
 pub mod paths;
+pub mod thumbs;
 
 pub use chunk::{compress, decompress, hash_bytes, ChunkParams};
 pub use manifest::{ChunkRef, Manifest};

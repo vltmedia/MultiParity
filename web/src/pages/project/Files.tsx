@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { api, downloadFile, fetchAuthed } from '../../api/client';
 import { daemon } from '../../api/daemon';
 import type { FileEntry, FileVersion, Tag, TagRef } from '../../api/types';
@@ -10,6 +10,7 @@ import { baseName, dateTime, firstName, held, KIND_LABEL, plural, since, size } 
 import { Dialog, Empty, ErrorNote, FileThumb, Loading, Menu, Thumb, Who, useAction, useUi } from '../../components/ui';
 import { DRAWABLE, useThumb } from '../../lib/thumbs';
 import { useHref, useProject, ViewHead } from './context';
+import { SizeMap } from '../../components/SizeMap';
 
 const COLORS = ['#00806a', '#ff6a13', '#7a3cff', '#1b1324', '#c2185b', '#1f6fd1', '#b88a00', '#6d6378'];
 
@@ -28,6 +29,12 @@ export default function Files() {
   const { toast, fail } = useUi();
   const { busy, run } = useAction();
   const [params, setParams] = useSearchParams();
+  const navigate = useNavigate();
+  // Files as a table, or as a size map (every file a block as big as the space it takes).
+  const [mode, setModeState] = useState<'list' | 'map'>(() => {
+    try { return localStorage.getItem('mp.filesView') === 'map' ? 'map' : 'list'; } catch { return 'list'; }
+  });
+  const setMode = (m: 'list' | 'map') => { setModeState(m); try { localStorage.setItem('mp.filesView', m); } catch { /* private window */ } };
   const prefix = (params.get('prefix') || '').replace(/^\/+|\/+$/g, '');
   const tag = params.get('tag') || '';
   const [q, setQ] = useState(params.get('q') || '');
@@ -194,6 +201,10 @@ export default function Files() {
             </span>
           ))}
           <div className="tools">
+            <div className="viewsw" role="group" aria-label="View">
+              <button type="button" data-ic="files" aria-pressed={mode === 'list'} onClick={() => setMode('list')}>List</button>
+              <button type="button" data-ic="layout-dashboard" aria-pressed={mode === 'map'} onClick={() => setMode('map')} title="Every file is a block as big as the space it takes">Size map</button>
+            </div>
             {behind > 0 && (
               <button className="btn sm" onClick={getLatest} disabled={busy === 'latest'}>{busy === 'latest' ? 'Getting latest' : `Get latest (${behind})`}</button>
             )}
@@ -260,7 +271,15 @@ export default function Files() {
             {tag || qLive ? 'Try another tag, or clear the search.' : ws ? 'Save files into the folder on your computer; they show up as New by themselves.' : 'Files appear here once someone publishes them.'}
           </Empty>
         )}
-        {total > 0 && (
+        {total > 0 && mode === 'map' && !qLive && files.data && (
+          <SizeMap
+            files={files.data}
+            base={prefix ? prefix + '/' : ''}
+            onFolder={(p) => navigate(href('files', { prefix: p, tag }))}
+            onFile={(f) => (DRAWABLE.test(f.path) ? setPreviewOf(f) : setVersionsOf(f))}
+          />
+        )}
+        {total > 0 && (mode === 'list' || qLive) && (
           <table className="t files">
             <thead>
               <tr>

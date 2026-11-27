@@ -7,11 +7,13 @@
 //! - [`scan`]: finding new, edited and deleted files, honouring the ignore list.
 //! - [`ops`]: connect, get latest, publish, drafts, branches, selective sync.
 //! - [`checkpoints`]: private save points, on this computer or on the server.
+//! - [`export`]: a branch's published files into a folder or .zip on this computer.
 //! - [`progress`]: how far along get latest, publish and the like are, for progress bars.
 
 pub mod accounts;
 pub mod api;
 pub mod checkpoints;
+pub mod export;
 pub mod ops;
 pub mod progress;
 pub mod scan;

@@ -70,6 +70,114 @@ impl DState {
     }
 }
 
+#[derive(Deserialize)]
+struct ExportBody {
+    /// The folder to put the export in.
+    into: String,
+    /// One .zip instead of a folder of files.
+    #[serde(default)]
+    zip: bool,
+}
+
+/// Export the branch's published files to a folder or .zip on this computer.
+async fn export(State(s): State<DState>, Path(id): Path<String>, Json(b): Json<ExportBody>) -> DResult<Json<Value>> {
+    let ws = find_ws(&id)?;
+    let into = PathBuf::from(&b.into);
+    if !into.is_absolute() {
+        return Err(DErr(StatusCode::UNPROCESSABLE_ENTITY, "Choose a full folder path.".into()));
+    }
+    let r = s
+        .tracked(&ws.config.id, "export", async {
+            let api = ops::api_for(&ws)?;
+            Ok::<_, DErr>(mp_client::export::export(&api, &ws, &into, b.zip).await?)
+        })
+        .await?;
+    Ok(Json(json!(r)))
+}
+
+#[derive(Deserialize)]
+struct ThumbQuery {
+    /// A file in the folder: drawn from the file itself, so unpublished edits show too.
+    path: Option<String>,
+    /// A published version (content hash): the server's picture of it.
+    hash: Option<String>,
+    /// "large" for the preview; the list thumbnail otherwise.
+    size: Option<String>,
+}
+
+/// Recently drawn thumbnails of files in folders, by (folder, path, size, length, modified).
+static THUMBS: std::sync::LazyLock<std::sync::Mutex<HashMap<String, Arc<Vec<u8>>>>> = std::sync::LazyLock::new(Default::default);
+
+/// A thumbnail or preview (JPEG) of a file in a folder, or of a published version. The file's
+/// length and time make the ETag, so the app's lists revalidate cheaply and redraw on change.
+async fn thumb(Path(id): Path<String>, Query(q): Query<ThumbQuery>, headers: axum::http::HeaderMap) -> Response {
+    let large = q.size.as_deref() == Some("large");
+    let ws = match find_ws(&id) {
+        Ok(ws) => ws,
+        Err(e) => return e.into_response(),
+    };
+    let none = || (StatusCode::NOT_FOUND, Json(json!({ "error": { "code": "no_thumbnail", "message": "There is no picture of this file." } }))).into_response();
+    let jpeg = |bytes: Vec<u8>, etag: String| {
+        let mut r = (StatusCode::OK, bytes).into_response();
+        let h = r.headers_mut();
+        h.insert(axum::http::header::CONTENT_TYPE, "image/jpeg".parse().unwrap());
+        h.insert(axum::http::header::CACHE_CONTROL, "no-cache".parse().unwrap());
+        if let Ok(v) = etag.parse() {
+            h.insert(axum::http::header::ETAG, v);
+        }
+        r
+    };
+    if let Some(rel) = q.path.as_deref().filter(|p| !p.split('/').any(|s| s == "..") && mp_core::thumbs::source_of(p).is_some()) {
+        let abs = ws.abs(rel);
+        if let Ok(meta) = std::fs::metadata(&abs).filter_ok(|m| m.is_file() && m.len() <= mp_core::thumbs::MAX_BYTES) {
+            let stamp = meta.modified().ok().and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok()).map(|d| d.as_millis()).unwrap_or(0);
+            let etag = format!("\"{}-{}-{}\"", meta.len(), stamp, if large { "l" } else { "s" });
+            if headers.get(axum::http::header::IF_NONE_MATCH).and_then(|v| v.to_str().ok()) == Some(etag.as_str()) {
+                return StatusCode::NOT_MODIFIED.into_response();
+            }
+            let key = format!("{id}|{rel}|{etag}");
+            if let Some(b) = THUMBS.lock().unwrap().get(&key).cloned() {
+                return jpeg((*b).clone(), etag);
+            }
+            let src = mp_core::thumbs::source_of(rel).unwrap();
+            let drawn = tokio::task::spawn_blocking(move || std::fs::read(&abs).map_err(|e| e.to_string()).and_then(|b| mp_core::thumbs::draw(src, &b))).await;
+            if let Ok(Ok(Some(d))) = drawn {
+                let bytes = if large { d.large } else { d.small };
+                let mut cache = THUMBS.lock().unwrap();
+                if cache.len() > 400 {
+                    cache.clear();
+                }
+                cache.insert(key, Arc::new(bytes.clone()));
+                return jpeg(bytes, etag);
+            }
+        }
+    }
+    if let Some(hash) = q.hash.as_deref().filter(|h| h.len() == 64 && h.chars().all(|c| c.is_ascii_hexdigit())) {
+        let etag = format!("\"{hash}-{}\"", if large { "l" } else { "s" });
+        if headers.get(axum::http::header::IF_NONE_MATCH).and_then(|v| v.to_str().ok()) == Some(etag.as_str()) {
+            return StatusCode::NOT_MODIFIED.into_response();
+        }
+        if let Ok(api) = ops::api_for(&ws) {
+            if let Ok(Some(b)) = api.thumbnail(&ws.config.project_id, hash, large).await {
+                return jpeg(b.to_vec(), etag);
+            }
+        }
+    }
+    none()
+}
+
+trait FilterOk<T> {
+    fn filter_ok(self, f: impl FnOnce(&T) -> bool) -> Result<T, ()>;
+}
+impl<T, E> FilterOk<T> for Result<T, E> {
+    fn filter_ok(self, f: impl FnOnce(&T) -> bool) -> Result<T, ()> {
+        match self {
+            Ok(v) if f(&v) => Ok(v),
+            _ => Err(()),
+        }
+    }
+}
+
 /// Everything running now, by folder id (or `connect:<project id>`).
 async fn progress_all(State(s): State<DState>) -> Json<Value> {
     let r = s.running.lock().unwrap();
@@ -166,6 +274,8 @@ pub async fn run(listen: &str, interval: u64) -> Result<()> {
         .route("/local/workspaces/:id/folders", get(folders))
         .route("/local/workspaces/:id/sync", put(set_sync))
         .route("/local/progress", get(progress_all))
+        .route("/local/workspaces/:id/thumb", get(thumb))
+        .route("/local/workspaces/:id/export", post(export))
         .route("/local/workspaces/:id/progress", get(progress_one))
         .route("/local/workspaces/:id/get-latest", post(get_latest))
         .route("/local/workspaces/:id/publish", post(publish))
@@ -189,6 +299,7 @@ pub async fn run(listen: &str, interval: u64) -> Result<()> {
         .route("/local/accounts/login", post(account_login))
         .route("/local/accounts/:id", axum::routing::delete(account_logout))
         .route("/local/accounts/:id/session", get(account_session))
+        .route("/local/accounts/:id/admin", get(account_admin))
         .route("/local/projects", get(all_projects))
         .route("/local/file", get(file_info))
         .route("/local/notifications", get(notifications))
@@ -566,6 +677,20 @@ struct IgnoreBody {
 
 fn account_json(a: &mp_client::Account) -> Value {
     json!({ "id": a.id, "server": a.server, "email": a.email, "name": a.name, "label": a.label })
+}
+
+/// What this account may administer on its server: the whole server, and/or organizations it is
+/// an owner or admin of. The desktop app shows Admin only when there is something.
+async fn account_admin(Path(id): Path<String>) -> DResult<Json<Value>> {
+    let accounts = Accounts::load()?;
+    let a = accounts.by_id(&id).map_err(|e| DErr(StatusCode::NOT_FOUND, e.to_string()))?;
+    let me: Value = mp_client::Api::for_account(a).get("/me").await?;
+    let orgs: Vec<Value> = me["orgs"].as_array().cloned().unwrap_or_default().into_iter()
+        .filter(|m| matches!(m["role"].as_str(), Some("owner" | "admin")))
+        .map(|m| json!({ "id": m["org"]["id"], "name": m["org"]["name"], "role": m["role"] }))
+        .collect();
+    let server = me["is_server_admin"].as_bool().unwrap_or(false);
+    Ok(Json(json!({ "admin": server || !orgs.is_empty(), "server_admin": server, "orgs": orgs })))
 }
 
 async fn accounts() -> DResult<Json<Vec<Value>>> {

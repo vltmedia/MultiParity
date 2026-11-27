@@ -8,6 +8,8 @@ const TABS = [["work", "Your work"], ["files", "Files"], ["history", "History"],
 
 var proj = {
   prefix: "",
+  // Files as a list, or as a size map. Remembered on this computer.
+  mode: (() => { try { return localStorage.getItem("mp.filesView") === "map" ? "map" : "list"; } catch (_) { return "list"; } })(),
   q: "",
   files: null,
   history: null,
@@ -116,6 +118,23 @@ function filesHtml() {
   rows.sort((a, b) => baseName(a.path).localeCompare(baseName(b.path)));
   const crumbs = proj.prefix ? proj.prefix.split("/") : [];
   const mineCount = proj.files.filter((f) => f.claim && isMe(f.claim.user)).length;
+  const total = proj.files.reduce((a, f) => a + (f.size || 0), 0);
+  const views = `<div class="viewsw" role="group" aria-label="View">
+      <button type="button" data-p="view" data-v="list" aria-pressed="${proj.mode === "list"}" title="List">${icon("files")}List</button>
+      <button type="button" data-p="view" data-v="map" aria-pressed="${proj.mode === "map"}" title="Size map: every file is a block as big as the space it takes">${icon("layout-dashboard")}Size map</button>
+    </div>`;
+  if (proj.mode === "map" && !proj.q) {
+    return `
+    <div class="ftools">
+      <div class="crumbs">
+        <button class="link" data-p="crumb" data-to="">${esc(work.project.name)}</button>
+        ${crumbs.map((c, i) => `<span>/</span>${i === crumbs.length - 1 ? `<b>${esc(c)}</b>` : `<button class="link" data-p="crumb" data-to="${esc(crumbs.slice(0, i + 1).join("/"))}">${esc(c)}</button>`}`).join("")}
+      </div>
+      ${views}
+    </div>
+    <p class="note">${human(total)} in ${plural(proj.files.length, "file")}${proj.prefix ? ` under ${esc(proj.prefix)}` : ""}. Each block is a file, as big as the space it takes. Click a folder to look inside it, a file to preview it or see its older versions. Right-click for more.</p>
+    ${treemapHtml(proj.files, base)}`;
+  }
   return `
     <div class="ftools">
       <div class="crumbs">
@@ -123,24 +142,25 @@ function filesHtml() {
         ${crumbs.map((c, i) => `<span>/</span>${i === crumbs.length - 1 ? `<b>${esc(c)}</b>` : `<button class="link" data-p="crumb" data-to="${esc(crumbs.slice(0, i + 1).join("/"))}">${esc(c)}</button>`}`).join("")}
       </div>
       <label class="search sm"><span class="sr">Find a file</span><input id="p-q" type="search" placeholder="Find a file by name" value="${esc(proj.q)}"></label>
+      ${views}
     </div>
     <p class="note">${proj.q ? `${plural(rows.length, "file")} matching “${esc(proj.q)}”` : `${plural(proj.files.length, "file")} on ${esc(work.ws.branch_name)}`}${mineCount ? `, ${plural(mineCount, "claim")} yours` : ""}. Right-click a file to claim it, release it, or see its older versions.</p>
     ${!folders.size && !rows.length ? `<div class="empty"><b>${proj.q ? "No files match." : "This folder is empty."}</b>${proj.q ? "Try another name." : `Save files into ${esc(work.ws.root)} and publish them.`}</div>` : ""}
     <ul class="flist" role="list">
       ${[...folders.values()].sort((a, b) => a.name.localeCompare(b.name)).map((g) => `
         <li class="folder" data-p="open-folder" data-name="${esc(g.name)}" tabindex="0">
-          <span class="ficon" aria-hidden="true"></span>
+          ${icon("folder", "kind folder")}
           <div class="name"><strong>${esc(g.name)}</strong><small>${plural(g.files, "file")}${g.claims ? `, ${plural(g.claims, "claim")}` : ""}</small></div>
           <span class="meta">${human(g.size)}</span><span></span><span></span>
         </li>`).join("")}
       ${rows.map((f) => {
         const [cls, label] = fileState(f);
         return `<li data-path="${esc(f.path)}" tabindex="0">
-          <span class="ficon file" aria-hidden="true"></span>
+          ${thumbHtml(work.wsId, f.path, f.file_hash)}
           <div class="name"><strong>${esc(proj.q ? f.path : baseName(f.path))}</strong><small>Change ${f.change}${f.tags && f.tags.length ? " · " + f.tags.map((t) => esc(t.name)).join(", ") : ""}</small></div>
           <span class="meta">${human(f.size)}</span>
           <span class="st ${cls}">${esc(label)}</span>
-          <button class="more" data-p="file-menu" aria-label="More for ${esc(baseName(f.path))}" aria-haspopup="menu">···</button>
+          <button class="more" data-p="file-menu" aria-label="More for ${esc(baseName(f.path))}" aria-haspopup="menu">${icon("ellipsis")}</button>
         </li>`;
       }).join("")}
     </ul>`;
@@ -409,6 +429,17 @@ $("#v-work").addEventListener("click", (e) => {
   const what = el.dataset.p;
   if (what === "reload") return loadTab();
   if (what === "crumb") { proj.prefix = el.dataset.to; proj.q = ""; return loadTab(); }
+  if (what === "view") {
+    proj.mode = el.dataset.v;
+    try { localStorage.setItem("mp.filesView", proj.mode); } catch (_) {}
+    return renderWork();
+  }
+  if (what === "tm-dir") { if (el.dataset.to !== proj.prefix) { proj.prefix = el.dataset.to; proj.q = ""; loadTab(); } return; }
+  if (what === "tm-file") {
+    const p = el.dataset.path;
+    const f = (proj.files || []).find((z) => z.path === p);
+    return DRAWABLE.test(p) ? openPreview(work.wsId, p, f && f.file_hash) : versionsDialog(p);
+  }
   if (what === "open-folder") { proj.prefix = (proj.prefix ? proj.prefix + "/" : "") + el.dataset.name; return loadTab(); }
   if (what === "file-menu") { e.stopPropagation(); const li = el.closest("li[data-path]"); const r = el.getBoundingClientRect(); return fileMenu(li.dataset.path, r.left, r.bottom + 4, li); }
   if (what === "change") return toggleChange(Number(el.dataset.n));
@@ -434,7 +465,7 @@ $("#v-work").addEventListener("keydown", (e) => {
 $("#v-work").addEventListener("search", (e) => { if (e.target.id === "p-q" && !e.target.value) { proj.q = ""; loadTab(); } });
 
 $("#v-work").addEventListener("contextmenu", (e) => {
-  const li = e.target.closest(".flist li[data-path]");
+  const li = e.target.closest(".flist li[data-path], .tm-file[data-path]");
   if (!li) return;
   e.preventDefault();
   fileMenu(li.dataset.path, e.clientX, e.clientY, li);

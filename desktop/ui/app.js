@@ -19,7 +19,7 @@ const state = { accounts: [], groups: [], filter: "all", q: "", open: null, tree
 
 async function api(path, opts = {}) {
   // Long work started from here: show its progress straight away.
-  if (opts.method === "POST" && /\/(get-latest|publish|connect|draft)$/.test(path) && typeof watchProgress === "function") watchProgress();
+  if (opts.method === "POST" && /\/(get-latest|publish|connect|draft|export)$/.test(path) && typeof watchProgress === "function") watchProgress();
   const res = await fetch(DAEMON + path, { ...opts, headers: { "content-type": "application/json", ...(opts.headers || {}) } });
   const body = await res.json().catch(() => ({}));
   if (!res.ok || body.error) {
@@ -36,12 +36,133 @@ async function invoke(cmd, args) {
   try { return await tauri.invoke(cmd, args); } catch (e) { alert(String(e)); return null; }
 }
 
+
+// ------------------------------------------------------------------ icons
+// Icons come from icons.js (Lucide). File kinds are picked by extension; buttons, tabs, menus and
+// filters get theirs from what they say, so every "Get latest" in the app looks the same and a new
+// button with a known label needs no extra work.
+
+const KINDS = [
+  [/\.(png|jpe?g|tga|tiff?|exr|hdr|psd|kra|webp|gif|bmp|dds|ktx2?)$/i, "file-image"],
+  [/\.(wav|mp3|ogg|flac|aiff?|bank|wem)$/i, "file-audio"],
+  [/\.(mp4|mov|avi|mkv|webm|prores)$/i, "file-video"],
+  [/\.(blend1?|fbx|obj|abc|usd[acz]?|gltf|glb|ma|mb|max|c4d|hip|ztl|spp|uasset|umap|prefab|unity)$/i, "file-box"],
+  [/\.(zip|7z|rar|tar|gz|pak)$/i, "file-archive"],
+  [/\.(cs|cpp|c|h|hpp|py|js|ts|rs|lua|gd|json|ya?ml|toml|ini|cfg|shader|hlsl|glsl)$/i, "file-code"],
+  [/\.(md|txt|pdf|docx?|rtf|csv)$/i, "file-text"],
+];
+function kindIcon(path) {
+  for (const [re, name] of KINDS) if (re.test(path)) return name;
+  return "file";
+}
+
+const LABEL_ICONS = [
+  ["Publish mine over theirs", "cloud-upload"], ["Keep theirs", "check"],
+  ["Your work and checkpoints", "pencil-line"], ["Your work", "pencil-line"],
+  ["Get latest", "cloud-download"], ["Publish", "cloud-upload"], ["Save checkpoint", "bookmark-plus"], ["Discard", "undo-2"],
+  ["Rewind", "rotate-ccw"], ["Open on the web", "external-link"], ["Open project", "external-link"], ["Open", "external-link"],
+  ["Move folder", "folder-input"], ["Save folder choices", "save"], ["Stop syncing", "x"], ["Sync to this computer", "folder-sync"],
+  ["Sync this folder", "folder-sync"], ["Check the folder", "search"], ["Choose…", "folder-open"], ["Sign in", "log-in"],
+  ["Sign out", "log-out"], ["Admin", "shield"], ["New branch", "git-branch"], ["Make branch", "git-branch"], ["Switch here", "arrow-right"],
+  ["Merge", "git-merge"], ["Bring in", "git-pull-request-arrow"], ["Save a draft", "save"], ["Save draft", "save"], ["Pick up", "download"],
+  ["Delete", "trash-2"], ["Claim", "lock"], ["Release", "lock-open"], ["Ask ", "hand"], ["Older versions", "history"],
+  ["Show in folder", "folder-open"], ["Leave out of checkpoints", "bookmark"], ["Leave out", "bookmark"], ["Ignore", "x"], ["Put back", "rotate-ccw"],
+  ["Save a copy", "copy"], ["Make latest", "check-check"], ["Restart to update", "refresh-cw"], ["Check for updates", "refresh-cw"],
+  ["Show older changes", "history"], ["Space used", "hard-drive"],
+  ["Export", "archive"], ["Select all visible", "check-check"], ["Select all", "check-check"], ["Clear visible", "x"], ["Clear all", "x"], ["Show everything", "eye"],
+  ["Projects", "folder-kanban"], ["Accounts", "user-round"], ["Files", "files"], ["History", "history"], ["Branches", "git-branch"], ["Drafts", "file-clock"],
+  ["All", "layers"], ["On this computer", "hard-drive"], ["Not on this computer", "cloud-download"], ["Has my work", "pencil-line"],
+];
+function iconForLabel(text) {
+  for (const [label, name] of LABEL_ICONS) {
+    if (label.endsWith(" ") ? text.startsWith(label) : text === label || text.startsWith(label + " ") || text.startsWith(label + "…") || text.startsWith(label + "(")) return name;
+  }
+  return null;
+}
+function decorate(root = document) {
+  root.querySelectorAll("button.btn, .nav button, .tabs [role=tab], #filters button, #ctx li, button.link, .back").forEach((b) => {
+    if (b.querySelector("svg.ic") || b.dataset.noicon !== undefined) return;
+    const name = iconForLabel(b.textContent.trim());
+    if (name) b.insertAdjacentHTML("afterbegin", icon(name));
+  });
+}
+let decorating = 0;
+new MutationObserver(() => { if (!decorating) decorating = requestAnimationFrame(() => { decorating = 0; decorate(); }); })
+  .observe(document.body, { childList: true, subtree: true });
+
+
+// ------------------------------------------------------------------ thumbnails
+// A picture of a file: drawn by the daemon from the file in the folder (so unpublished edits show)
+// or, for a version not on disk, the server's picture of it. Clicking one opens a large preview.
+// Files with no picture (or not drawable) show their kind's icon.
+
+const DRAWABLE = /\.(png|jpe?g|gif|webp|bmp|tga|tiff?|exr|hdr|blend)$/i;
+function thumbHtml(wsId, path, hash, { onDisk = true } = {}) {
+  const kind = kindIcon(path);
+  if (!DRAWABLE.test(path) || (!hash && !onDisk)) return `<span class="th none">${icon(kind)}</span>`;
+  const q = new URLSearchParams();
+  // An older version is not the file on disk: only the server's picture of it will do.
+  if (onDisk) q.set("path", path);
+  if (hash) q.set("hash", hash);
+  return `<button type="button" class="th" data-thumb="${esc(q.toString())}" data-tws="${esc(wsId)}" data-kind="${kind}" data-name="${esc(path.split("/").pop())}" title="Preview"><img src="${DAEMON}/workspaces/${encodeURIComponent(wsId)}/thumb?${q}" alt="" loading="lazy" decoding="async"></button>`;
+}
+// No picture after all: the kind's icon instead (error events do not bubble, so listen on capture).
+document.addEventListener("error", (e) => {
+  const img = e.target;
+  if (!(img instanceof HTMLImageElement) || !img.closest(".th")) return;
+  // One more try first: a picture the server is still drawing, or a slow first answer.
+  if (!img.dataset.retried) { img.dataset.retried = "1"; setTimeout(() => { img.src = img.src + "&again=1"; }, 900); return; }
+  const b = img.closest(".th");
+  b.replaceWith(Object.assign(document.createElement("span"), { className: "th none", innerHTML: icon(b.dataset.kind || "file") }));
+}, true);
+/** The large picture of a file in a folder (or, given only a hash, of a published version). */
+function openPreview(wsId, path, hash, { onDisk = true } = {}) {
+  const q = new URLSearchParams();
+  if (onDisk && path) q.set("path", path);
+  if (hash) q.set("hash", hash);
+  showPreview(wsId, q.toString(), path.split("/").pop());
+}
+function showPreview(wsId, query, name) {
+  const src = `${DAEMON}/workspaces/${encodeURIComponent(wsId)}/thumb?${query}&size=large`;
+  dialog(`<h2>${esc(name)}</h2><div class="preview"><img src="${src}" alt="Preview of ${esc(name)}"></div>
+    <div class="dlg-acts"><button class="btn pri" value="cancel">Done</button></div>`, async () => {});
+  $("#dlg").classList.add("wide");
+  $("#dlg").addEventListener("close", () => $("#dlg").classList.remove("wide"), { once: true });
+}
+document.addEventListener("click", (e) => {
+  const b = e.target.closest && e.target.closest(".th[data-thumb]");
+  if (!b) return;
+  e.preventDefault(); e.stopPropagation();
+  showPreview(b.dataset.tws, b.dataset.thumb, b.dataset.name);
+}, true);
+
+// ------------------------------------------------------------------ admin
+// Accounts that can administer something on their server get an Admin button, which opens that
+// server's admin pages signed in.
+
+state.admin = {};
+async function loadAdmin() {
+  await Promise.all(state.accounts.map(async (a) => {
+    try { state.admin[a.id] = await api(`/accounts/${a.id}/admin`); } catch (_) { /* offline: leave as it was */ }
+  }));
+  const any = state.accounts.filter((a) => state.admin[a.id] && state.admin[a.id].admin);
+  const nav = $(".nav [data-view=admin]");
+  if (nav) nav.hidden = !any.length;
+  renderAccounts();
+}
+function openAdmin(accountId) {
+  const a = state.accounts.find((x) => x.id === accountId);
+  if (!a) return;
+  return invoke("open_server_page", { accountId, path: "/admin" }) ?? window.open(`${a.server}/admin`);
+}
+
 // ------------------------------------------------------------------ loading
 
 async function load() {
   const conn = $("#conn");
   try {
     state.accounts = await api("/accounts");
+    loadAdmin();
     conn.textContent = state.accounts.length ? `Syncing on this computer` : "Not signed in yet";
     conn.classList.remove("bad");
   } catch (e) {
@@ -69,7 +190,7 @@ function renderHere() {
     const st = state.statuses[w.id];
     const n = st ? st.new.length + st.edited.length + st.deleted.length : 0;
     items.push(`<button data-ws="${esc(w.id)}" ${window.work && work.wsId === w.id && $("#v-work").classList.contains("on") ? 'aria-current="page"' : ""}>
-      <span>${esc(p.project.name)}</span>${n ? `<b title="${n} unpublished">${n}</b>` : ""}</button>`);
+      ${icon("folder")}<span>${esc(p.project.name)}</span>${n ? `<b title="${n} unpublished">${n}</b>` : ""}</button>`);
   }
   $("#here").innerHTML = items.length ? `<h3>On this computer</h3>${items.join("")}` : "";
 }
@@ -134,14 +255,14 @@ function projectRow({ g, p, ws, st, unpublished }) {
   const chips = [
     st && st.behind ? `<span class="chip newer">${st.behind} newer</span>` : "",
     unpublished ? `<span class="chip mine">${unpublished} unpublished</span>` : "",
-    p.project.claims ? `<span class="chip claims">${p.project.claims} claimed</span>` : "",
+    p.project.claims ? `<span class="chip claims">${icon("lock")}${p.project.claims} claimed</span>` : "",
   ].join("");
   return `<article class="proj ${open ? "open" : ""}" data-key="${esc(key)}">
     <div class="row" data-act="toggle" tabindex="0" role="button" aria-expanded="${open}">
       <div><strong>${esc(p.project.name)}</strong><small>Change ${p.project.head_change} · ${p.project.file_count} files · ${human(p.project.size)}</small></div>
       <div class="meter">${ws ? `<span>${human(ws.local_bytes)} of ${human(ws.total_bytes)} here</span><i><b style="width:${pct}%"></b></i>` : `<span>Not on this computer</span>`}</div>
       <div class="chips">${chips}</div>
-      <label class="switch" data-act="switch"><span>${ws ? "Syncing" : "Off"}</span><span role="switch" tabindex="0" aria-checked="${!!ws}" aria-label="Sync ${esc(p.project.name)} to this computer"></span></label>
+      <label class="switch" data-act="switch"><span>${ws ? "Enabled" : "Disabled"}</span><span role="switch" tabindex="0" aria-checked="${!!ws}" aria-label="Sync ${esc(p.project.name)} to this computer"></span></label>
     </div>
     ${open ? detail(g, p, ws) : ""}
   </article>`;
@@ -396,8 +517,12 @@ function renderAccounts() {
   loadNotifyPrefs();
   const ul = $("#accts");
   if (!state.accounts.length) { ul.innerHTML = `<li><div><strong>No accounts yet</strong><small>Add one with the form.</small></div></li>`; return; }
-  ul.innerHTML = state.accounts.map((a) => `<li><div><strong>${esc(a.label ? `${a.name}, ${a.label}` : a.name)}</strong><small>${esc(a.email)} · ${esc(a.server)}</small></div>
-    <button class="btn sm" data-signout="${esc(a.id)}">Sign out</button></li>`).join("");
+  ul.innerHTML = state.accounts.map((a) => {
+    const ad = state.admin[a.id];
+    const what = ad && ad.admin ? (ad.server_admin ? "Server admin" : `Admin of ${ad.orgs.map((o) => o.name).join(", ")}`) : "";
+    return `<li><div><strong>${esc(a.label ? `${a.name}, ${a.label}` : a.name)}</strong><small>${esc(a.email)} · ${esc(a.server)}${what ? ` · ${esc(what)}` : ""}</small></div>
+    <span class="acts">${ad && ad.admin ? `<button class="btn sm" data-admin="${esc(a.id)}">Admin</button>` : ""}<button class="btn sm" data-signout="${esc(a.id)}">Sign out</button></span></li>`;
+  }).join("");
 }
 
 // ------------------------------------------------------------------ updates (app only)
@@ -415,9 +540,10 @@ async function renderUpdate(force) {
 }
 
 $("#upd").addEventListener("click", async (e) => {
-  if (e.target.id === "upd-check") { e.target.textContent = "Checking…"; e.target.disabled = true; renderUpdate(true); }
-  if (e.target.id === "upd-go") {
-    e.target.disabled = true; e.target.textContent = "Updating…";
+  const t = e.target.closest("button") || e.target;
+  if (t.id === "upd-check") { t.textContent = "Checking…"; t.disabled = true; renderUpdate(true); }
+  if (t.id === "upd-go") {
+    t.disabled = true; t.textContent = "Updating…";
     try { await tauri.invoke("install_update"); } catch (err) { alert(String(err)); renderUpdate(); }
   }
 });
@@ -451,7 +577,9 @@ $("#login").addEventListener("submit", async (e) => {
 });
 
 $("#accts").addEventListener("click", async (e) => {
-  const id = e.target.dataset.signout;
+  const adm = e.target.closest("[data-admin]");
+  if (adm) return openAdmin(adm.dataset.admin);
+  const id = (e.target.closest("[data-signout]") || {}).dataset?.signout;
   if (!id) return;
   const a = state.accounts.find((x) => x.id === id);
   dialog(`<h2>Sign out of ${esc(a.email)}?</h2><p>Folders that use this account keep their files. They stop syncing until you sign in again.</p>
@@ -467,13 +595,22 @@ function showView(v) {
   if (v !== "work" && window.work) work.close();
   // A project's own look shows only inside it.
   if (v !== "work") MPTheme.applyChosen(null);
+  if (v === "accounts") renderAccounts();
   renderHere();
 }
 
-$(".nav").addEventListener("click", (e) => { const v = e.target.dataset.view; if (v) showView(v); });
+$(".nav").addEventListener("click", (e) => {
+  const v = (e.target.closest("button") || {}).dataset?.view;
+  if (v === "admin") {
+    // One account to administer: straight there. Several: pick on the Accounts page.
+    const mine = state.accounts.filter((a) => state.admin[a.id] && state.admin[a.id].admin);
+    return mine.length === 1 ? openAdmin(mine[0].id) : showView("accounts");
+  }
+  if (v) showView(v);
+});
 $("#here").addEventListener("click", (e) => { const b = e.target.closest("[data-ws]"); if (b) openWork(b.dataset.ws); });
 $("#filters").addEventListener("click", (e) => {
-  const f = e.target.dataset.f; if (!f) return;
+  const f = (e.target.closest("button") || {}).dataset?.f; if (!f) return;
   state.filter = f;
   document.querySelectorAll("#filters button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.f === f));
   renderProjects();
@@ -509,7 +646,7 @@ $("#list").addEventListener("keydown", (e) => {
 // whichever screen is open: what is happening, how much is done, how fast, and how long is left.
 
 const progress = { all: {}, timer: 0 };
-const VERB = { "get-latest": "Getting latest", publish: "Publishing", connect: "Syncing", draft: "Saving a draft" };
+const VERB = { "get-latest": "Getting latest", publish: "Publishing", connect: "Syncing", draft: "Saving a draft", export: "Exporting" };
 
 function nameFor(key) {
   const pid = key.startsWith("connect:") ? key.slice(8) : null;
@@ -533,7 +670,7 @@ function progressCard(key, p) {
     : p.files_total ? `${p.files_done.toLocaleString()} of ${p.files_total.toLocaleString()} files` : "";
   const speed = !p.finished && !wrapping && p.rate > 0 ? `${human(p.rate)}/s` : "";
   return `<li class="${p.finished ? "done" : ""}">
-    <div class="ptop"><b>${esc(VERB[p.op] || "Working on")}${name ? ` ${esc(name)}` : ""}</b><span>${frac === null ? "" : `${Math.floor(frac * 100)}%`}</span></div>
+    <div class="ptop"><b>${icon({ "get-latest": "cloud-download", publish: "cloud-upload", connect: "folder-sync", draft: "save", export: "archive" }[p.op] || "loader-circle")}${esc(VERB[p.op] || "Working on")}${name ? ` ${esc(name)}` : ""}</b><span>${frac === null ? "" : `${Math.floor(frac * 100)}%`}</span></div>
     <i class="pbar ${frac === null ? "wait" : ""}"><b style="width:${frac === null ? 100 : (frac * 100).toFixed(1)}%"></b></i>
     <div class="pmeta"><span>${esc(p.finished ? "Finished" : wrapping ? "Finishing" : p.phase)}</span><span>${[amount, speed, left !== null && left > 2 ? `about ${clock(left)} left` : ""].filter(Boolean).map(esc).join(" · ")}</span></div>
     ${p.current && !p.finished ? `<small title="${esc(p.current)}">${esc(p.current.split("/").pop())}</small>` : ""}

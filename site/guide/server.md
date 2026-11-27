@@ -44,6 +44,40 @@ You can add more named locations (`MP_STORAGE_LOCATIONS`), for example a NAS for
 and a bucket for finished ones, and move a project between them from **Admin > Projects** while
 people keep working.
 
+## Exporting and archiving
+
+When a project is delivered or finished, **Export…** in **Admin > Projects** writes one branch's
+files, as they are at that moment, either as plain files or as one `.zip`. People can keep working
+while it runs; later changes are not included. Tick **Archive the project when the export has
+finished** to close the project in the same step.
+
+By default exports go to the server's own exports folder, and a finished `.zip` can be downloaded
+from the same dialog (each download link works once, for ten minutes). `MP_EXPORT_FILES` in `.env`
+puts that folder on the host instead of in a Docker volume.
+
+To export straight to a NAS or a bucket, name more places in `MP_EXPORT_TARGETS`, written the same
+way as storage locations:
+
+```sh
+MP_EXPORT_TARGETS="delivery=s3:bucket=client-delivery;endpoint=https://<account>.r2.cloudflarestorage.com;region=auto nas=mount:/data/nas-exports"
+MP_STORAGE_DELIVERY_ACCESS_KEY_ID=...
+MP_STORAGE_DELIVERY_SECRET_ACCESS_KEY=...
+```
+
+A `mount:` folder is a path inside the server's container, so map it to the NAS in a
+`docker-compose.override.yml`; otherwise the files are lost when the container is updated:
+
+```yaml
+services:
+  server:
+    volumes:
+      - /mnt/nas/deliveries:/data/nas-exports
+```
+
+Anyone can also export a project to their own computer from the desktop app: **Export…** on a
+synced project writes the published files of that branch into a folder or a `.zip`, copying the
+files they already have and downloading the rest. Their unpublished edits are not included.
+
 ## Next steps
 
 - **[Backups](/docs/BACKUP)**: nightly backups of the database and all file data, with a tested

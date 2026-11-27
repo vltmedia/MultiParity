@@ -49,6 +49,9 @@ services:
       - ${MP_BACKUP_DIR:-backups}:/data/backups
       # The desktop app this server hands out and updates people to (docs/DESKTOP.md).
       - ${MP_DESKTOP_FILES:-desktop}:/data/desktop
+      # Project exports kept on this server (Admin > Projects > Export…); a host folder instead
+      # with MP_EXPORT_FILES=/srv/multiparity/exports.
+      - ${MP_EXPORT_FILES:-exports}:/data/exports
 
   db:
     image: postgres:17-alpine
@@ -112,6 +115,7 @@ volumes:
   blobs:
   backups:
   desktop:
+  exports:
   minio:
   caddy-data:
   caddy-config:

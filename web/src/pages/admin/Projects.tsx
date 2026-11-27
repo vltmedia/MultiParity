@@ -7,6 +7,7 @@ import { STORAGE_KIND_LABEL, movePercent, moveStatus, plural, since, size } from
 import { Dialog, Empty, ErrorNote, Loading, Parity, useAction, useUi } from '../../components/ui';
 import { AdminHead, useAdmin } from './AdminLayout';
 import ThemePicker from '../../components/ThemePicker';
+import ExportDialog from './ExportDialog';
 import { DEFAULT_THEMES, themeById } from '../../lib/theme';
 
 const KEEP: Array<[CheckpointSetting, string]> = [
@@ -33,6 +34,7 @@ export default function AdminProjects() {
   const [err, setErr] = useState('');
   const [showArchived, setShowArchived] = useState(false);
   const [stor, setStor] = useState<ProjectSummary | null>(null);
+  const [exp, setExp] = useState<ProjectSummary | null>(null);
   const [look, setLook] = useState<ProjectSummary | null>(null);
 
   const open = (e: Edit) => {
@@ -177,6 +179,7 @@ export default function AdminProjects() {
                       <button className="btn sm" onClick={() => setLook(p)}>Look…</button>
                       {orgs.length > 1 && <button className="btn sm" onClick={() => open({ kind: 'move', p })}>Move</button>}
                       {isServerAdmin && locations.length > 1 && <button className="btn sm" onClick={() => setStor(p)}>Change storage…</button>}
+                      <button className="btn sm" onClick={() => setExp(p)}>Export…</button>
                       {p.archived ? (
                         <button className="btn sm" disabled={busy === 'arch:' + p.id} onClick={() => restore(p)}>Restore</button>
                       ) : (
@@ -234,6 +237,7 @@ export default function AdminProjects() {
           </div>
         </Dialog>
       )}
+      {exp && <ExportDialog p={exp} onClose={() => setExp(null)} onArchived={() => list.reload()} />}
       {stor && (
         <StorageDialog
           p={stor}

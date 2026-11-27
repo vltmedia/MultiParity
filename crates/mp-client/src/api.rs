@@ -211,6 +211,19 @@ impl Api {
         }
     }
 
+    /// The server's JPEG of a published file (by content hash), small or large. `None` when the
+    /// server has no picture of it (not drawable, or not drawn yet).
+    pub async fn thumbnail(&self, project: &str, file_hash: &str, large: bool) -> Result<Option<Bytes>> {
+        let r = self.req(Method::GET, &format!("/projects/{project}/thumbs/{file_hash}{}", if large { "?size=large" } else { "" })).send().await?;
+        if r.status().is_success() {
+            Ok(Some(r.bytes().await?))
+        } else if r.status().is_client_error() || r.status() == reqwest::StatusCode::ACCEPTED {
+            Ok(None)
+        } else {
+            anyhow::bail!("the server answered {} for a thumbnail", r.status())
+        }
+    }
+
     pub async fn manifest(&self, project: &str, hash: &str) -> Result<mp_core::Manifest> {
         self.get(&format!("/projects/{project}/manifests/{hash}")).await
     }

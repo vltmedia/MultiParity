@@ -12,6 +12,7 @@ mod desktop;
 mod claims;
 mod drafts;
 mod events;
+mod exports;
 mod files;
 mod projects;
 pub mod storage;
@@ -26,6 +27,8 @@ pub fn router() -> Router<AppState> {
         .route("/desktop", get(desktop::info))
         .route("/desktop/update/:target/:arch/:current", get(desktop::update))
         .route("/desktop/files/:name", get(desktop::file))
+        // A finished export's .zip, by its one-time link (public: the token is the permission)
+        .route("/exports/:id/zip", get(exports::download))
         // Accounts
         .route("/auth/login", post(account::login))
         .route("/auth/logout", post(account::logout))
@@ -95,6 +98,9 @@ pub fn router() -> Router<AppState> {
         .route("/admin/projects", get(admin::list_projects))
         .route("/admin/projects/:p", patch(admin::update_project))
         .route("/admin/projects/:p/archive", post(admin::archive_project))
+        .route("/admin/projects/:p/exports", get(exports::list).post(exports::create))
+        .route("/admin/exports/:id/link", post(exports::link))
+        .route("/admin/export-targets", get(exports::targets))
         .route("/admin/projects/:p/restore", post(admin::restore_project))
         .route("/admin/projects/:p/access", get(admin::list_project_access).post(admin::set_project_access))
         .route("/admin/claims", get(admin::list_claims))

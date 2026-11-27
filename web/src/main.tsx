@@ -7,6 +7,8 @@ import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 // The theme layer comes after every page's own styles so theme settings win.
 import './styles/theme.css';
+import './styles/icons.css';
+import { startAutoIcons } from './lib/autoIcons';
 import { applySavedTheme } from './lib/theme';
 
 applySavedTheme();
@@ -18,3 +20,5 @@ createRoot(document.getElementById('root')!).render(
     </BrowserRouter>
   </StrictMode>,
 );
+
+startAutoIcons();

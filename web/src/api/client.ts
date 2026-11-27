@@ -1,6 +1,8 @@
 import { MOCK, loadMock } from './mode';
 import type {
   AdminOverview,
+  ExportTarget,
+  ProjectExport,
   AdminUser,
   AdminUserDetail,
   Branch,
@@ -316,6 +318,11 @@ export const api = {
     email: () => request<{ configured: boolean; kind?: string; via?: string; from?: string }>('GET', '/admin/email'),
     emailTest: () => request<{ sent_to: string }>('POST', '/admin/email/test'),
     backupNow: () => request<{ started: boolean }>('POST', '/admin/backups/run'),
+    exportTargets: () => request<ExportTarget[]>('GET', '/admin/export-targets'),
+    exports: (pid: string) => request<ProjectExport[]>('GET', `/admin/projects/${enc(pid)}/exports`),
+    startExport: (pid: string, body: { branch?: string; target: string; format: 'zip' | 'files'; archive_after: boolean }) =>
+      request<ProjectExport>('POST', `/admin/projects/${enc(pid)}/exports`, body),
+    exportLink: (id: string) => request<{ url: string }>('POST', `/admin/exports/${enc(id)}/link`),
     projectStorage: (pid: string) => request<ProjectStorage>('GET', `/admin/projects/${enc(pid)}/storage`),
     moveProjectStorage: (pid: string, to: string) =>
       request<StorageMove>('POST', `/admin/projects/${enc(pid)}/storage`, { to }),

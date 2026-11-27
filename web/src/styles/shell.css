@@ -99,3 +99,48 @@
 }
 .branch em { flex: none; }
 @media (max-width: 1180px) { .branch .lbl { display: none; } }
+
+/* Icons from data-ic (styles/icons.css): keep the label beside its icon and any count at the end. */
+nav a[data-ic] { justify-content: flex-start; }
+nav a[data-ic] > em { margin-left: auto; }
+.btn[data-ic] { display: inline-flex; align-items: center; justify-content: center; }
+nav a[data-ic]::before { opacity: .8; }
+nav a[data-ic].active::before, nav a[data-ic][aria-current=page]::before { opacity: 1; }
+
+/* Files: List / Size map switch. */
+.viewsw { display: inline-flex; border: 1px solid var(--line); border-radius: var(--r-btn); overflow: hidden; flex: none; }
+.viewsw button { display: inline-flex; align-items: center; gap: 6px; padding: 6px 11px; font-size: 13px; font-weight: 600; color: var(--mute); background: transparent; }
+.viewsw button + button { border-left: 1px solid var(--line); }
+.viewsw button[aria-pressed=true] { color: var(--accink); background: var(--acc); }
+.viewsw button[data-ic]::before { width: 1em; height: 1em; margin-right: 0; }
+
+/* Size map (components/SizeMap.tsx; the desktop app has the same in treemap.js): files as shaded blocks sized by bytes, framed by their folders. */
+.tmap { position: relative; width: 100%; aspect-ratio: 16 / 9; background: var(--line2); border: 1px solid var(--line); border-radius: var(--r-small, 4px); overflow: hidden; user-select: none; }
+.tm-dir, .tm-file { position: absolute; box-sizing: border-box; }
+.tm-dir { border: 1px solid color-mix(in srgb, var(--ink) 25%, transparent); cursor: zoom-in; }
+.tm-dir.d0 { background: color-mix(in srgb, var(--ink) 5%, transparent); }
+.tm-dir:hover { border-color: var(--acc); }
+.tm-dir span { display: flex; align-items: center; gap: 4px; height: 22px; padding: 0 6px; font-size: 11.5px; font-weight: 700; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tm-dir span i { font-style: normal; font-weight: 500; color: var(--mute); margin-left: 4px; }
+.tm-file { border: 1px solid rgba(0, 0, 0, .28); cursor: pointer;
+  background: radial-gradient(ellipse at 30% 25%, color-mix(in srgb, var(--c) 45%, white) 0%, var(--c) 55%, color-mix(in srgb, var(--c) 65%, black) 100%); }
+.tm-file:hover { outline: 2px solid var(--acc); outline-offset: -1px; z-index: 2; }
+.tm-file span { display: block; padding: 3px 6px; font-size: 11px; font-weight: 600; color: #fff; text-shadow: 0 1px 2px rgba(0, 0, 0, .65); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tm-file span i { display: block; font-style: normal; font-weight: 500; opacity: .85; }
+.tm-file.more { cursor: default; border-color: var(--line); background: repeating-linear-gradient(45deg, var(--line) 0 3px, transparent 3px 7px); }
+.tm-legend { list-style: none; display: flex; flex-wrap: wrap; gap: 6px 18px; padding: 0; margin: 12px 0 0; font-size: 13px; color: var(--mute); }
+.tm-legend i { display: inline-block; width: 12px; height: 12px; margin-right: 6px; vertical-align: -1px; border-radius: 3px; background: var(--c); }
+.tm-legend b { color: var(--ink); font-weight: 600; }
+.crumb .tools { display: flex; gap: 8px; align-items: center; margin-left: auto; }
+
+/* Admin > Projects > Export… */
+ul.exports { list-style: none; margin: 8px 0 0; padding: 0; border: 1px solid var(--line); }
+ul.exports li { display: flex; gap: 14px; align-items: center; justify-content: space-between; padding: 10px 12px; border-top: 1px solid var(--line2); }
+ul.exports li:first-child { border-top: 0; }
+ul.exports .what { min-width: 0; display: grid; gap: 3px; flex: 1; }
+ul.exports .what strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+ul.exports .what small { color: var(--mute); }
+ul.exports .what small.bad { color: var(--warn, #d9534f); }
+ul.exports .acts { display: flex; gap: 8px; align-items: center; flex: none; }
+ul.exports .pbar { display: block; height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; margin: 4px 0 2px; }
+ul.exports .pbar b { display: block; height: 100%; background: var(--acc); transition: width .3s; }

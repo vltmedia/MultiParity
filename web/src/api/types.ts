@@ -490,3 +490,29 @@ export type IgnoreChoice = {
   bytes: number;
   tracked: number;
 };
+
+// ---------- Exports ----------
+
+export type ExportTarget = { name: string; description: string; kind: 'local' | 'mount' | 's3'; downloadable: boolean };
+
+export type ProjectExport = {
+  id: Id;
+  project_id: Id;
+  branch_id: Id;
+  branch_name?: string;
+  change: number;
+  target: string;
+  format: 'zip' | 'files';
+  name: string;
+  archive_after: boolean;
+  status: 'queued' | 'running' | 'done' | 'failed';
+  files_total: number;
+  files_done: number;
+  bytes_total: number;
+  bytes_done: number;
+  error?: string | null;
+  created_at: Time;
+  finished_at?: Time | null;
+  created_by?: UserRef | null;
+  downloadable: boolean;
+};

@@ -9,6 +9,7 @@ pub mod chunks;
 pub mod email;
 pub mod error;
 pub mod events;
+pub mod export;
 pub mod limits;
 pub mod models;
 pub mod routes;
@@ -133,6 +134,7 @@ pub async fn serve(config: Config) -> Result<()> {
         backup::spawn_scheduler(state.clone(), b);
     }
     thumbs::spawn_worker(state.clone());
+    export::fail_interrupted(&state.db).await;
     webhooks::spawn(state.clone());
     let listener = tokio::net::TcpListener::bind(&listen).await.with_context(|| format!("binding {listen}"))?;
     axum::serve(listener, app.into_make_service_with_connect_info::<std::net::SocketAddr>()).with_graceful_shutdown(shutdown()).await?;

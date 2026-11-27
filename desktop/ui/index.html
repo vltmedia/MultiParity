@@ -22,7 +22,7 @@
     <nav class="nav" aria-label="Sections">
       <button data-view="projects" aria-current="page">Projects</button>
       <button data-view="accounts">Accounts</button>
-      <button data-view="look">Look</button>
+      <button data-view="admin" hidden>Admin</button>
     </nav>
     <nav class="here" id="here" aria-label="Projects on this computer"></nav>
     <div class="totals" id="totals"></div>
@@ -50,14 +50,9 @@
 
     <section class="view" id="v-work" aria-live="polite"></section>
 
-    <section class="view" id="v-look">
-      <header class="head"><div><h1>Look</h1><p>Choose how MultiParity looks on this computer. It changes right away and only for you.</p></div></header>
-      <div class="filters" id="look-filters" role="toolbar" aria-label="Filter themes"></div>
-      <div class="looks" id="looks"></div>
-    </section>
 
     <section class="view" id="v-accounts">
-      <header class="head"><div><h1>Accounts</h1><p>Sign in to as many servers and accounts as you need. Each project remembers which one it uses.</p></div></header>
+      <header class="head"><div><h1>Accounts</h1><p>Sign in to as many servers and accounts as you need, and choose how the app looks.</p></div></header>
       <div class="cols">
         <div class="panel">
           <h2>Signed in on this computer</h2>
@@ -78,6 +73,12 @@
           <button class="btn pri" type="submit">Sign in</button>
         </form>
       </div>
+      <section class="panel look-panel" aria-labelledby="look-h">
+        <h2 id="look-h">Look</h2>
+        <p class="note">How MultiParity looks on this computer. It changes right away and only for you. A project can have its own look, shown while it is open.</p>
+        <div class="filters" id="look-filters" role="toolbar" aria-label="Filter themes"></div>
+        <div class="looks" id="looks"></div>
+      </section>
     </section>
   </main>
 </div>
@@ -86,8 +87,10 @@
 <ul class="ctx" id="ctx" role="menu" hidden></ul>
 <div class="pdock" id="pdock" aria-live="polite" aria-label="Work in progress" hidden></div>
 <div class="toast" id="toast" role="status" hidden></div>
+<script src="icons.js"></script>
 <script src="app.js"></script>
 <script src="work.js"></script>
+<script src="treemap.js"></script>
 <script src="project.js"></script>
 <script src="look.js"></script>
 </body>

@@ -230,6 +230,16 @@ impl BlobStore {
         }
     }
 
+    /// The object store itself, for streaming writes (exports).
+    pub fn object_store(&self) -> &Arc<dyn ObjectStore> {
+        &self.inner
+    }
+
+    /// A relative path with this location's prefix in front (S3 prefix), as a plain string.
+    pub fn prefixed(&self, rel: &str) -> String {
+        if self.prefix.is_empty() { rel.to_string() } else { format!("{}/{}", self.prefix, rel) }
+    }
+
     /// Plain objects by relative path (backups use these alongside chunk copies).
     pub async fn put_raw(&self, rel: &str, data: Bytes) -> Result<(), object_store::Error> {
         self.inner.put(&self.raw_path(rel), PutPayload::from(data)).await.map(|_| ())

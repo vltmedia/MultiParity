@@ -25,7 +25,7 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
 
 FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl tini && rm -rf /var/lib/apt/lists/* \
- && useradd --system --uid 10001 --home /data multiparity && mkdir -p /data/blobs /data/backups /data/desktop && chown -R multiparity /data
+ && useradd --system --uid 10001 --home /data multiparity && mkdir -p /data/blobs /data/backups /data/desktop /data/exports && chown -R multiparity /data
 COPY --from=build /out/mp-server /out/mp /usr/local/bin/
 COPY --from=web /web/dist /app/web
 ENV MP_LISTEN=0.0.0.0:18500 \

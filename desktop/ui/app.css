@@ -159,7 +159,7 @@ dialog .pathrow input { flex: 1; border: var(--bw) solid var(--btn-line); paddin
 .files li:hover { background: color-mix(in srgb, var(--ink) 4%, transparent); }
 .files li.off { opacity: .5; }
 .files li.stale { box-shadow: inset 4px 0 var(--warn); }
-.files input[type=checkbox], .pick input, .check input { appearance: none; width: 18px; height: 18px; border: var(--bw) solid var(--ink); border-radius: var(--r-ck); background: var(--card); display: grid; place-items: center; cursor: pointer; flex: none; }
+.files input[type=checkbox], .pick input, .check input { appearance: none; box-sizing: border-box; padding: 0; margin: 0; width: 18px; height: 18px; border: var(--bw) solid var(--ink); border-radius: var(--r-ck); background: var(--card); display: grid; place-items: center; cursor: pointer; flex: none; }
 .files input:checked, .pick input:checked, .check input:checked { background: var(--ink); }
 .files input:checked::after, .pick input:checked::after, .check input:checked::after { content: ""; width: 9px; height: 5px; border: 2px solid #fff; border-top: 0; border-right: 0; transform: rotate(-45deg) translate(1px, -1px); border-color: var(--toast-ink); }
 .tag { font-size: 12px; font-weight: 700; text-align: center; padding: 1px 0; border: 1px solid currentColor; border-radius: var(--r-btn); }
@@ -209,7 +209,7 @@ dialog .pathrow input { flex: 1; border: var(--bw) solid var(--btn-line); paddin
 .versions .what { min-width: 0; }
 .versions .acts { display: flex; gap: 6px; }
 .choices label { display: grid; grid-template-columns: 18px 1fr auto; gap: 10px; align-items: center; padding: 9px 4px; border-top: 1px solid var(--line); cursor: pointer; }
-.choices input { appearance: none; width: 18px; height: 18px; border: var(--bw) solid var(--ink); border-radius: var(--r-ck); background: var(--card); display: grid; place-items: center; }
+.choices input { appearance: none; box-sizing: border-box; padding: 0; margin: 0; width: 18px; height: 18px; border: var(--bw) solid var(--ink); border-radius: var(--r-ck); background: var(--card); display: grid; place-items: center; }
 .choices input:checked::after { content: ""; width: 8px; height: 8px; background: var(--ink); }
 .choices strong { display: block; font-weight: 600; font-size: 14px; }
 .choices code { font-size: 12.5px; color: var(--mute); }
@@ -327,3 +327,94 @@ dialog .pathrow input { flex: 1; border: var(--bw) solid var(--btn-line); paddin
 .look-split { display: grid; overflow: hidden; }
 .look-split > .look-art { grid-area: 1 / 1; }
 .look-split > .look-art:last-child { clip-path: polygon(62% 0, 100% 0, 100% 100%, 38% 100%); }
+
+/* Icons (icons.js, Lucide): drawn in the text colour at the text's size, so every theme colours
+   them. A theme can thin or thicken them with --icon-stroke. */
+.ic { width: 1.1em; height: 1.1em; flex: none; vertical-align: -0.2em; stroke-width: var(--icon-stroke, 2); }
+.btn .ic, .link .ic, .back .ic { margin-right: .45em; }
+.btn.sm .ic { width: 1.05em; height: 1.05em; margin-right: .4em; }
+.nav button, .tabs [role=tab], #filters button { display: inline-flex; align-items: center; gap: .5em; }
+.nav button { display: flex; }
+.nav button .ic { width: 1.15em; height: 1.15em; opacity: .85; }
+.nav button[aria-current=page] .ic { opacity: 1; }
+.here button { align-items: center; }
+.here button .ic { width: 1em; height: 1em; margin-right: -2px; opacity: .8; }
+.here button span { flex: 1; }
+#ctx li { display: flex; align-items: center; gap: .6em; }
+#ctx li .ic { color: var(--mute); }
+.tag { display: inline-flex; align-items: center; justify-content: center; gap: .3em; }
+.tag .ic { width: .95em; height: .95em; stroke-width: 2.5; }
+.meta em { display: inline-flex; align-items: center; gap: .3em; }
+.meta em .ic { width: 1em; height: 1em; }
+.name strong .ic.kind { margin-right: .5em; color: var(--mute); }
+.flist .ic.kind { width: 20px; height: 20px; color: var(--mute); }
+.flist .ic.kind.folder { color: var(--acc); }
+.more { display: inline-flex; align-items: center; justify-content: center; }
+.more .ic { width: 1.2em; height: 1.2em; }
+.accts .acts { display: flex; gap: 8px; }
+.pdock .ptop b { display: inline-flex; align-items: center; gap: .45em; }
+.pdock .ptop b .ic { color: var(--acc); }
+.look-panel { margin-top: 24px; }
+.look-panel .note { margin: 6px 0 14px; }
+.chip { display: inline-flex; align-items: center; gap: .35em; } .chip .ic { width: 1em; height: 1em; }
+.nav button[hidden] { display: none; }
+.two .btn { padding-left: 8px; padding-right: 8px; white-space: nowrap; }
+
+/* Thumbnails (from the daemon) and the large preview. */
+.th { width: 40px; height: 40px; flex: none; display: inline-grid; place-items: center; overflow: hidden; border-radius: var(--r-small, 4px); background: var(--line2); border: 1px solid var(--line); padding: 0; cursor: zoom-in; }
+.th img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.th.none { cursor: default; background: transparent; border-color: transparent; color: var(--mute); }
+.th.none .ic { width: 20px; height: 20px; }
+button.th:hover, button.th:focus-visible { border-color: var(--acc); outline: none; }
+.files .name, .flist li .name { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.files .name > div, .flist li .name > div { min-width: 0; }
+.files .name strong, .files .name small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.flist li { grid-template-columns: 40px minmax(0, 1fr) 80px 150px 28px; }
+.flist li .th.none .ic.folder, .flist .ic.kind.folder { width: 22px; height: 22px; color: var(--acc); }
+.versions li { grid-template-columns: 40px 110px 1fr auto; }
+dialog.wide { width: min(1100px, 94vw); }
+.preview { display: grid; place-items: center; background: var(--line2); border: 1px solid var(--line); border-radius: var(--r-small, 4px); min-height: 240px; max-height: 70vh; overflow: hidden; }
+.preview img { max-width: 100%; max-height: 70vh; min-width: min(100%, 420px); object-fit: contain; display: block; }
+dialog:has(.versions) { width: min(920px, 94vw); }
+
+/* Your work: find, filter, sort and select before publishing. */
+.wtools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 4px 0 10px; }
+.wtools .search.sm { flex: 1 1 220px; }
+.wtools .search.sm input { width: 100%; }
+.wtools .sel select { border: var(--bw) solid var(--btn-line); background: var(--card); padding: 7px 10px; font-size: 13.5px; border-radius: var(--r-btn); }
+.wshow { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.wshow button { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; font-size: 13px; font-weight: 600; border: 1px solid var(--line); border-radius: 999px; color: var(--mute); background: transparent; }
+.wshow button b { font-size: 11.5px; font-weight: 700; color: inherit; opacity: .8; font-variant-numeric: tabular-nums; }
+.wshow button:hover { color: var(--ink); border-color: var(--ink); }
+.wshow button[aria-pressed=true] { color: var(--accink); background: var(--acc); border-color: var(--acc); }
+.wsel { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; font-size: 13px; color: var(--mute); margin-bottom: 8px; }
+.wsel > span { margin-right: auto; font-variant-numeric: tabular-nums; }
+.wsel .link { font-size: 13px; display: inline-flex; align-items: center; }
+.wsel .link:disabled { opacity: .4; cursor: default; }
+
+/* Files: List / Size map switch. */
+.viewsw { display: inline-flex; border: 1px solid var(--line); border-radius: var(--r-btn); overflow: hidden; flex: none; }
+.viewsw button { display: inline-flex; align-items: center; gap: 6px; padding: 6px 11px; font-size: 13px; font-weight: 600; color: var(--mute); background: transparent; }
+.viewsw button + button { border-left: 1px solid var(--line); }
+.viewsw button[aria-pressed=true] { color: var(--accink); background: var(--acc); }
+.viewsw .ic { width: 1em; height: 1em; }
+
+/* Size map (treemap.js): files as shaded blocks sized by bytes, framed by their folders. */
+.tmap { position: relative; width: 100%; aspect-ratio: 16 / 9; background: var(--line2); border: 1px solid var(--line); border-radius: var(--r-small, 4px); overflow: hidden; user-select: none; }
+.tm-dir, .tm-file { position: absolute; box-sizing: border-box; }
+.tm-dir { border: 1px solid color-mix(in srgb, var(--ink) 25%, transparent); cursor: zoom-in; }
+.tm-dir.d0 { background: color-mix(in srgb, var(--ink) 5%, transparent); }
+.tm-dir:hover { border-color: var(--acc); }
+.tm-dir span { display: flex; align-items: center; gap: 4px; height: 22px; padding: 0 6px; font-size: 11.5px; font-weight: 700; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tm-dir span .ic { width: 12px; height: 12px; flex: none; color: var(--acc); }
+.tm-dir span i { font-style: normal; font-weight: 500; color: var(--mute); margin-left: 4px; }
+.tm-file { border: 1px solid rgba(0, 0, 0, .28); cursor: pointer;
+  background: radial-gradient(ellipse at 30% 25%, color-mix(in srgb, var(--c) 45%, white) 0%, var(--c) 55%, color-mix(in srgb, var(--c) 65%, black) 100%); }
+.tm-file:hover { outline: 2px solid var(--acc); outline-offset: -1px; z-index: 2; }
+.tm-file span { display: block; padding: 3px 6px; font-size: 11px; font-weight: 600; color: #fff; text-shadow: 0 1px 2px rgba(0, 0, 0, .65); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tm-file span i { display: block; font-style: normal; font-weight: 500; opacity: .85; }
+.tm-file.more { cursor: default; border-color: var(--line); background: repeating-linear-gradient(45deg, var(--line) 0 3px, transparent 3px 7px); }
+.tm-legend { list-style: none; display: flex; flex-wrap: wrap; gap: 6px 18px; padding: 0; margin: 12px 0 0; font-size: 13px; color: var(--mute); }
+.tm-legend i { display: inline-block; width: 12px; height: 12px; margin-right: 6px; vertical-align: -1px; border-radius: 3px; background: var(--c); }
+.tm-legend b { color: var(--ink); font-weight: 600; }
+.ftools .viewsw { margin-left: 8px; }

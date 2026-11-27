@@ -15,6 +15,9 @@ var work = {
   busy: null,
   timer: null,
   tab: "work", // work, files, history, branches, drafts (project.js)
+  // How Your work is shown: search, which changes, which kinds of file, and the order.
+  view: { q: "", show: "all", type: "all", sort: "folder" },
+  lastTick: null, // for shift-click ranges
   close() {
     clearInterval(this.timer);
     this.timer = null;
@@ -57,6 +60,56 @@ function files() {
 }
 
 const ticked = () => files().filter((f) => !work.left.has(f.path));
+
+// File types for the filter, from the same extension table as the icons.
+const TYPE_OF = { "file-image": "image", "file-box": "3d", "file-audio": "audio", "file-video": "video", "file-code": "code", "file-text": "text", "file-archive": "other", file: "other" };
+const TYPE_LABEL = { all: "All types", image: "Images", "3d": "3D scenes", audio: "Audio", video: "Video", code: "Code", text: "Text", other: "Other" };
+const typeOf = (f) => TYPE_OF[kindIcon(f.path)] || "other";
+const SORTS = { folder: "Folder", name: "Name", size: "Size, largest first", change: "Kind of change" };
+const CHANGE_ORDER = ["new", "edited", "deleted"];
+
+/** The changes as shown: searched, filtered and sorted. Ticks are kept on hidden files too. */
+function visible() {
+  const v = work.view;
+  const q = v.q.trim().toLowerCase();
+  const list = files().filter((f) =>
+    (!q || f.path.toLowerCase().includes(q)) &&
+    (v.show === "all" || (v.show === "ticked" ? !work.left.has(f.path) : v.show === "unticked" ? work.left.has(f.path) : f.kind === v.show)) &&
+    (v.type === "all" || typeOf(f) === v.type));
+  const by = {
+    folder: (a, b) => dirName(a.path).localeCompare(dirName(b.path)) || baseName(a.path).localeCompare(baseName(b.path)),
+    name: (a, b) => baseName(a.path).localeCompare(baseName(b.path)) || a.path.localeCompare(b.path),
+    size: (a, b) => (b.size || 0) - (a.size || 0) || a.path.localeCompare(b.path),
+    change: (a, b) => CHANGE_ORDER.indexOf(a.kind) - CHANGE_ORDER.indexOf(b.kind) || a.path.localeCompare(b.path),
+  }[v.sort] || (() => 0);
+  return list.sort(by);
+}
+const filtering = () => !!(work.view.q.trim() || work.view.show !== "all" || work.view.type !== "all");
+
+function toolsHtml(all, vis, on) {
+  if (all.length < 2) return "";
+  const v = work.view;
+  const n = (k) => all.filter((f) => f.kind === k).length;
+  const shows = [["all", "All", all.length], ["new", "New", n("new")], ["edited", "Edited", n("edited")], ["deleted", "Deleted", n("deleted")], ["ticked", "Ticked", on.length], ["unticked", "Unticked", all.length - on.length]]
+    .filter(([k, , c]) => k === "all" || c > 0 || v.show === k);
+  const types = Object.keys(TYPE_LABEL).filter((t) => t === "all" || all.some((f) => typeOf(f) === t));
+  const visOn = vis.filter((f) => !work.left.has(f.path)).length;
+  const typeOpt = (t) => `<option value="${t}" ${v.type === t ? "selected" : ""}>${TYPE_LABEL[t]}${t === "all" ? "" : ` (${all.filter((f) => typeOf(f) === t).length})`}</option>`;
+  const sortOpt = ([k, l]) => `<option value="${k}" ${v.sort === k ? "selected" : ""}>Sort: ${l}</option>`;
+  return `<div class="wtools">
+      <label class="search sm"><span class="sr">Find in your changes</span><input id="w-q" type="search" placeholder="Find in your changes" value="${esc(v.q)}"></label>
+      <label class="sel"><span class="sr">File type</span><select id="w-type">${types.map(typeOpt).join("")}</select></label>
+      <label class="sel"><span class="sr">Sort by</span><select id="w-sort">${Object.entries(SORTS).map(sortOpt).join("")}</select></label>
+    </div>
+    <div class="wshow" role="group" aria-label="Show">${shows.map(([k, l, c]) => `<button type="button" data-w="show" data-v="${k}" aria-pressed="${v.show === k}">${l}<b>${c}</b></button>`).join("")}</div>
+    <div class="wsel">
+      <span>${on.length} of ${all.length} ticked${filtering() ? ` · showing ${vis.length}` : ""}</span>
+      ${filtering()
+        ? `<button class="link" data-w="sel-vis" ${visOn === vis.length ? "disabled" : ""}>Select all visible</button><button class="link" data-w="clear-vis" ${visOn ? "" : "disabled"}>Clear visible</button><button class="link" data-w="reset-view">Show everything</button>`
+        : ""}
+      <button class="link" data-w="sel-all" ${on.length === all.length ? "disabled" : ""}>Select all</button><button class="link" data-w="clear-all" ${on.length ? "" : "disabled"}>Clear all</button>
+    </div>`;
+}
 
 // ------------------------------------------------------------------ opening
 
@@ -113,7 +166,13 @@ function renderWork() {
   const st = work.status;
   const all = files();
   const on = ticked();
+  const vis = visible();
   const bytes = on.reduce((a, f) => a + (f.kind === "deleted" ? 0 : f.size), 0);
+  // Ticked files the filters hide still go: say so beside Publish.
+  const hiddenOn = filtering() ? on.length - vis.filter((f) => !work.left.has(f.path)).length : 0;
+  const wq = $("#w-q");
+  const wqFocused = wq && document.activeElement === wq;
+  const wqPos = wq ? wq.selectionStart : null;
 
   v.innerHTML = `
     <header class="head">
@@ -126,6 +185,7 @@ function renderWork() {
         <button class="btn ${st && st.behind ? "pri" : ""}" data-w="latest" ${work.busy ? "disabled" : ""}>${work.busy === "latest" ? "Getting latest…" : st && st.behind ? `Get latest (${st.behind} newer)` : "Get latest"}</button>
         <button class="btn" data-w="web">Open on the web</button>
         <button class="btn" data-w="move-folder">Move folder…</button>
+        <button class="btn" data-w="export">Export…</button>
       </div>
     </header>
     ${work.error ? `<div class="notice bad">${esc(work.error)}</div>` : ""}
@@ -137,15 +197,16 @@ function renderWork() {
         <div class="bar">
           <h2>Your changes</h2>
           <span>${st ? (all.length ? `${plural(all.length, "file")}${st.ignored ? `, ${st.ignored} ignored` : ""}` : "") : "Reading your folder…"}</span>
-          ${all.length > 1 ? `<button class="link" data-w="all">${work.left.size ? "Tick all" : "Untick all"}</button>` : ""}
         </div>
+        ${toolsHtml(all, vis, on)}
         ${st && !all.length ? `<div class="empty"><b>Nothing to publish.</b>Edits, new files and deletions in ${esc(work.ws.root)} show up here by themselves.</div>` : ""}
-        <ul class="files">${all.map(fileRow).join("")}</ul>
+        ${all.length && !vis.length ? `<div class="empty"><b>No changes match.</b>Try another search, or <button class="link" data-w="reset-view">show everything</button>.</div>` : ""}
+        <ul class="files">${vis.map(fileRow).join("")}</ul>
         ${all.length ? `<p class="note">Right-click a file for more: discard it, or leave it out of checkpoints.</p>` : ""}
       </section>
       <aside class="publish" aria-label="Publish">
         <h2>Publish</h2>
-        <p class="note">${!all.length ? "Nothing to send yet." : on.length ? `${plural(on.length, "file")} going to ${esc(work.ws.branch_name)}, ${human(bytes)} to send.` : "Nothing ticked. Tick the files you want to publish."}</p>
+        <p class="note">${!all.length ? "Nothing to send yet." : on.length ? `${plural(on.length, "file")} going to ${esc(work.ws.branch_name)}, ${human(bytes)} to send.${hiddenOn ? ` ${plural(hiddenOn, "ticked file")} ${hiddenOn === 1 ? "is" : "are"} hidden by your filters and still ${hiddenOn === 1 ? "goes" : "go"}.` : ""}` : "Nothing ticked. Tick the files you want to publish."}</p>
         <label class="sr" for="w-msg">Say what you changed</label>
         <textarea id="w-msg" placeholder="Say what you changed" ${all.length ? "" : "disabled"}>${esc(work.message)}</textarea>
         ${conflictHtml()}
@@ -159,6 +220,8 @@ function renderWork() {
     </div>
     ${checkpointsHtml()}`}`;
 
+  const wq2 = $("#w-q");
+  if (wq2 && wqFocused) { wq2.focus(); const at = wqPos ?? wq2.value.length; wq2.setSelectionRange(at, at); }
   const m = $("#w-msg");
   if (m && focused) { m.focus(); m.setSelectionRange(m.value.length, m.value.length); }
   const q2 = $("#p-q");
@@ -171,10 +234,10 @@ function fileRow(f) {
   const stale = work.conflict && work.conflict.stale.includes(f.path);
   return `<li class="${off ? "off" : ""} ${stale ? "stale" : ""}" data-path="${esc(f.path)}" data-kind="${f.kind}" tabindex="0">
     <input type="checkbox" data-w="tick" aria-label="Publish ${esc(baseName(f.path))}" ${off ? "" : "checked"}>
-    <span class="tag ${f.kind}">${label}</span>
-    <div class="name"><strong>${esc(baseName(f.path))}</strong><small>${esc(dirName(f.path) || "Top folder")}</small></div>
-    <span class="meta">${f.claimed ? `<em>Claimed</em>` : ""}${f.kind === "deleted" ? "" : human(f.size)}</span>
-    <button class="more" data-w="menu" aria-label="More for ${esc(baseName(f.path))}" aria-haspopup="menu">···</button>
+    <span class="tag ${f.kind}">${icon(f.kind === "new" ? "plus" : f.kind === "deleted" ? "minus" : "pencil")}${label}</span>
+    <div class="name">${f.kind === "deleted" ? `<span class="th none">${icon(kindIcon(f.path))}</span>` : thumbHtml(work.wsId, f.path)}<div><strong>${esc(baseName(f.path))}</strong><small>${esc(dirName(f.path) || "Top folder")}</small></div></div>
+    <span class="meta">${f.claimed ? `<em>${icon("lock")}Claimed</em>` : ""}${f.kind === "deleted" ? "" : human(f.size)}</span>
+    <button class="more" data-w="menu" aria-label="More for ${esc(baseName(f.path))}" aria-haspopup="menu">${icon("ellipsis")}</button>
   </li>`;
 }
 
@@ -355,6 +418,31 @@ async function patternDialog(path, kind) {
     });
 }
 
+/** Export the branch's published files to a folder or .zip on this computer. */
+function exportDialog() {
+  dialog(`<h2>Export ${esc(work.project.name)}</h2>
+    <p class="note">The files published on ${esc(work.ws.branch_name)}, as they are now, into a folder on this computer. Your unpublished edits are not included. Files you already have are copied from your folder; the rest are downloaded.</p>
+    <div class="pathrow"><input id="ex-into" placeholder="Folder to export into, such as D:\\Deliveries" aria-label="Folder to export into"><button class="btn" value="pick">Choose…</button></div>
+    <ul class="choices">
+      <li><label><input type="radio" name="ex-fmt" value="zip" checked><span><strong>One .zip file</strong></span><small>Easy to send or keep</small></label></li>
+      <li><label><input type="radio" name="ex-fmt" value="files"><span><strong>A folder of files</strong></span><small>As they are in the project</small></label></li>
+    </ul>
+    <p class="err" id="ex-err" role="alert"></p>
+    <div class="dlg-acts"><button class="btn" value="cancel">Cancel</button><button class="btn pri" value="go">Export</button></div>`,
+    async (what, body, dlg) => {
+      const input = $("#ex-into", body);
+      if (what === "pick") { const f = await invoke("pick_folder", { start: input.value || null }); if (f) input.value = f; return; }
+      const into = input.value.trim();
+      if (!into) { $("#ex-err", body).textContent = "Choose a folder first."; return; }
+      const zip = body.querySelector('input[name="ex-fmt"]:checked').value === "zip";
+      dlg.close();
+      try {
+        const r = await api(`/workspaces/${work.wsId}/export`, { method: "POST", body: JSON.stringify({ into, zip }) });
+        toast(`Exported ${plural(r.files, "file")}, ${human(r.bytes)}, to ${r.path}.`);
+      } catch (e) { toast(e.message, true); }
+    });
+}
+
 async function spaceDialog() {
   let r;
   try { r = await api(`/workspaces/${work.wsId}/space`); } catch (e) { toast(e.message, true); return; }
@@ -380,6 +468,7 @@ async function versionsDialog(path) {
     const gone = v.op === "delete";
     const elsewhere = v.branch_id !== work.ws.branch_id;
     return `<li class="${v.current ? "cur" : ""}">
+      ${gone ? `<span class="th none">${icon("trash-2")}</span>` : thumbHtml(work.wsId, path, v.file_hash, { onDisk: false })}
       <div class="when"><strong>Change ${v.change}</strong><small>${esc(ago(v.created_at))}</small></div>
       <div class="what"><strong>${esc(v.message)}</strong><small>${esc(who)} · ${gone ? "deleted it" : human(v.size)}${elsewhere ? ` · on ${esc(v.branch_name)}` : ""}${v.current ? " · the latest" : ""}</small></div>
       <div class="acts">${gone ? "" : `
@@ -439,7 +528,7 @@ function showMenu(items, x, y, back) {
   const w = ul.offsetWidth, h = ul.offsetHeight;
   ul.style.left = `${Math.min(x, innerWidth - w - 8)}px`;
   ul.style.top = `${Math.min(y, innerHeight - h - 8)}px`;
-  ul.onclick = (e) => { const i = e.target.dataset.i; if (i !== undefined) { closeMenu(); items[+i][1](); } };
+  ul.onclick = (e) => { const i = (e.target.closest("li") || {}).dataset?.i; if (i !== undefined) { closeMenu(); items[+i][1](); } };
   ul.onkeydown = (e) => {
     const all = [...ul.children]; const at = all.indexOf(document.activeElement);
     if (e.key === "ArrowDown") { e.preventDefault(); all[(at + 1) % all.length].focus(); }
@@ -459,14 +548,38 @@ window.addEventListener("blur", closeMenu);
 
 // ------------------------------------------------------------------ wiring
 
-$("#v-work").addEventListener("input", (e) => { if (e.target.id === "w-msg") work.message = e.target.value; });
+$("#v-work").addEventListener("input", (e) => {
+  if (e.target.id === "w-msg") work.message = e.target.value;
+  if (e.target.id === "w-q") { work.view.q = e.target.value; renderWork(); }
+});
+$("#v-work").addEventListener("change", (e) => {
+  if (e.target.id === "w-type") { work.view.type = e.target.value; renderWork(); }
+  if (e.target.id === "w-sort") { work.view.sort = e.target.value; renderWork(); }
+});
 
 $("#v-work").addEventListener("click", (e) => {
   const el = e.target.closest("[data-w]");
   if (!el) return;
   const what = el.dataset.w;
   const li = el.closest("li[data-path]");
-  if (what === "tick") { const p = li.dataset.path; el.checked ? work.left.delete(p) : work.left.add(p); renderWork(); return; }
+  if (what === "tick") {
+    const p = li.dataset.path;
+    // Shift-click: the whole range since the last tick takes this state.
+    const vis = visible().map((f) => f.path);
+    const from = work.lastTick ? vis.indexOf(work.lastTick) : -1;
+    const to = vis.indexOf(p);
+    const range = e.shiftKey && from >= 0 && to >= 0 ? vis.slice(Math.min(from, to), Math.max(from, to) + 1) : [p];
+    for (const x of range) el.checked ? work.left.delete(x) : work.left.add(x);
+    work.lastTick = p;
+    renderWork();
+    return;
+  }
+  if (what === "show") { work.view.show = el.dataset.v; renderWork(); return; }
+  if (what === "sel-vis") { visible().forEach((f) => work.left.delete(f.path)); renderWork(); return; }
+  if (what === "clear-vis") { visible().forEach((f) => work.left.add(f.path)); renderWork(); return; }
+  if (what === "sel-all") { work.left = new Set(); renderWork(); return; }
+  if (what === "clear-all") { files().forEach((f) => work.left.add(f.path)); renderWork(); return; }
+  if (what === "reset-view") { work.view = { ...work.view, q: "", show: "all", type: "all" }; renderWork(); return; }
   if (what === "menu") { e.stopPropagation(); const r = el.getBoundingClientRect(); openMenu(li, r.left, r.bottom + 4); return; }
   if (what === "all") { work.left.size ? (work.left = new Set()) : files().forEach((f) => work.left.add(f.path)); renderWork(); return; }
   if (what === "back") { showView("projects"); return; }
@@ -485,6 +598,7 @@ $("#v-work").addEventListener("click", (e) => {
   if (what === "rewind") return rewindDialog(el.dataset.cp);
   if (what === "space") return spaceDialog();
   if (what === "move-folder") return moveFolderDialog(work.ws, { project: work.project });
+  if (what === "export") return exportDialog();
 });
 
 $("#v-work").addEventListener("contextmenu", (e) => {
