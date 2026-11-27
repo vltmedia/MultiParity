@@ -30,15 +30,25 @@ pub async fn stream(State(s): State<AppState>, user: CurrentUser, Query(q): Quer
         None if user.is_server_admin => None,
         None => Some(sqlx::query_scalar("SELECT org_id FROM memberships WHERE user_id = $1").bind(user.id).fetch_all(&s.db).await?),
     };
+    // A project's events only go to people who can see it (their policies, as they are when they
+    // connect; the app reconnects often enough for changes to reach it).
+    let projects: Option<std::collections::HashSet<Uuid>> = match (&orgs, q.project) {
+        (Some(_), None) => Some(
+            sqlx::query_scalar("SELECT p.id FROM projects p WHERE mp_access($1, p.id) > 0").bind(user.id).fetch_all(&s.db).await?.into_iter().collect(),
+        ),
+        _ => None,
+    };
     let project = q.project;
     let me = user.id;
     let rx = BroadcastStream::new(s.events.subscribe());
     let stream = rx.filter_map(move |e| {
         let orgs = orgs.clone();
+        let projects = projects.clone();
         async move {
             let e = e.ok()?;
             let visible = match (project, &orgs) {
                 (Some(p), _) => e.project_id == Some(p),
+                (None, Some(_)) if e.project_id.is_some() => projects.as_ref().map(|set| set.contains(&e.project_id.unwrap())).unwrap_or(false),
                 (None, Some(list)) => e.org_id.map(|o| list.contains(&o)).unwrap_or(false) || e.data.get("user_id").and_then(|v| v.as_str()) == Some(&me.to_string()),
                 (None, None) => true,
             };

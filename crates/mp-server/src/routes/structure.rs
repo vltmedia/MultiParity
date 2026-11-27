@@ -140,6 +140,8 @@ pub async fn delete_client(State(s): State<AppState>, user: CurrentUser, Path(id
         return Err(ApiError::conflict(format!("{n} would clash with the production of that name that has no client. Rename one first.")));
     }
     let name: String = sqlx::query_scalar("DELETE FROM clients WHERE id = $1 RETURNING name").bind(id).fetch_one(&mut *tx).await?;
+    // Policy rules on it no longer cover anything.
+    sqlx::query("DELETE FROM policy_rules WHERE scope_kind = 'client' AND scope_id = $1").bind(id).execute(&mut *tx).await?;
     let ev = events::record(&mut *tx, Some(org), None, Some(user.id), "admin.client_removed", json!({ "id": id, "name": name })).await?;
     tx.commit().await?;
     events::publish_saved(&s.db, &s.events, ev).await;
@@ -232,6 +234,7 @@ pub async fn delete_production(State(s): State<AppState>, user: CurrentUser, Pat
     access::org_admin(&s, &user, org).await?;
     let mut tx = s.db.begin().await?;
     let name: String = sqlx::query_scalar("DELETE FROM productions WHERE id = $1 RETURNING name").bind(id).fetch_one(&mut *tx).await?;
+    sqlx::query("DELETE FROM policy_rules WHERE scope_kind = 'production' AND scope_id = $1").bind(id).execute(&mut *tx).await?;
     let ev = events::record(&mut *tx, Some(org), None, Some(user.id), "admin.production_removed", json!({ "id": id, "name": name })).await?;
     tx.commit().await?;
     events::publish_saved(&s.db, &s.events, ev).await;

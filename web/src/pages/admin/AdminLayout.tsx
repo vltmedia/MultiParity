@@ -90,6 +90,7 @@ export default function AdminLayout() {
             <NavLink to="/admin/invites">Invites</NavLink>
             <NavLink to="/admin/orgs">Organizations</NavLink>
             <NavLink to="/admin/projects">Projects</NavLink>
+            <NavLink to="/admin/policies">Policies</NavLink>
             <NavLink to="/admin/fixing">Fixing</NavLink>
             <NavLink to="/admin/audit">Audit log</NavLink>
           </nav>

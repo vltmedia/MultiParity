@@ -7,7 +7,7 @@ const LABELS: Array<[string, IconName]> = [
   // navigation
   ['All projects', 'arrow-left'], ['Today', 'calendar-clock'], ['Files', 'files'], ['History', 'history'], ['People', 'users'],
   ['Drafts', 'file-clock'], ['Branches', 'git-branch'], ['Overview', 'layout-dashboard'], ['Invites', 'mail-plus'],
-  ['Organizations', 'building-2'], ['Projects', 'folders'], ['Fixing', 'wrench'], ['Audit log', 'scroll-text'], ['Admin', 'shield'],
+  ['Organizations', 'building-2'], ['Projects', 'folders'], ['Fixing', 'wrench'], ['Audit log', 'scroll-text'], ['Admin', 'shield'], ['Policies', 'shield-check'], ['New policy', 'plus'], ['People…', 'users'], ['Who can see', 'eye'], ['Add rule', 'plus'],
   ['Look', 'palette'], ['Get the desktop app', 'download'],
   // work
   ['Get latest', 'cloud-download'], ['Publish', 'cloud-upload'], ['Save draft', 'save'], ['Save checkpoint', 'bookmark-plus'],

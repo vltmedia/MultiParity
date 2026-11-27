@@ -415,6 +415,7 @@ pub async fn remove_member(State(s): State<AppState>, user: CurrentUser, Path((o
     }
     sqlx::query("DELETE FROM memberships WHERE org_id = $1 AND user_id = $2").bind(org).bind(uid).execute(&mut *tx).await?;
     sqlx::query("DELETE FROM project_access pa USING projects p WHERE pa.project_id = p.id AND p.org_id = $1 AND pa.user_id = $2").bind(org).bind(uid).execute(&mut *tx).await?;
+    sqlx::query("DELETE FROM user_policies up USING policies pol WHERE up.policy_id = pol.id AND pol.org_id = $1 AND up.user_id = $2").bind(org).bind(uid).execute(&mut *tx).await?;
     let released = sqlx::query("DELETE FROM claims c USING projects p WHERE c.project_id = p.id AND p.org_id = $1 AND c.user_id = $2").bind(org).bind(uid).execute(&mut *tx).await?.rows_affected();
     let ev = events::record(&mut *tx, Some(org), None, Some(user.id), "member.removed", json!({ "user_id": uid, "claims_released": released })).await?;
     tx.commit().await?;
@@ -445,6 +446,7 @@ fn invite_json(r: &PgRow, url: Option<String>) -> Value {
         "accepted_at": r.get::<Option<DateTime<Utc>>,_>("accepted_at"),
         "created_by": crate::models::UserRef::from_row(r, "u_"),
         "also": r.try_get::<Value, _>("also").unwrap_or_else(|_| json!([])),
+        "policies": r.try_get::<Vec<Uuid>, _>("policies").unwrap_or_default(),
         "url": url,
     })
 }
@@ -458,6 +460,9 @@ pub struct CreateInvites {
     /// More organizations to join with the same link, each with its own role.
     #[serde(default)]
     also: Vec<AlsoOrg>,
+    /// Policies given on joining (of any of the invite's organizations).
+    #[serde(default)]
+    policies: Vec<Uuid>,
 }
 
 #[derive(Deserialize)]
@@ -490,6 +495,12 @@ pub async fn create_invites(State(s): State<AppState>, user: CurrentUser, Path(o
         also.push(json!({ "org_id": a.org, "role": a.role }));
     }
     let also = Value::Array(also);
+    let mut orgs_on_invite = vec![org];
+    orgs_on_invite.extend(b.also.iter().map(|a| a.org));
+    let ok: i64 = sqlx::query_scalar("SELECT count(*) FROM policies WHERE id = ANY($1) AND org_id = ANY($2) AND NOT is_default").bind(&b.policies).bind(&orgs_on_invite).fetch_one(&s.db).await?;
+    if ok as usize != b.policies.iter().collect::<std::collections::HashSet<_>>().len() {
+        return Err(ApiError::invalid("An invite can only give policies of the organizations it adds people to."));
+    }
     // 0 means the link never expires.
     let days = b.expires_in_days.unwrap_or(14);
     let expires = (days > 0).then(|| Utc::now() + Duration::days(days.clamp(1, 365)));
@@ -519,8 +530,8 @@ pub async fn create_invites(State(s): State<AppState>, user: CurrentUser, Path(o
     for email in emails {
         let token = new_token();
         let r = sqlx::query(
-            "WITH ins AS (INSERT INTO invites (org_id, email, role, token_hash, expires_at, created_by, token, also) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
-               RETURNING id, email, role, expires_at, created_at, accepted_at, revoked_at, created_by, also)
+            "WITH ins AS (INSERT INTO invites (org_id, email, role, token_hash, expires_at, created_by, token, also, policies) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+               RETURNING id, email, role, expires_at, created_at, accepted_at, revoked_at, created_by, also, policies)
              SELECT ins.*, u.id AS u_id, u.name AS u_name, u.email AS u_email FROM ins LEFT JOIN users u ON u.id = ins.created_by",
         )
         .bind(org)
@@ -531,6 +542,7 @@ pub async fn create_invites(State(s): State<AppState>, user: CurrentUser, Path(o
         .bind(user.id)
         .bind(&token)
         .bind(&also)
+        .bind(&b.policies)
         .fetch_one(&mut *tx)
         .await?;
         let mut j = invite_json(&r, Some(invite_url(&s, &token)));

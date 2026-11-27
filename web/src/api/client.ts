@@ -3,6 +3,9 @@ import type {
   AdminOverview,
   ExportTarget,
   OrgStructure,
+  Policy,
+  PolicyRule,
+  WhoCanSee,
   ProjectExport,
   AdminUser,
   AdminUserDetail,
@@ -292,7 +295,7 @@ export const api = {
     removeMember: (org: string, user: string) => request<object>('DELETE', `/admin/orgs/${enc(org)}/members/${enc(user)}`),
     invites: (org: string) => request<Invite[]>('GET', `/admin/orgs/${enc(org)}/invites`),
     addMember: (org: string, user: string, role: Role) => request<object>('POST', `/admin/orgs/${enc(org)}/members`, { user, role }),
-    createInvites: (org: string, body: { emails?: string[]; role: Role; expires_in_days?: number; also?: Array<{ org: string; role: Role }> }) =>
+    createInvites: (org: string, body: { emails?: string[]; role: Role; expires_in_days?: number; also?: Array<{ org: string; role: Role }>; policies?: string[] }) =>
       request<Invite[]>('POST', `/admin/orgs/${enc(org)}/invites`, body),
     revokeInvite: (id: string) => request<object>('DELETE', `/admin/invites/${enc(id)}`),
     projects: (org?: string) => request<ProjectSummary[]>('GET', '/admin/projects', undefined, { org }),
@@ -308,6 +311,14 @@ export const api = {
     updateProduction: (id: string, body: { name?: string; client?: string | null; main_project?: string | null }) =>
       request<object>('PATCH', `/admin/productions/${enc(id)}`, body),
     deleteProduction: (id: string) => request<object>('DELETE', `/admin/productions/${enc(id)}`),
+    policies: (org: string) => request<Policy[]>('GET', `/admin/orgs/${enc(org)}/policies`),
+    createPolicy: (org: string, body: { name: string; description?: string; rules: PolicyRule[] }) =>
+      request<{ id: string; name: string }>('POST', `/admin/orgs/${enc(org)}/policies`, body),
+    updatePolicy: (id: string, body: { name?: string; description?: string; rules?: PolicyRule[] }) =>
+      request<object>('PATCH', `/admin/policies/${enc(id)}`, body),
+    deletePolicy: (id: string) => request<object>('DELETE', `/admin/policies/${enc(id)}`),
+    setPolicyPeople: (id: string, users: string[]) => request<object>('PUT', `/admin/policies/${enc(id)}/people`, { users }),
+    whoCanSee: (pid: string) => request<WhoCanSee[]>('GET', `/admin/projects/${enc(pid)}/who`),
     archiveProject: (pid: string) => request<Project>('POST', `/admin/projects/${enc(pid)}/archive`),
     restoreProject: (pid: string) => request<Project>('POST', `/admin/projects/${enc(pid)}/restore`),
     claims: (q?: { older_than_hours?: number; org?: string }) =>

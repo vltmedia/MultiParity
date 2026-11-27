@@ -56,3 +56,25 @@ a.stat:hover { border-color: var(--ink); }
 .t tr.grp .grp-acts { display: inline-flex; gap: 6px; vertical-align: middle; }
 .t tr.grp td { white-space: nowrap; }
 .t tr.grp .fine { margin-right: 8px; }
+
+/* Admin > Policies */
+.policy-how { margin-bottom: 16px; max-width: 900px; }
+ul.policies { list-style: none; padding: 0; margin: 0; display: grid; gap: 14px; max-width: 900px; }
+ul.policies > li { border: 1px solid var(--line); background: var(--card); padding: 14px 16px; }
+.pol-head { display: flex; align-items: center; gap: 8px; }
+.pol-head h3 { margin: 0; display: inline-flex; align-items: center; font-size: 17px; }
+.pol-head .grow { flex: 1; }
+ul.rules { list-style: none; padding: 0; margin: 10px 0 6px; display: grid; gap: 4px; }
+ul.rules li { display: flex; gap: 10px; align-items: baseline; }
+ul.rules li b { min-width: 92px; font-weight: 600; }
+ul.rules li.lvl-none b { color: var(--warn, #c0392b); }
+ul.rules li.lvl-read b { color: var(--hold, #b7791f); }
+ul.rules li small { color: var(--mute); }
+.pol-people { margin: 6px 0 0; }
+ul.rule-edit { list-style: none; padding: 0; margin: 4px 0 8px; display: grid; gap: 8px; }
+ul.rule-edit li { display: flex; gap: 8px; align-items: center; }
+ul.rule-edit li .select:first-child { flex: 1; min-width: 0; }
+ul.rule-edit li .select.lvl { width: 150px; flex: none; }
+ul.people-pick { list-style: none; padding: 0; margin: 10px 0; max-height: 50vh; overflow: auto; }
+ul.people-pick li .check-label { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; padding: 6px 2px; border-bottom: 1px solid var(--line); }
+.t.who-t { width: 100%; } .t.who-t td { white-space: normal; vertical-align: top; } .t.who-t td:last-child { min-width: 220px; }

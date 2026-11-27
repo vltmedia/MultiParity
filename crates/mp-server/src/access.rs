@@ -45,22 +45,12 @@ pub async fn project(state: &AppState, user: &CurrentUser, project: Uuid, need: 
     let org_id: Uuid = row.get("org_id");
     let archived: bool = row.get("archived");
     let role = org_role(state, user.id, org_id).await?;
+    // Owners and admins: everything; everyone else: their policies (see migrations/0014).
     let (level, role_name) = if user.is_server_admin {
         (Some(Level::Admin), role.clone().unwrap_or_else(|| "owner".into()))
     } else {
-        match role.as_deref() {
-            Some("owner") | Some("admin") => (Some(Level::Admin), role.clone().unwrap()),
-            Some("member") => (Some(Level::Write), "member".into()),
-            Some("guest") => {
-                let w: Option<bool> = sqlx::query_scalar("SELECT can_write FROM project_access WHERE project_id = $1 AND user_id = $2")
-                    .bind(project)
-                    .bind(user.id)
-                    .fetch_optional(&state.db)
-                    .await?;
-                (w.map(|w| if w { Level::Write } else { Level::Read }), "guest".into())
-            }
-            _ => (None, String::new()),
-        }
+        let n: i16 = sqlx::query_scalar("SELECT mp_access($1, $2)").bind(user.id).bind(project).fetch_one(&state.db).await?;
+        (level_of(n), role.unwrap_or_default())
     };
     let Some(level) = level else {
         return Err(ApiError::not_found("That project"));
@@ -100,9 +90,17 @@ pub fn server_admin(user: &CurrentUser) -> ApiResult<()> {
 
 /// SQL condition (on alias `p`) for projects `$1` (user id) can see. `$2` is whether the user is
 /// a server admin.
-pub const VISIBLE_PROJECTS: &str = "($2 OR EXISTS (SELECT 1 FROM memberships m WHERE m.org_id = p.org_id AND m.user_id = $1
-      AND (m.expires_at IS NULL OR m.expires_at > now())
-      AND (m.role <> 'guest' OR EXISTS (SELECT 1 FROM project_access pa WHERE pa.project_id = p.id AND pa.user_id = $1))))";
+pub const VISIBLE_PROJECTS: &str = "($2 OR mp_access($1, p.id) > 0)";
+
+/// mp_access's number as a level: 0 is no access.
+pub fn level_of(n: i16) -> Option<Level> {
+    match n {
+        1 => Some(Level::Read),
+        2 => Some(Level::Write),
+        n if n >= 3 => Some(Level::Admin),
+        _ => None,
+    }
+}
 
 /// The organizations an org-scoped admin may act on: all for server admins, otherwise the ones
 /// where they are owner or admin.

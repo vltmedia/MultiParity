@@ -232,6 +232,12 @@ pub async fn accept_invite(State(s): State<AppState>, Path(token): Path<String>,
         .await?;
         evs.push(events::record(&mut *tx, Some(org), None, Some(uid), "member.added", json!({ "user_id": uid, "role": role, "via": "invite" })).await?);
     }
+    // Policies on the invite (ones since deleted are skipped).
+    sqlx::query("INSERT INTO user_policies (user_id, policy_id) SELECT $2, pol.id FROM invites i JOIN policies pol ON pol.id = ANY(i.policies) WHERE i.id = $1 ON CONFLICT DO NOTHING")
+        .bind(invite_id)
+        .bind(uid)
+        .execute(&mut *tx)
+        .await?;
     sqlx::query("UPDATE invites SET accepted_at = now(), accepted_by = $2, token = NULL WHERE id = $1").bind(invite_id).bind(uid).execute(&mut *tx).await?;
     tx.commit().await?;
     for ev in evs {

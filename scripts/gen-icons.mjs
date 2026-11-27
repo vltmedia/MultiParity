@@ -16,7 +16,7 @@ const NAMES = [
   // places
   'folder', 'folder-open', 'folder-kanban', 'briefcase', 'clapperboard', 'star', 'folders', 'folder-input', 'folder-sync', 'hard-drive', 'server', 'building-2', 'layers',
   // people and accounts
-  'user-round', 'users', 'user-plus', 'key-round', 'log-in', 'log-out', 'shield', 'shield-check', 'mail', 'mail-plus', 'settings', 'palette',
+  'user-round', 'users', 'user-plus', 'key-round', 'log-in', 'log-out', 'shield', 'shield-check', 'shield-check', 'mail', 'mail-plus', 'settings', 'palette',
   // moving files
   'cloud-download', 'cloud-upload', 'download', 'upload', 'send', 'refresh-cw', 'loader-circle', 'external-link', 'link', 'copy',
   // history and branches

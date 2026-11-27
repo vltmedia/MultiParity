@@ -887,6 +887,103 @@ on('DELETE', '/api/admin/productions/:id', ({ headers, m }) => {
   for (const p of projects) if (p.production_id === x.id) p.production_id = null;
   return { ok: true };
 });
+// --- policies (the same rules as the server's mp_access) ---
+type MRule = { scope_kind: 'org' | 'client' | 'production' | 'project'; scope_id: string; level: 'none' | 'read' | 'write' };
+type MPolicy = { id: string; org_id: string; name: string; description: string; is_default: boolean; created_at: string; rules: MRule[]; people: string[] };
+const mpolicies: MPolicy[] = orgs.map((o) => ({
+  id: uid('po000001'), org_id: o.id, name: 'All members', description: 'Every member of the organization has this without being given it. Guests do not.',
+  is_default: true, created_at: o.created_at, rules: [{ scope_kind: 'org', scope_id: o.id, level: 'write' }], people: [],
+}));
+mpolicies.push({
+  id: 'po000002-0000-4000-8000-000000000002', org_id: CINDER.id, name: 'Outsourced art', description: 'Contract artists: Emberfall only',
+  is_default: false, created_at: new Date(Date.now() - 30 * DAY).toISOString(), rules: [{ scope_kind: 'production', scope_id: productions[0].id, level: 'write' }], people: [],
+});
+const SPEC = { org: 0, client: 1, production: 2, project: 3 } as const;
+const LV = { none: 0, read: 1, write: 2 } as const;
+function scopeName(r: MRule) {
+  if (r.scope_kind === 'org') return orgs.find((o) => o.id === r.scope_id)?.name;
+  if (r.scope_kind === 'client') return clients.find((c) => c.id === r.scope_id)?.name;
+  if (r.scope_kind === 'production') {
+    const pr = productions.find((x) => x.id === r.scope_id);
+    return pr && [clients.find((c) => c.id === pr.client_id)?.name, pr.name].filter(Boolean).join(' › ');
+  }
+  const pj = projects.find((x) => x.id === r.scope_id);
+  return pj && [clients.find((c) => c.id === pj.client_id)?.name, productions.find((x) => x.id === pj.production_id)?.name, pj.name].filter(Boolean).join(' › ');
+}
+function covers(r: MRule, pj: MProject) {
+  return (r.scope_kind === 'org' && r.scope_id === pj.org_id) || (r.scope_kind === 'client' && r.scope_id === pj.client_id)
+    || (r.scope_kind === 'production' && r.scope_id === pj.production_id) || (r.scope_kind === 'project' && r.scope_id === pj.id);
+}
+function policyJson(x: MPolicy) {
+  return {
+    id: x.id, name: x.name, description: x.description, is_default: x.is_default, created_at: x.created_at,
+    rules: x.rules.map((r) => ({ ...r, scope_name: scopeName(r) || 'Something since removed' })),
+    people: x.people.map((id) => ({ ...userRef(userById(id)!), role: members.find((mm) => mm.user_id === id && mm.org_id === x.org_id)?.role || null })),
+    member_count: x.is_default ? members.filter((mm) => mm.org_id === x.org_id && mm.role === 'member').length : null,
+  };
+}
+function policyOf(id: string) {
+  const x = mpolicies.find((y) => y.id === id);
+  if (!x) throw new Fail(404, 'not_found', 'That policy does not exist.');
+  return x;
+}
+function checkRules(_org: string, rules: MRule[]) {
+  for (const r of rules || []) if (!['none', 'read', 'write'].includes(r.level)) throw new Fail(422, 'invalid', "A rule's level is none, read or write.");
+  return (rules || []).map((r) => ({ scope_kind: r.scope_kind, scope_id: r.scope_id, level: r.level }));
+}
+on('GET', '/api/admin/orgs/:org/policies', ({ headers, m }) => {
+  needAdmin(who(headers), m[1]);
+  return mpolicies.filter((x) => x.org_id === m[1]).sort((a, b) => Number(b.is_default) - Number(a.is_default) || a.name.localeCompare(b.name)).map(policyJson);
+});
+on('POST', '/api/admin/orgs/:org/policies', ({ headers, m, body }) => {
+  needAdmin(who(headers), m[1]);
+  const name = String(body?.name || '').trim();
+  if (!name) throw new Fail(422, 'invalid', 'Give the policy a name.');
+  if (mpolicies.some((x) => x.org_id === m[1] && x.name.toLowerCase() === name.toLowerCase())) throw new Fail(409, 'conflict', `There is already a policy called ${name}.`);
+  const x: MPolicy = { id: uid('po000009'), org_id: m[1], name, description: String(body?.description || ''), is_default: false, created_at: new Date().toISOString(), rules: checkRules(m[1], body?.rules), people: [] };
+  mpolicies.push(x);
+  return { id: x.id, name };
+});
+on('PATCH', '/api/admin/policies/:id', ({ headers, m, body }) => {
+  const x = policyOf(m[1]);
+  needAdmin(who(headers), x.org_id);
+  if (body?.name !== undefined) x.name = String(body.name).trim() || x.name;
+  if (body?.description !== undefined) x.description = String(body.description);
+  if (body?.rules) x.rules = checkRules(x.org_id, body.rules);
+  return { ok: true };
+});
+on('DELETE', '/api/admin/policies/:id', ({ headers, m }) => {
+  const x = policyOf(m[1]);
+  needAdmin(who(headers), x.org_id);
+  if (x.is_default) throw new Fail(422, 'invalid', "The members' policy cannot be deleted. Change its rules instead.");
+  mpolicies.splice(mpolicies.indexOf(x), 1);
+  return { ok: true };
+});
+on('PUT', '/api/admin/policies/:id/people', ({ headers, m, body }) => {
+  const x = policyOf(m[1]);
+  needAdmin(who(headers), x.org_id);
+  if (x.is_default) throw new Fail(422, 'invalid', 'Every member has the members\' policy; it is not given to people one by one.');
+  x.people = [...new Set<string>(body?.users || [])];
+  return { ok: true };
+});
+on('GET', '/api/admin/projects/:p/who', ({ headers, m }) => {
+  const pj = projectById(m[1]);
+  if (!pj) throw new Fail(404, 'not_found', 'That project does not exist.');
+  needAdmin(who(headers), pj.org_id);
+  const what = { org: 'the whole organization', client: 'its client', production: 'its production', project: 'this project' };
+  return members.filter((mm) => mm.org_id === pj.org_id).map((mm) => {
+    const u = userById(mm.user_id)!;
+    if (mm.role === 'owner' || mm.role === 'admin') return { user: userRef(u), role: mm.role, level: 'admin', because: `Organization ${mm.role}: everything in the organization` };
+    const mine = mpolicies.filter((x) => x.org_id === pj.org_id && ((x.is_default && mm.role === 'member') || x.people.includes(mm.user_id)))
+      .flatMap((x) => x.rules.filter((r) => covers(r, pj)).map((r) => ({ x, r })));
+    if (!mine.length) return { user: userRef(u), role: mm.role, level: 'none', because: mm.role === 'guest' ? 'Guest with no policy covering this project' : 'No policy covers this project' };
+    const top = Math.max(...mine.map((y) => SPEC[y.r.scope_kind]));
+    const at = mine.filter((y) => SPEC[y.r.scope_kind] === top);
+    const lv = Math.max(...at.map((y) => LV[y.r.level]));
+    const names = [...new Set(at.filter((y) => LV[y.r.level] === lv).map((y) => `${y.x.name} policy`))];
+    return { user: userRef(u), role: mm.role, level: (['none', 'read', 'write'] as const)[lv], because: `${names.join(', ')} (rule on ${what[at[0].r.scope_kind]})` };
+  });
+});
 on('GET', '/api/admin/users', ({ headers, q }) => {
   const u = who(headers);
   const org = q.get('org');

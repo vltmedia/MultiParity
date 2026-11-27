@@ -54,6 +54,7 @@ pub async fn create_org(State(s): State<AppState>, user: CurrentUser, Json(b): J
         })?;
     let org = Org::from_row(&row);
     sqlx::query("INSERT INTO memberships (org_id, user_id, role) VALUES ($1,$2,'owner')").bind(org.id).bind(user.id).execute(&mut *tx).await?;
+    super::policies::create_default(&mut tx, org.id).await?;
     let ev = events::record(&mut *tx, Some(org.id), None, Some(user.id), "admin.org_created", json!({ "name": name })).await?;
     tx.commit().await?;
     events::publish_saved(&s.db, &s.events, ev).await;

@@ -24,6 +24,7 @@ import AdminOrgs from './pages/admin/Orgs';
 import AdminOrg from './pages/admin/Org';
 import AdminProjects from './pages/admin/Projects';
 import AdminFixing from './pages/admin/Fixing';
+import AdminPolicies from './pages/admin/Policies';
 import AdminAudit from './pages/admin/Audit';
 import NotFound from './pages/NotFound';
 import Look from './pages/Look';
@@ -80,6 +81,7 @@ export default function App() {
               <Route path="orgs" element={<AdminOrgs />} />
               <Route path="orgs/:orgId" element={<AdminOrg />} />
               <Route path="projects" element={<AdminProjects />} />
+              <Route path="policies" element={<AdminPolicies />} />
               <Route path="fixing" element={<AdminFixing />} />
               <Route path="audit" element={<AdminAudit />} />
             </Route>

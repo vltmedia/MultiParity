@@ -9,6 +9,7 @@ import { AdminHead, useAdmin } from './AdminLayout';
 import ThemePicker from '../../components/ThemePicker';
 import ExportDialog from './ExportDialog';
 import { PlaceSelect, StructureDialog, placeBody, useStructures, type StructEdit } from './Structure';
+import { WhoDialog } from './Policies';
 import { DEFAULT_THEMES, themeById } from '../../lib/theme';
 
 const KEEP: Array<[CheckpointSetting, string]> = [
@@ -38,6 +39,7 @@ export default function AdminProjects() {
   const [exp, setExp] = useState<ProjectSummary | null>(null);
   const [look, setLook] = useState<ProjectSummary | null>(null);
   const [sedit, setSedit] = useState<StructEdit | null>(null);
+  const [who, setWho] = useState<ProjectSummary | null>(null);
   const [place, setPlace] = useState('');
   const orgIds = scope ? [scope] : orgs.map((o) => o.id);
   const structures = useStructures(orgIds);
@@ -213,6 +215,7 @@ export default function AdminProjects() {
                   <td className="r">
                     <span className="row" style={{ justifyContent: 'flex-end', flexWrap: 'nowrap' }}>
                       <button className="btn sm" onClick={() => open({ kind: 'rename', p })}>Rename</button>
+                      <button className="btn sm" onClick={() => setWho(p)}>Who can see…</button>
                       <button className="btn sm" onClick={() => setSedit({ kind: 'file', p })}>File under…</button>
                       {p.production && !p.is_main && !p.archived && <button className="btn sm" disabled={busy === 'main:' + p.id} onClick={() => makeMain(p)}>Make main</button>}
                       <button className="btn sm" onClick={() => setLook(p)}>Look…</button>
@@ -322,6 +325,7 @@ export default function AdminProjects() {
           </div>
         </Dialog>
       )}
+      {who && <WhoDialog p={who} onClose={() => setWho(null)} />}
       {sedit && (
         <StructureDialog
           edit={sedit}

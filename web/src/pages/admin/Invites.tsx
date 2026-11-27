@@ -11,8 +11,8 @@ const ROLES: Role[] = ['member', 'guest', 'admin', 'owner'];
 const ROLE_HELP: Record<Role, string> = {
   owner: 'Can do everything in the organization, including managing other owners.',
   admin: 'Can manage people and projects in the organization.',
-  member: 'Can see and work on every project in the organization.',
-  guest: 'Sees only the projects they are invited to. Good for outsourcers.',
+  member: 'Gets the All members policy (out of the box: every project), plus any policies below.',
+  guest: 'Gets only what the policies below give them. Good for outsourcers and clients.',
 };
 
 export default function AdminInvites() {
@@ -31,6 +31,10 @@ export default function AdminInvites() {
   // More organizations the same invite adds the person to: org id -> role.
   const [also, setAlso] = useState<Record<string, Role>>({});
   const others = orgs.filter((o) => o.id !== org);
+  // Policies given on joining, from this organization and any ticked under "Also add them to".
+  const [pols, setPols] = useState<Set<string>>(new Set());
+  const policyOrgs = [org, ...Object.keys(also)];
+  const policies = useAsync(() => Promise.all(policyOrgs.map((o) => api.admin.policies(o).catch(() => []))).then((l) => l.flat().filter((x) => !x.is_default)), [policyOrgs.join(',')], !!org);
   const [err, setErr] = useState('');
 
   const setOrg = (id: string) => {
@@ -39,6 +43,7 @@ export default function AdminInvites() {
     setParams(n, { replace: true });
     setMade([]);
     setAlso({});
+    setPols(new Set());
   };
 
   async function create() {
@@ -54,6 +59,7 @@ export default function AdminInvites() {
       role,
       expires_in_days: days,
       also: Object.entries(also).map(([o, r]) => ({ org: o, role: r })),
+      policies: [...pols].filter((id) => policies.data?.some((x) => x.id === id)),
     }));
     if (!r) return;
     setMade(r);
@@ -143,6 +149,18 @@ export default function AdminInvites() {
                   </div>
                 ))}
                 <small>One link joins every organization ticked here. People who already have an account join with it too.</small>
+              </fieldset>
+            )}
+            {(policies.data?.length || 0) > 0 && (
+              <fieldset className="field also">
+                <legend>Policies</legend>
+                {policies.data!.map((x) => (
+                  <label className="check" key={x.id} style={{ gap: 8 }}>
+                    <input type="checkbox" checked={pols.has(x.id)} onChange={(e) => setPols((cur) => { const n = new Set(cur); if (e.target.checked) n.add(x.id); else n.delete(x.id); return n; })} />
+                    {x.name}{x.description ? <span className="fine"> {x.description}</span> : null}
+                  </label>
+                ))}
+                <small>{role === 'guest' ? 'A guest sees only what these give them.' : role === 'member' ? 'On top of the All members policy.' : 'Owners and admins already have everything; policies matter if their role changes later.'}</small>
               </fieldset>
             )}
             <label className="field">

@@ -79,6 +79,25 @@ export type Client = { id: Id; name: string; created_at: Time; productions: numb
 export type Production = { id: Id; name: string; client_id: Id | null; main_project_id: Id | null; created_at: Time; projects: number };
 export type OrgStructure = { clients: Client[]; productions: Production[] };
 
+// ---------- Policies ----------
+
+export type ScopeKind = 'org' | 'client' | 'production' | 'project';
+export type RuleLevel = 'none' | 'read' | 'write';
+export type PolicyRule = { scope_kind: ScopeKind; scope_id: Id; level: RuleLevel; scope_name?: string };
+export type Policy = {
+  id: Id;
+  name: string;
+  description: string;
+  /** every member (not guest) has it without being given it */
+  is_default: boolean;
+  created_at: Time;
+  rules: PolicyRule[];
+  people: Array<UserRef & { role: Role | null }>;
+  /** for the default policy: how many members have it */
+  member_count: number | null;
+};
+export type WhoCanSee = { user: UserRef; role: Role; level: 'none' | 'read' | 'write' | 'admin'; because: string };
+
 export type CheckpointSetting = 'auto' | 'server' | 'local';
 export type CheckpointStorage = 'server' | 'local';
 
@@ -334,6 +353,8 @@ export type Invite = {
   accepted_at?: Time;
   /** Other organizations the same link adds the person to. */
   also?: Array<{ org_id: Id; role: Role }>;
+  /** Policies given on joining. */
+  policies?: Id[];
   /** Just made, and sent by email (when the server sends email). */
   emailed?: boolean;
 };
