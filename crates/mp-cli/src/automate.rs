@@ -132,7 +132,7 @@ fn local_folders() -> Result<Value> {
         let Ok(ws) = Workspace::open(&root) else { continue };
         let st = mp_client::scan::status(&ws, &[]).ok();
         let paths = |l: Option<&Vec<mp_client::scan::LocalFile>>| l.map(|v| v.iter().map(|f| f.path.clone()).collect::<Vec<_>>()).unwrap_or_default();
-        out.push(json!({ "folder": ws.root.display().to_string().trim_start_matches(r"\?\").to_string(), "project": ws.config.project_name, "organization": ws.config.org_name, "branch": ws.config.branch_name,
+        out.push(json!({ "folder": ws.root.display().to_string().trim_start_matches(r"\\?\").to_string(), "project": ws.config.project_name, "organization": ws.config.org_name, "branch": ws.config.branch_name,
             "server": ws.config.server, "new": paths(st.as_ref().map(|s| &s.new)), "edited": paths(st.as_ref().map(|s| &s.edited)), "deleted": paths(st.as_ref().map(|s| &s.deleted)) }));
     }
     Ok(json!(out))
