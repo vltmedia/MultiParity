@@ -22,8 +22,10 @@ use serde_json::{json, Value};
 use crate::plugins::{self, Manifest, Spec, Staged};
 
 pub const INDEX: &str = "multiparity-plugins.json";
-/// The source every app starts with: the examples in the MultiParity repository.
-pub const DEFAULT_SOURCE: &str = "vltmedia/MultiParity";
+/// The source every app starts with: the official plugins.
+pub const DEFAULT_SOURCE: &str = "vltmedia/MultiParity---Official-Plugins";
+/// Where the default source used to be, before the official plugins had their own repository.
+const OLD_DEFAULT: &str = "github:vltmedia/MultiParity";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Source {
@@ -126,11 +128,18 @@ fn sources_path() -> PathBuf {
 
 pub fn sources() -> Result<Vec<Source>> {
     match std::fs::read(sources_path()) {
-        Ok(b) => Ok(serde_json::from_slice(&b).context("reading sources.json")?),
+        Ok(b) => {
+            let mut list: Vec<Source> = serde_json::from_slice(&b).context("reading sources.json")?;
+            for s in list.iter_mut().filter(|s| s.id == "multiparity" && s.location == OLD_DEFAULT) {
+                s.location = format!("github:{DEFAULT_SOURCE}");
+                s.name = "MultiParity official plugins".into();
+            }
+            Ok(list)
+        }
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(vec![Source {
             id: "multiparity".into(),
             location: format!("github:{DEFAULT_SOURCE}"),
-            name: "MultiParity examples".into(),
+            name: "MultiParity official plugins".into(),
             added_at: chrono::Utc::now().to_rfc3339(),
         }]),
         Err(e) => Err(e.into()),

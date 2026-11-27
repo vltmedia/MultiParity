@@ -1,7 +1,0 @@
-{
-  "name": "MultiParity examples",
-  "description": "Plugins made alongside MultiParity, to use or to copy.",
-  "plugins": [
-    { "path": "plugins/example" }
-  ]
-}

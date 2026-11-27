@@ -47,7 +47,8 @@ pre-release, or the default branch's newest commit (`mp plugin versions owner/re
   own folders, in other repositories, or on the web.
 - **The web address of a `multiparity-plugins.json`**, for plugins hosted anywhere.
 
-The app starts with one source, the examples in the MultiParity repository.
+The app starts with one source, the official plugins at
+[vltmedia/MultiParity---Official-Plugins](https://github.com/vltmedia/MultiParity---Official-Plugins).
 
 ```json
 {
