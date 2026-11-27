@@ -11,7 +11,10 @@
 #   APPLE_CERTIFICATE                   the Developer ID Application certificate as .p12, base64
 #   APPLE_CERTIFICATE_PASSWORD          the .p12's password
 #   APPLE_SIGNING_IDENTITY              "Developer ID Application: Name (TEAMID)"
+#   APPLE_API_ISSUER, APPLE_API_KEY, APPLE_API_KEY_P8   notarizing with an App Store Connect API
+#                                       key (the .p8 file's contents), or instead:
 #   APPLE_ID, APPLE_PASSWORD, APPLE_TEAM_ID   notarizing with an app-specific password
+#   scripts/release/set-github-secrets.ps1 sets them all from the release machines.
 name: Desktop release
 
 on:
@@ -124,12 +127,23 @@ jobs:
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          # Notarizing with an App Store Connect API key...
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
+          # ...or with an Apple ID and an app-specific password.
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
+          # The API key file, written only for this run.
+          if [ -n "$APPLE_API_KEY_P8" ] && [ -n "$APPLE_API_KEY" ]; then
+            export APPLE_API_KEY_PATH="$RUNNER_TEMP/AuthKey_$APPLE_API_KEY.p8"
+            printf '%s\n' "$APPLE_API_KEY_P8" > "$APPLE_API_KEY_PATH"
+          fi
+          unset APPLE_API_KEY_P8
           # Unset empty secrets, so an unsigned build is not mistaken for a broken signed one.
-          for v in APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID; do
+          for v in APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY APPLE_API_ISSUER APPLE_API_KEY APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID; do
             [ -z "${!v}" ] && unset "$v"
           done
           [ -z "${APPLE_SIGNING_IDENTITY:-}" ] && echo "::warning::No Apple signing secrets: the Mac app is unsigned and Gatekeeper will warn people."

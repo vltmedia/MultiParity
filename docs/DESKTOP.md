@@ -66,7 +66,12 @@ It needs these repository secrets (Settings > Secrets and variables > Actions):
 | `APPLE_CERTIFICATE` | The Developer ID Application certificate exported as `.p12`, base64 (`base64 -i cert.p12 \| pbcopy`). |
 | `APPLE_CERTIFICATE_PASSWORD` | The `.p12`'s export password. |
 | `APPLE_SIGNING_IDENTITY` | `Developer ID Application: Name (TEAMID)` |
-| `APPLE_ID`, `APPLE_PASSWORD`, `APPLE_TEAM_ID` | Notarizing: the Apple ID, an app-specific password, the team id. |
+| `APPLE_API_ISSUER`, `APPLE_API_KEY`, `APPLE_API_KEY_P8` | Notarizing with an App Store Connect API key: the issuer id, the key id, and the `.p8` file's contents. |
+| `APPLE_ID`, `APPLE_PASSWORD`, `APPLE_TEAM_ID` | Or notarizing with an Apple ID: the Apple ID, an app-specific password, the team id. |
+
+`scripts/release/set-github-secrets.ps1` sets them from the machines that already build releases
+(the update key on the Windows PC, the certificate and API key on the Mac), without showing any
+of them.
 
 Without the Apple secrets the Mac app is built unsigned (Gatekeeper warns people). Windows builds
 are not code signed either way (docs/SIGNING.md).
