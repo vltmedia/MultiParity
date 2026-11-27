@@ -23,6 +23,9 @@ TITLES = {
     "s02-storage": "Where the files live", "s03-remote": "Working from anywhere", "s04-backups": "Backups",
     "s05-email": "Email", "s06-updating": "Updating", "s07-pipeline": "Hooking it into your pipeline",
     "s08-cli": "Build machines and the command line",
+    "t12-your-work": "Finding what you changed", "t13-size-map": "Seeing what takes up space", "t14-export": "Exporting a project",
+    "t15-clients": "Clients and productions", "t16-sync-production": "Syncing a whole production", "t17-policies": "Who can see what",
+    "t18-plugins": "Plugins", "t19-ai": "AI assistants",
 }
 
 

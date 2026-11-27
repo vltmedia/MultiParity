@@ -32,7 +32,7 @@ export default async function scene(r) {
   // Cut to the laptop.
   daemon(r, 'cfg-laptop');
   await r.open(DESK, 1500);
-  await r.click({ css: '#here button' }, { ms: 10, after: 1100 });
+  await r.click({ text: 'Emberfall', sel: '#here button' }, { ms: 10, after: 1100 });
   await r.callout('tag', { css: '.main .head h1' }, { label: 'Your other computer', dur: 2.6 });
   await r.callout('ring', { css: '[data-tab=drafts]' }, { dur: 1.8, delay: 0.6 });
   await r.click({ css: '[data-tab=drafts]' }, { after: 900 });

@@ -1,7 +1,14 @@
 import { as, paint } from './lib.mjs';
 import { deskReady, EMBER } from './desk.mjs';
 
+// Branch names stay taken even when archived: an earlier take's "lighting-pass" is renamed and
+// archived on the demo server first (off camera).
+function freeBranchName(r) {
+  r.sh(`ssh UAI-BAIJI 'cd ~/mp-demo && docker compose exec -T db psql -U multiparity multiparity -qc "UPDATE branches SET name = name || chr(45) || substr(md5(random()::text), 1, 6), archived = true WHERE name = chr(108)||chr(105)||chr(103)||chr(104)||chr(116)||chr(105)||chr(110)||chr(103)||chr(45)||chr(112)||chr(97)||chr(115)||chr(115) AND parent_id IS NOT NULL"'`);
+}
+
 export default async function scene(r) {
+  freeBranchName(r);
   await deskReady(r, { tab: 'branches' });
   await r.park(1000, 480, 10);
   await r.record();

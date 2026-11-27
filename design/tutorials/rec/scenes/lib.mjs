@@ -34,5 +34,7 @@ export async function webSignIn(r, email = 'alice@cinderworks.studio', password 
 
 /** A texture-like image written with Python, for "editing" a file on camera. */
 export function paint(r, file, kind, seed) {
-  r.sh(`python "${path.join(DEMO, 'paint.py')}" "${file}" ${kind} ${seed}`);
+  // A different picture every take: the same one as the last take would not count as an edit.
+  const take = seed * 1000 + (Date.now() % 997);
+  r.sh(`python "${path.join(DEMO, 'paint.py')}" "${file}" ${kind} ${take}`);
 }

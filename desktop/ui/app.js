@@ -475,6 +475,14 @@ async function connectDialog(g, p) {
       if (what === "pick") { const f = await invoke("pick_folder", { start: input.value || null }); if (f) input.value = f; return; }
       const payload = { account_id: g.account.id, project_id: p.project.id, folder: input.value.trim(), dry_run: what === "preview" };
       if (!payload.folder) { $("#cprev", body).innerHTML = `<p class="err">Choose a folder first.</p>`; return; }
+      if (what === "connect") {
+        // The download can take a while for a big project: the dock shows it, the app stays usable.
+        dlg.close();
+        try { await api("/connect", { method: "POST", body: JSON.stringify(payload) }); toast(`${p.project.name} is synced to ${payload.folder}.`); }
+        catch (e) { toast(e.message, true); }
+        await load();
+        return;
+      }
       try {
         const res = await api("/connect", { method: "POST", body: JSON.stringify(payload) });
         const r = res.report;

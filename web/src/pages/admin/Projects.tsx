@@ -13,7 +13,7 @@ import { WhoDialog } from './Policies';
 import { DEFAULT_THEMES, themeById } from '../../lib/theme';
 
 const KEEP: Array<[CheckpointSetting, string]> = [
-  ['auto', 'Automatic (on the server from 20 GB)'],
+  ['auto', 'Automatic'],
   ['server', 'On the server'],
   ['local', 'On each computer'],
 ];
@@ -167,7 +167,7 @@ export default function AdminProjects() {
         {rows.length > 0 && (
           <table className="t">
             <thead>
-              <tr><th>Project</th><th>Organization</th><th className="r">Size</th><th className="r">Files</th><th className="r">Change</th><th>Last change</th><th>Stored in</th><th>Keep checkpoints</th><th /></tr>
+              <tr><th>Project</th>{orgIds.length > 1 && <th>Organization</th>}<th className="r">Size</th><th className="r">Files</th><th className="r">Change</th><th>Last change</th><th>Stored in</th><th>Keep checkpoints</th><th /></tr>
             </thead>
             <tbody>
               {orgIds.map((oid) => {
@@ -178,7 +178,7 @@ export default function AdminProjects() {
                 const orgName = orgs.find((o) => o.id === oid)?.name || ps[0]?.org.name || '';
                 const head = (key: string, depth: number, kind: 'org' | 'client' | 'production' | 'loose', label: string, note: string, acts?: ReactNode) => (
                   <tr key={key} className={`grp ${kind}`}>
-                    <td colSpan={9} style={{ paddingLeft: 12 + depth * 22 }}>
+                    <td colSpan={orgIds.length > 1 ? 9 : 8} style={{ paddingLeft: 12 + depth * 22 }}>
                       <span className="grp-name" data-ic={{ org: 'building-2', client: 'briefcase', production: 'clapperboard', loose: 'folders' }[kind]}>{label}</span>
                       {note && <span className="fine">{note}</span>}
                       {acts && <span className="grp-acts">{acts}</span>}
@@ -192,7 +192,7 @@ export default function AdminProjects() {
                     {p.is_main && <span className="badge good" style={{ marginLeft: 8 }} title={`Listed first in ${p.production?.name}, and where opening it lands`}>Main</span>}
                     {p.archived && <span className="badge mute" style={{ marginLeft: 8 }}>Archived</span>}
                   </td>
-                  <td>{p.org.name}</td>
+                  {orgIds.length > 1 && <td>{p.org.name}</td>}
                   <td className="r">{size(p.size)}</td>
                   <td className="r">{p.file_count.toLocaleString()}</td>
                   <td className="r">{p.head_change}</td>
@@ -202,7 +202,7 @@ export default function AdminProjects() {
                     {p.storage_moving && <span className="badge hold" style={{ marginLeft: 8 }}>Moving…</span>}
                   </td>
                   <td>
-                    <select className="select sm" aria-label={`Keep checkpoints for ${p.name}`} value={p.checkpoint_setting} disabled={busy === 'keep:' + p.id} onChange={(e) => keep(p, e.target.value as CheckpointSetting)}>
+                    <select className="select sm" title="Automatic: on the server once the project is 20 GB or larger, on each computer before that" aria-label={`Keep checkpoints for ${p.name}`} value={p.checkpoint_setting} disabled={busy === 'keep:' + p.id} onChange={(e) => keep(p, e.target.value as CheckpointSetting)}>
                       {KEEP.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                     </select>
                     {p.checkpoint_setting === 'auto' && <><br /><span className="fine">Now {KEPT[p.checkpoint_storage]}</span></>}
@@ -213,7 +213,7 @@ export default function AdminProjects() {
                     </label>
                   </td>
                   <td className="r">
-                    <span className="row" style={{ justifyContent: 'flex-end', flexWrap: 'nowrap' }}>
+                    <span className="row proj-acts" style={{ justifyContent: 'flex-end', flexWrap: 'wrap', gap: 6, minWidth: 300, maxWidth: 420, marginLeft: 'auto' }}>
                       <button className="btn sm" onClick={() => open({ kind: 'rename', p })}>Rename</button>
                       <button className="btn sm" onClick={() => setWho(p)}>Who can see…</button>
                       <button className="btn sm" onClick={() => setSedit({ kind: 'file', p })}>File under…</button>

@@ -17,3 +17,5 @@ __pycache__/
 # Tutorial recordings and renders (large; regenerate with design/tutorials/rec)
 /design/tutorials/out/
 /design/tutorials/final/
+/design/tutorials/out-*/
+/design/tutorials/final-*/

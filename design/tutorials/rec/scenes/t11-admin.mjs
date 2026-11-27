@@ -13,8 +13,8 @@ export default async function scene(r) {
   await r.click({ text: 'Invites', sel: 'a' }, { after: 1200 });
   await r.click({ css: 'textarea' }, { after: 300 });
   await r.type('lena@cinderworks.studio', { cps: 18 });
-  await r.callout('ring', { css: 'main select', index: 0 }, { dur: 2 });
-  await r.choose({ css: 'main select', index: 0 }, 'Member');
+  await r.callout('ring', { css: '.inv .panel select', index: 0 }, { dur: 2 });
+  await r.choose({ css: '.inv .panel select', index: 0 }, 'Member');
   await r.callout('ring', { text: 'Make invites', sel: 'button' }, { dur: 1.8 });
   await r.click({ text: 'Make invites', sel: 'button' }, { after: 1500 });
 

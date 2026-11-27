@@ -25,7 +25,7 @@ export default async function scene(r) {
   await r.callout('ring', { rect: { x: r.W - 18 - 340, y: r.H - 18 - 96, w: 340, h: 96 } }, { dur: 2.4, delay: 0.5 });
 
   await r.beat('click');
-  await r.click({ css: '#here button' }, { after: 1200 });
+  await r.click({ text: 'Emberfall', sel: '#here button' }, { after: 1200 });
   await r.callout('ring', { css: '[data-w=latest]' }, { dur: 2.2 });
   await r.click({ css: '[data-w=latest]' }, { after: 1500 });
 

@@ -47,9 +47,9 @@ export default async function scene(r) {
 
   await r.beat('done');
   await r.park(1050, 600, 900);
-  await r.callout('sweep', { css: 'article.proj .row', index: 0 }, { dur: 2.2 });
-  await r.at(0.7);
-  await r.hover({ css: '#here' }, { after: 400 });
+  // The download shows in the dock; the app stays usable meanwhile.
+  await r.callout('spot', { css: '#pdock li', index: 0 }, { dur: 3, pad: 4 });
+  await r.hover({ css: '#pdock li', index: 0 }, { after: 400 });
 
   await r.beat('more');
   await r.click({ css: 'button[data-view=accounts]' }, { after: 800 });

@@ -680,5 +680,301 @@
    "path": "audio/generated/curious-One-more-M-P-M-C-P-It-lets-an-qzq16y-generatedSpeech.mp3",
    "dur": 14.681
   }
+ ],
+ "t12-your-work": [
+  {
+   "id": "hello",
+   "text": "[friendly] Changed a lot of files? Your work helps you find the ones you want to publish.",
+   "assetId": "asset_01M8E2X59XT6XYMY8JMACDZK3X",
+   "path": "audio/generated/friendly-Changed-a-lot-of-files-Your-t9bsw1-generatedSpeech.mp3",
+   "dur": 4.911
+  },
+  {
+   "id": "search",
+   "text": "Type in the search box to narrow the list. Filter by the kind of change, or by type of file, like textures or models. And sort by name, size or date.",
+   "assetId": "asset_01M8E2Y3BT9CFEDY1RH7E3RN2G",
+   "path": "audio/generated/Type-in-the-search-box-to-narrow-the-yys0hv-generatedSpeech.mp3",
+   "dur": 12.277
+  },
+  {
+   "id": "pick",
+   "text": "Select all visible ticks just what you can see. Clear visible unticks it. [lightly] And shift-click ticks a whole run at once.",
+   "assetId": "asset_01M8E2YA159ZJJW056JJ6TS959",
+   "path": "audio/generated/Select-all-visible-ticks-just-what-you-n154z3-generatedSpeech.mp3",
+   "dur": 8.751
+  },
+  {
+   "id": "thumbs",
+   "text": "[curious] Those little pictures are the files themselves. Click one for a big preview, without opening anything.",
+   "assetId": "asset_01M8E2YDXMRZ3XPXBM6CMXPJ37",
+   "path": "audio/generated/curious-Those-little-pictures-are-the-7hnrag-generatedSpeech.mp3",
+   "dur": 5.956
+  },
+  {
+   "id": "hidden",
+   "text": "If your filters hide something you ticked, it still goes. The app says so, right by Publish.",
+   "assetId": "asset_01M8E2YJG9CA2R47QQMDC8QJ2A",
+   "path": "audio/generated/If-your-filters-hide-something-you-9zw16b-generatedSpeech.mp3",
+   "dur": 5.407
+  }
+ ],
+ "t13-size-map": [
+  {
+   "id": "hello",
+   "text": "[curious] Ever wondered what's actually taking up all the space in a project?",
+   "assetId": "asset_01M8E2YQFKJ4TMDF0GS7FSGCPQ",
+   "path": "audio/generated/curious-Ever-wondered-what-s-actually-s2s1bw-generatedSpeech.mp3",
+   "dur": 3.866
+  },
+  {
+   "id": "open",
+   "text": "Open Files, and switch to Size map.",
+   "assetId": "asset_01M8E2YV68VB37GTSDRBY9DCTZ",
+   "path": "audio/generated/Open-Files-and-switch-to-Size-map-t1ddnk-generatedSpeech.mp3",
+   "dur": 3.239
+  },
+  {
+   "id": "read",
+   "text": "Every block is a file. The bigger the block, the bigger the file, and the colour tells you what kind it is. Folders are the frames around them.",
+   "assetId": "asset_01M8E2Z0W8BYB311MVK6MQ4SWW",
+   "path": "audio/generated/Every-block-is-a-file-The-bigger-the-71kvd3-generatedSpeech.mp3",
+   "dur": 8.751
+  },
+  {
+   "id": "zoom",
+   "text": "Click a folder to zoom in. Right-click a file for the same menu as in the list.",
+   "assetId": "asset_01M8E2Z69CD8RR9FQE9V2D7DME",
+   "path": "audio/generated/Click-a-folder-to-zoom-in-Right-click-a-bkz097-generatedSpeech.mp3",
+   "dur": 5.642
+  },
+  {
+   "id": "web",
+   "text": "[lightly] It's in the web app too, under Files.",
+   "assetId": "asset_01M8E2ZD8QJSYWXXM1EMT9CTH5",
+   "path": "audio/generated/lightly-It-s-in-the-web-app-too-under-j52kbg-generatedSpeech.mp3",
+   "dur": 2.351
+  }
+ ],
+ "t14-export": [
+  {
+   "id": "hello",
+   "text": "[friendly] Handing a project over, or keeping a copy just as it is today? Export it.",
+   "assetId": "asset_01M8E2ZHW27DHSWPTETSGXKN9Y",
+   "path": "audio/generated/friendly-Handing-a-project-over-or-n6ahfp-generatedSpeech.mp3",
+   "dur": 6.531
+  },
+  {
+   "id": "desk",
+   "text": "In the desktop app, open the project and click Export. Pick a folder, and choose one zip file, or a folder of files.",
+   "assetId": "asset_01M8E2ZQFBVG3VS5NZRP2HF8TY",
+   "path": "audio/generated/In-the-desktop-app-open-the-project-and-tfd787-generatedSpeech.mp3",
+   "dur": 7.628
+  },
+  {
+   "id": "how",
+   "text": "It takes the published files as they are right now. Files you already have are copied from your folder, and the rest are downloaded.",
+   "assetId": "asset_01M8E2ZYKBPF7H1GB7TSVGACGJ",
+   "path": "audio/generated/It-takes-the-published-files-as-they-jfqchp-generatedSpeech.mp3",
+   "dur": 7.314
+  },
+  {
+   "id": "admin",
+   "text": "Admins can export from the web app too, in Admin, Projects. To the server, to a NAS, or straight to an S3 bucket.",
+   "assetId": "asset_01M8E30631NYG095V8EEFVGWPS",
+   "path": "audio/generated/Admins-can-export-from-the-web-app-too-r1xf5y-generatedSpeech.mp3",
+   "dur": 12.199
+  },
+  {
+   "id": "archive",
+   "text": "[lightly] Tick Archive afterwards, and the project's closed once the export is done.",
+   "assetId": "asset_01M8E30D25ZDJCJS6QBWDTRTX1",
+   "path": "audio/generated/lightly-Tick-Archive-afterwards-and-the-hr5jy3-generatedSpeech.mp3",
+   "dur": 3.866
+  }
+ ],
+ "t15-clients": [
+  {
+   "id": "hello",
+   "text": "[friendly] Once you've got a few projects, it helps to file them. By client, and by production.",
+   "assetId": "asset_01M8E30KNY5C9A1VH898TXY3H1",
+   "path": "audio/generated/friendly-Once-you-ve-got-a-few-projects-gnbqdg-generatedSpeech.mp3",
+   "dur": 5.251
+  },
+  {
+   "id": "client",
+   "text": "In the web app, go to Admin, Projects, and click New client. Give it a name.",
+   "assetId": "asset_01M8E30XQH1XZF6J37CBF06Y0X",
+   "path": "audio/generated/In-the-web-app-go-to-Admin-Projects-and-jbys3b-generatedSpeech.mp3",
+   "dur": 5.956
+  },
+  {
+   "id": "production",
+   "text": "Then make a production under it. That's the show, the game, or the campaign.",
+   "assetId": "asset_01M8E3156CTV24DMRFV54GANZK",
+   "path": "audio/generated/Then-make-a-production-under-it-That-s-mefdns-generatedSpeech.mp3",
+   "dur": 4.206
+  },
+  {
+   "id": "file",
+   "text": "Now use File under to put a project in it. Art, audio and code can each be their own project, with their own history.",
+   "assetId": "asset_01M8E31B7P7MR8VVE1EPNQ65KA",
+   "path": "audio/generated/Now-use-File-under-to-put-a-project-in-1stc9z-generatedSpeech.mp3",
+   "dur": 9.091
+  },
+  {
+   "id": "main",
+   "text": "Make one of them the main project. It's listed first, and opening the production takes you there.",
+   "assetId": "asset_01M8E31GXDH1GB0EESVNQR7PRM",
+   "path": "audio/generated/Make-one-of-them-the-main-project-It-s-169hse-generatedSpeech.mp3",
+   "dur": 4.754
+  },
+  {
+   "id": "see",
+   "text": "[lightly] Everyone sees the same grouping on their Projects page, on the web and in the desktop app.",
+   "assetId": "asset_01M8E31MWEK2BE3QHPCPK34J57",
+   "path": "audio/generated/lightly-Everyone-sees-the-same-grouping-4sdf61-generatedSpeech.mp3",
+   "dur": 4.362
+  }
+ ],
+ "t16-sync-production": [
+  {
+   "id": "hello",
+   "text": "[friendly] Working across a whole production? You can sync all of it in one go.",
+   "assetId": "asset_01M8E31RFX3PCM6TDT2Q47YTG9",
+   "path": "audio/generated/friendly-Working-across-a-whole-xq3zn4-generatedSpeech.mp3",
+   "dur": 5.329
+  },
+  {
+   "id": "button",
+   "text": "On the Projects page, every production has a Sync production button.",
+   "assetId": "asset_01M8E31WHRDNZVDZ4GVKNQG571",
+   "path": "audio/generated/On-the-Projects-page-every-production-58rgab-generatedSpeech.mp3",
+   "dur": 3.474
+  },
+  {
+   "id": "pick",
+   "text": "Choose one folder for it. Each project gets its own folder inside, and you tick the ones you want.",
+   "assetId": "asset_01M8E321BS4CYN060H2Z47N7AG",
+   "path": "audio/generated/Choose-one-folder-for-it-Each-project-cks22v-generatedSpeech.mp3",
+   "dur": 5.799
+  },
+  {
+   "id": "done",
+   "text": "[lightly] Projects you already have stay right where they are. And that's the whole production, on your computer.",
+   "assetId": "asset_01M8E4M4T0GZHY72A24ZCBYXEF",
+   "path": "audio/generated/lightly-Projects-you-already-have-stay-s9y8eb-generatedSpeech.mp3",
+   "dur": 5.068
+  }
+ ],
+ "t17-policies": [
+  {
+   "id": "hello",
+   "text": "[confident] Not everyone needs everything. Policies decide who can see what, and who can change it.",
+   "assetId": "asset_01M8E4MDACVBZSP9Q35E3P862F",
+   "path": "audio/generated/confident-Not-everyone-needs-everything-pjz04w-generatedSpeech.mp3",
+   "dur": 4.284
+  },
+  {
+   "id": "start",
+   "text": "Go to Admin, Policies. Everyone in the organization starts with All members, which can change everything. Make a new policy for a team.",
+   "assetId": "asset_01M8E4MMNRTSMBES2QG08CS50H",
+   "path": "audio/generated/Go-to-Admin-Policies-Everyone-in-the-1veyqp-generatedSpeech.mp3",
+   "dur": 7.967
+  },
+  {
+   "id": "rules",
+   "text": "Each rule says no access, look, or change, on the whole organization, a client, a production or one project. The most specific rule wins.",
+   "assetId": "asset_01M8E4MW8NF3A24TEVS6A68RWZ",
+   "path": "audio/generated/Each-rule-says-no-access-look-or-change-gt86nm-generatedSpeech.mp3",
+   "dur": 9.169
+  },
+  {
+   "id": "people",
+   "text": "Then click People, and choose who has it. It applies straight away.",
+   "assetId": "asset_01M8E4N2DN5ERVHGATQ55K3HSY",
+   "path": "audio/generated/Then-click-People-and-choose-who-has-it-s0f0h2-generatedSpeech.mp3",
+   "dur": 4.206
+  },
+  {
+   "id": "who",
+   "text": "[curious] Not sure who can see a project? In Admin, Projects, click Who can see. It lists everyone, and why.",
+   "assetId": "asset_01M8E4NC5D2BQPVSPB12BE7BRX",
+   "path": "audio/generated/curious-Not-sure-who-can-see-a-project-gsc4gq-generatedSpeech.mp3",
+   "dur": 10.527
+  }
+ ],
+ "t18-plugins": [
+  {
+   "id": "hello",
+   "text": "[friendly] Plugins add to MultiParity. Checks before you publish, actions on files, even whole new pages.",
+   "assetId": "asset_01M8E66SZDK2SY3G49JPJWM2ZE",
+   "path": "audio/generated/friendly-Plugins-add-to-MultiParity-6m7m0t-generatedSpeech.mp3",
+   "dur": 5.407
+  },
+  {
+   "id": "browse",
+   "text": "Go to Plugins, then Browse. These come from the official plugins on GitHub, plus any sources you add.",
+   "assetId": "asset_01M8E677Q2N9SS96M3YS5Y3VQX",
+   "path": "audio/generated/Go-to-Plugins-then-Browse-These-come-hznt03-generatedSpeech.mp3",
+   "dur": 6.426
+  },
+  {
+   "id": "version",
+   "text": "Click Install, and pick a version. The newest release, or the newest commit.",
+   "assetId": "asset_01M8E67B3SPXF25VXFTEDVYA9P",
+   "path": "audio/generated/Click-Install-and-pick-a-version-The-tat07s-generatedSpeech.mp3",
+   "dur": 5.251
+  },
+  {
+   "id": "check",
+   "text": "Before anything's installed, you see exactly what it does, and what it can reach.",
+   "assetId": "asset_01M8E67F316AJ1FZCB4C91GM3C",
+   "path": "audio/generated/Before-anything-s-installed-you-see-hvsqpk-generatedSpeech.mp3",
+   "dur": 4.127
+  },
+  {
+   "id": "use",
+   "text": "[curious] Now it's part of the app. Right-click a picture, and there's Image size. And the project has a new tab.",
+   "assetId": "asset_01M8E67MCVK4R523J0DB04PFQD",
+   "path": "audio/generated/curious-Now-it-s-part-of-the-app-Right-9fn0m8-generatedSpeech.mp3",
+   "dur": 6.269
+  }
+ ],
+ "t19-ai": [
+  {
+   "id": "hello",
+   "text": "[friendly] You can let an AI assistant, like Claude, work with MultiParity as you.",
+   "assetId": "asset_01M8E67SBV4NQF4KXR31SP9X6Y",
+   "path": "audio/generated/friendly-You-can-let-an-AI-assistant-gat7n9-generatedSpeech.mp3",
+   "dur": 3.971
+  },
+  {
+   "id": "token",
+   "text": "In the web app, open your account menu, and choose Access tokens. Give one a name, and make it.",
+   "assetId": "asset_01M8E67XPQZDPPSCHSDCQ8ERAB",
+   "path": "audio/generated/In-the-web-app-open-your-account-menu-v1b2z3-generatedSpeech.mp3",
+   "dur": 7.967
+  },
+  {
+   "id": "setup",
+   "text": "Copy the line it shows you into Claude Code, or into your assistant's settings. That's all the setup.",
+   "assetId": "asset_01M8E681ZPA36AHXE1E97CM36T",
+   "path": "audio/generated/Copy-the-line-it-shows-you-into-Claude-y7dmw9-generatedSpeech.mp3",
+   "dur": 6.687
+  },
+  {
+   "id": "ask",
+   "text": "[curious] Then just ask. Who has the hero files claimed? What changed in Emberfall this week? It can claim files for you, too.",
+   "assetId": "asset_01M8E686FN5F5TRD83GPCC9CMJ",
+   "path": "audio/generated/curious-Then-just-ask-Who-has-the-hero-n5z0ae-generatedSpeech.mp3",
+   "dur": 8.986
+  },
+  {
+   "id": "safe",
+   "text": "It only ever sees what you can see. And you can revoke the token here, whenever you like.",
+   "assetId": "asset_01M8E68BYXMQYK676N26X2QS8T",
+   "path": "audio/generated/It-only-ever-sees-what-you-can-see-And-ch3h05-generatedSpeech.mp3",
+   "dur": 4.989
+  }
  ]
 }

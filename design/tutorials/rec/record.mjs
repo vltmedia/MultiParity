@@ -50,6 +50,8 @@ function connect(wsUrl) {
 // Injected into every page: the cursor, text swaps (scratch addresses -> studio names), toasts.
 const PAGE_KIT = (swaps, subSwaps) => `(() => {
   if (window.__kit) return; window.__kit = true;
+  // The desktop app re-reads a folder every 10 s; on camera an edit should show within 2 s.
+  setInterval(() => { try { if (typeof refreshWork === 'function' && typeof work !== 'undefined' && work.ws && !work.busy && work.tab === 'work' && document.getElementById('v-work').classList.contains('on')) refreshWork(false); } catch (_) {} }, 2000);
   const SW = ${JSON.stringify(swaps)};
   const fix = (n) => { let v = n.nodeValue, o = v; for (const [a, b] of SW) v = v.split(a).join(b); if (v !== o) n.nodeValue = v; };
   const sweep = (root) => { const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT); let n; while ((n = w.nextNode())) fix(n); };
@@ -201,8 +203,10 @@ async function main() {
       const r = await find(spec); const [x, y] = centre(r, o.at); await moveTo(x, y, o.ms); await sleep(o.before ?? 180);
       const button = o.right ? 'right' : 'left';
       await ev(`window.__ripple(${x},${y})`).catch(() => {});
-      await mouse('mousePressed', x, y, { button, clickCount: 1, buttons: o.right ? 2 : 1 });
-      await sleep(70); await mouse('mouseReleased', x, y, { button, clickCount: 1 });
+      // o.shift: a shift-click (ranges); the drawn cursor looks the same.
+      const modifiers = o.shift ? 8 : 0;
+      await mouse('mousePressed', x, y, { button, clickCount: 1, buttons: o.right ? 2 : 1, modifiers });
+      await sleep(70); await mouse('mouseReleased', x, y, { button, clickCount: 1, modifiers });
       await sleep(o.after ?? 450); await setCur(); return r;
     },
     // A <select>: native dropdowns do not show in a recording, so click it, then pick by text the

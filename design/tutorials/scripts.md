@@ -358,3 +358,121 @@ Eight videos for whoever deploys and looks after the server. They use the same v
 > [curious] One more: `mp mcp`. It lets an AI assistant like Claude look at your project, find files, read the history and see who has what claimed. Handy for "who touched the forge last week?"
 
 **Callouts:** code on `mp login`. Tag "sync = get latest" next to the alias. Code on `--json`. Spot on the `mp mcp` config.
+
+---
+
+# New tutorials (desktop 0.1.5)
+
+Recorded and cut the same way. The scenes set up and tidy their own demo data, so takes can be repeated.
+
+## 12. Finding what you changed
+
+**On screen:** Your work in the desktop app with a day's changes: search, the type filter and sort, Clear visible / Select all visible, a shift-click range, a thumbnail preview, the note by Publish about ticked files the filters hide.
+
+> [friendly] Changed a lot of files? Your work helps you find the ones you want to publish.
+>
+> Type in the search box to narrow the list. Filter by the kind of change, or by type of file, like textures or models. And sort by name, size or date.
+>
+> Select all visible ticks just what you can see. Clear visible unticks it. [lightly] And shift-click ticks a whole run at once.
+>
+> [curious] Those little pictures are the files themselves. Click one for a big preview, without opening anything.
+>
+> If your filters hide something you ticked, it still goes. The app says so, right by Publish.
+
+## 13. Seeing what takes up space
+
+**On screen:** Files in the desktop app, switched to Size map; a folder zoomed into; a file's right-click menu.
+
+> [curious] Ever wondered what's actually taking up all the space in a project?
+>
+> Open Files, and switch to Size map.
+>
+> Every block is a file. The bigger the block, the bigger the file, and the colour tells you what kind it is. Folders are the frames around them.
+>
+> Click a folder to zoom in. Right-click a file for the same menu as in the list.
+>
+> [lightly] It's in the web app too, under Files.
+
+## 14. Exporting a project
+
+**On screen:** Export… on Frostline in the desktop app to D:\Exports\Deliveries as one .zip; then Admin > Projects > Export… in the web app, choosing the S3 target, and the Archive afterwards box.
+
+> [friendly] Handing a project over, or keeping a copy just as it is today? Export it.
+>
+> In the desktop app, open the project and click Export. Pick a folder, and choose one zip file, or a folder of files.
+>
+> It takes the published files as they are right now. Files you already have are copied from your folder, and the rest are downloaded.
+>
+> Admins can export from the web app too, in Admin, Projects. To the server, to a NAS, or straight to an S3 bucket.
+>
+> [lightly] Tick Archive afterwards, and the project's closed once the export is done.
+
+## 15. Clients and productions
+
+**On screen:** Admin > Projects in the web app: New client (Saltmarsh Studios), New production (Tidewrack), File under… for Frostline, Make main; then the grouped Projects page.
+
+> [friendly] Once you've got a few projects, it helps to file them. By client, and by production.
+>
+> In the web app, go to Admin, Projects, and click New client. Give it a name.
+>
+> Then make a production under it. That's the show, the game, or the campaign.
+>
+> Now use File under to put a project in it. Art, audio and code can each be their own project, with their own history.
+>
+> Make one of them the main project. It's listed first, and opening the production takes you there.
+>
+> [lightly] Everyone sees the same grouping on their Projects page, on the web and in the desktop app.
+
+## 16. Syncing a whole production
+
+**On screen:** The desktop Projects page: Sync production… on Northwind Games > Emberfall, the folder and the project list, syncing Audio and Code.
+
+> [friendly] Working across a whole production? You can sync all of it in one go.
+>
+> On the Projects page, every production has a Sync production button.
+>
+> Choose one folder for it. Each project gets its own folder inside, and you tick the ones you want.
+>
+> [lightly] Projects you already have stay right where they are. And that's the whole production, on your computer.
+
+## 17. Who can see what
+
+**On screen:** Admin > Policies: All members, a new Audio team policy with two rules, People… (Mara); then Who can see… on Audio.
+
+> [confident] Not everyone needs everything. Policies decide who can see what, and who can change it.
+>
+> Go to Admin, Policies. Everyone in the organization starts with All members, which can change everything. Make a new policy for a team.
+>
+> Each rule says no access, look, or change, on the whole organization, a client, a production or one project. The most specific rule wins.
+>
+> Then click People, and choose who has it. It applies straight away.
+>
+> [curious] Not sure who can see a project? In Admin, Projects, click Who can see. It lists everyone, and why.
+
+## 18. Plugins
+
+**On screen:** Plugins > Browse in the desktop app, the official plugins, Install… with a version, what it does; then Image size on a picture and the plugin's project tab.
+
+> [friendly] Plugins add to MultiParity. Checks before you publish, actions on files, even whole new pages.
+>
+> Go to Plugins, then Browse. These come from the official plugins on GitHub, plus any sources you add.
+>
+> Click Install, and pick a version. The newest release, or the newest commit.
+>
+> Before anything's installed, you see exactly what it does, and what it can reach.
+>
+> [curious] Now it's part of the app. Right-click a picture, and there's Image size. And the project has a new tab.
+
+## 19. AI assistants
+
+**On screen:** Access tokens in the web app's account menu: a new token, the Claude Code line and the settings for other assistants, Revoke.
+
+> [friendly] You can let an AI assistant, like Claude, work with MultiParity as you.
+>
+> In the web app, open your account menu, and choose Access tokens. Give one a name, and make it.
+>
+> Copy the line it shows you into Claude Code, or into your assistant's settings. That's all the setup.
+>
+> [curious] Then just ask. Who has the hero files claimed? What changed in Emberfall this week? It can claim files for you, too.
+>
+> It only ever sees what you can see. And you can revoke the token here, whenever you like.
