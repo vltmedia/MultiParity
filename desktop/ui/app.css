@@ -299,3 +299,7 @@ dialog .pathrow input { flex: 1; border: var(--bw) solid var(--btn-line); paddin
 .panel h2.sub2 { margin-top: 22px; }
 #notify-prefs { display: flex; flex-direction: column; gap: 10px; font-size: 13.5px; }
 #notify-prefs label { flex-direction: row; align-items: center; gap: 10px; font-weight: 400; }
+.upd { display: flex; flex-direction: column; gap: 4px; padding: 0 18px 14px; font-size: 12px; color: var(--sidetext); opacity: .85; }
+.upd .link { margin: 0; text-align: left; font-size: 12px; color: inherit; }
+.upd small { opacity: .8; word-break: break-word; }
+.upd .btn { width: 100%; }

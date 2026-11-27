@@ -196,6 +196,8 @@ export const api = {
     request<LoginResponse>('POST', '/auth/login', { email, password, device: 'Web browser' }),
   logout: () => request<object>('POST', '/auth/logout'),
   me: () => request<Me>('GET', '/me'),
+  desktop: () =>
+    request<{ version: string | null; notes?: string; downloads: Array<{ platform: string; name: string; url: string; size?: number | null }> }>('GET', '/desktop'),
   invite: (token: string) => request<InviteInfo>('GET', `/invites/${enc(token)}`),
   acceptInvite: (token: string, body: { name: string; password: string } | Record<string, never>) =>
     request<LoginResponse>('POST', `/invites/${enc(token)}/accept`, body),

@@ -38,7 +38,7 @@ else
   echo "psql not found; install postgresql-client" >&2; exit 2
 fi
 export DATABASE_URL="${psql_url}/$DBNAME"
-MP_BACKUP_TARGET="local:$WORK/backups" MP_STORAGE_LOCATIONS="second=local:$WORK/blobs2" MP_LISTEN="127.0.0.1:$PORT" MP_PUBLIC_URL="$SERVER" MP_STORAGE="${E2E_STORAGE:-local}" MP_STORAGE_PATH="${E2E_STORAGE_PATH:-$WORK/blobs}" \
+MP_DESKTOP_DIR="$WORK/desktop" MP_BACKUP_TARGET="local:$WORK/backups" MP_STORAGE_LOCATIONS="second=local:$WORK/blobs2" MP_LISTEN="127.0.0.1:$PORT" MP_PUBLIC_URL="$SERVER" MP_STORAGE="${E2E_STORAGE:-local}" MP_STORAGE_PATH="${E2E_STORAGE_PATH:-$WORK/blobs}" \
   MP_ADMIN_EMAIL=alice@example.com MP_ADMIN_PASSWORD="$PASS_A" MP_DEFAULT_ORG="Cinder Works" \
   RUST_LOG=info,tower_http=warn "$BIN/mp-server" > "$WORK/server.log" 2>&1 &
 SPID=$!
@@ -316,6 +316,24 @@ check "alice's folder got it" same "$A/Docs/brief.txt" "$WORK/brief-v1.txt"
 bob -C "$B" get-latest >/dev/null
 check "bob gets it too" same "$B/Docs/brief.txt" "$WORK/brief-v1.txt"
 check "the history keeps all three" test "$(alice -C "$A" versions Docs/brief.txt --json | jq length)" = 3
+
+step "The server hands out the desktop app and its updates"
+mkdir -p "$WORK/desktop"
+head -c 200000 /dev/urandom > "$WORK/desktop/MultiParity_0.2.0_x64-setup.exe"
+cat > "$WORK/desktop/latest.json" <<JSON
+{"version":"0.2.0","notes":"Test release","pub_date":"2026-11-26T00:00:00Z",
+ "platforms":{"windows-x86_64":{"url":"MultiParity_0.2.0_x64-setup.exe","signature":"c2lnbmF0dXJl"}},
+ "downloads":{"windows-x86_64":"MultiParity_0.2.0_x64-setup.exe"}}
+JSON
+check "anyone can see what is published" test "$(curl -fs "$SERVER/api/desktop" | jq -c '[.version, .downloads[0].platform, .downloads[0].size]')" = '["0.2.0","windows-x86_64",200000]'
+U=$(curl -fs "$SERVER/api/desktop/update/windows/x86_64/0.1.0")
+check "an older app is offered 0.2.0 with its signature" test "$(echo "$U" | jq -c '[.version, .signature]')" = '["0.2.0","c2lnbmF0dXJl"]'
+check "the update's address is on this server" test "$(echo "$U" | jq -r .url)" = "$SERVER/api/desktop/files/MultiParity_0.2.0_x64-setup.exe"
+check "an up-to-date app is told there is nothing (204)" test "$(curl -s -o /dev/null -w '%{http_code}' "$SERVER/api/desktop/update/windows/x86_64/0.2.0")" = 204
+check "a platform without a build is told there is nothing" test "$(curl -s -o /dev/null -w '%{http_code}' "$SERVER/api/desktop/update/darwin/aarch64/0.1.0")" = 204
+curl -fs "$SERVER/api/desktop/files/MultiParity_0.2.0_x64-setup.exe" -o "$WORK/dl-setup.exe"
+check "the installer downloads intact" same "$WORK/dl-setup.exe" "$WORK/desktop/MultiParity_0.2.0_x64-setup.exe"
+check "nothing outside the folder is served" test "$(curl -s -o /dev/null -w '%{http_code}' "$SERVER/api/desktop/files/..%2Flatest.json")" = 404
 
 step "Checkpoints leave out render output and caches"
 mkdir -p "$A/renders" "$A/Art/Textures"

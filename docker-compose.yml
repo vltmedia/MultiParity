@@ -47,6 +47,8 @@ services:
       - ${MP_BLOB_DIR:-blobs}:/data/blobs
       # Backups (MP_BACKUP_TARGET=local:/data/backups). Better: a second drive or S3, see docs/BACKUP.md.
       - ${MP_BACKUP_DIR:-backups}:/data/backups
+      # The desktop app this server hands out and updates people to (docs/DESKTOP.md).
+      - ${MP_DESKTOP_FILES:-desktop}:/data/desktop
 
   db:
     image: postgres:17-alpine
@@ -109,6 +111,7 @@ volumes:
   db:
   blobs:
   backups:
+  desktop:
   minio:
   caddy-data:
   caddy-config:

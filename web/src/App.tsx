@@ -27,6 +27,7 @@ import AdminFixing from './pages/admin/Fixing';
 import AdminAudit from './pages/admin/Audit';
 import NotFound from './pages/NotFound';
 import Look from './pages/Look';
+import GetApp from './pages/GetApp';
 import ErrorBoundary from './components/ErrorBoundary';
 
 function RequireAuth({ children }: { children: ReactNode }) {
@@ -57,6 +58,7 @@ export default function App() {
             <Route path="/invite/:token" element={<AcceptInvite />} />
             <Route path="/" element={<RequireAuth><ProjectsPage /></RequireAuth>} />
             <Route path="/look" element={<RequireAuth><Look /></RequireAuth>} />
+            <Route path="/get-app" element={<RequireAuth><GetApp /></RequireAuth>} />
             <Route path="/p/:projectId" element={<RequireAuth><ProjectLayout /></RequireAuth>}>
               <Route index element={<Navigate to="today" replace />} />
               <Route path="today" element={<Today />} />

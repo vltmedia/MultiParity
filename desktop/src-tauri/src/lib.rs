@@ -12,6 +12,7 @@ use tauri::tray::TrayIconBuilder;
 use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder, WindowEvent};
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_notification::NotificationExt;
+use tauri_plugin_updater::UpdaterExt;
 
 const DAEMON: &str = "127.0.0.1:18519";
 
@@ -132,6 +133,122 @@ async fn follow_notifications(app: AppHandle, latest_item: MenuItem<tauri::Wry>)
     }
 }
 
+// ------------------------------------------------------------------ updates
+//
+// Each studio server hands out the desktop app (`/api/desktop/update/...`), so a studio decides
+// which version its people run. The app asks every server it is signed in to, downloads a newer
+// version quietly, and installs it when the person chooses "Restart to update" (tray or app).
+
+#[derive(Default)]
+struct Updates {
+    /// Version downloaded and ready to install, with its bytes.
+    ready: tokio::sync::Mutex<Option<(tauri_plugin_updater::Update, Vec<u8>)>>,
+    checking: std::sync::atomic::AtomicBool,
+    last_error: std::sync::Mutex<Option<String>>,
+}
+
+#[derive(serde::Serialize)]
+struct UpdateStatus {
+    current: String,
+    ready: Option<String>,
+    checking: bool,
+    error: Option<String>,
+}
+
+async fn status_of(app: &AppHandle) -> UpdateStatus {
+    let u = app.state::<Updates>();
+    let ready = u.ready.lock().await.as_ref().map(|(x, _)| x.version.clone());
+    UpdateStatus {
+        current: app.package_info().version.to_string(),
+        ready,
+        checking: u.checking.load(std::sync::atomic::Ordering::SeqCst),
+        error: u.last_error.lock().ok().and_then(|e| e.clone()),
+    }
+}
+
+/// Ask each signed-in server; download the first newer version found. Returns its version.
+async fn check_for_update(app: &AppHandle) -> Result<Option<String>, String> {
+    let u = app.state::<Updates>();
+    if let Some((x, _)) = u.ready.lock().await.as_ref() {
+        return Ok(Some(x.version.clone()));
+    }
+    if u.checking.swap(true, std::sync::atomic::Ordering::SeqCst) {
+        return Ok(None);
+    }
+    let result = async {
+        let accounts = mp_client::Accounts::load().map_err(|e| e.to_string())?;
+        let mut servers: Vec<String> = accounts.accounts.iter().map(|a| a.server.trim_end_matches('/').to_string()).collect();
+        servers.dedup();
+        let mut last_err = None;
+        for server in servers {
+            let url = format!("{server}/api/desktop/update/{{{{target}}}}/{{{{arch}}}}/{{{{current_version}}}}");
+            let Ok(url) = url.parse::<tauri::Url>() else { continue };
+            let updater = match app.updater_builder().endpoints(vec![url]).and_then(|b| b.build()) {
+                Ok(x) => x,
+                Err(e) => { last_err = Some(e.to_string()); continue }
+            };
+            match updater.check().await {
+                Ok(Some(update)) => {
+                    let bytes = update.download(|_, _| {}, || {}).await.map_err(|e| format!("downloading {}: {e}", update.version))?;
+                    let v = update.version.clone();
+                    *u.ready.lock().await = Some((update, bytes));
+                    return Ok(Some(v));
+                }
+                Ok(None) => {}
+                Err(e) => last_err = Some(format!("{server}: {e}")),
+            }
+        }
+        match last_err {
+            Some(e) => Err(e),
+            None => Ok(None),
+        }
+    }
+    .await;
+    u.checking.store(false, std::sync::atomic::Ordering::SeqCst);
+    if let Ok(mut e) = u.last_error.lock() {
+        *e = result.as_ref().err().cloned();
+    }
+    result
+}
+
+/// Check now and then: shortly after start, then every six hours.
+async fn follow_updates(app: AppHandle, item: MenuItem<tauri::Wry>) {
+    tokio::time::sleep(std::time::Duration::from_secs(20)).await;
+    loop {
+        if let Ok(Some(v)) = check_for_update(&app).await {
+            let _ = item.set_text(format!("Restart to update to {v}"));
+            let _ = item.set_enabled(true);
+            let _ = app.notification().builder().title("MultiParity update ready").body(format!("Version {v} is downloaded. Restart MultiParity when it suits you.")).show();
+            return;
+        }
+        tokio::time::sleep(std::time::Duration::from_secs(6 * 3600)).await;
+    }
+}
+
+async fn install_ready(app: &AppHandle) -> Result<(), String> {
+    let u = app.state::<Updates>();
+    let Some((update, bytes)) = u.ready.lock().await.take() else { return Err("No update is ready yet.".into()) };
+    // On Windows the installer closes the app and starts it again; elsewhere restart here.
+    update.install(bytes).map_err(|e| e.to_string())?;
+    app.restart();
+}
+
+#[tauri::command]
+async fn update_status(app: AppHandle) -> UpdateStatus {
+    status_of(&app).await
+}
+
+#[tauri::command]
+async fn check_update(app: AppHandle) -> Result<UpdateStatus, String> {
+    check_for_update(&app).await?;
+    Ok(status_of(&app).await)
+}
+
+#[tauri::command]
+async fn install_update(app: AppHandle) -> Result<(), String> {
+    install_ready(&app).await
+}
+
 fn show_main(app: &AppHandle) {
     if let Some(w) = app.get_webview_window("main") {
         let _ = w.show();
@@ -158,7 +275,9 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_notification::init())
-        .invoke_handler(tauri::generate_handler![pick_folder, default_root, open_server_page, open_path, reveal_path])
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .manage(Updates::default())
+        .invoke_handler(tauri::generate_handler![pick_folder, default_root, open_server_page, open_path, reveal_path, update_status, check_update, install_update])
         .setup(|app| {
             // The daemon runs inside the app unless the command-line one is already running.
             tauri::async_runtime::spawn(async {
@@ -171,8 +290,9 @@ pub fn run() {
 
             let open = MenuItem::with_id(app, "open", "Open MultiParity", true, None::<&str>)?;
             let latest = MenuItem::with_id(app, "latest", "Get latest for all projects", true, None::<&str>)?;
+            let update = MenuItem::with_id(app, "update", format!("MultiParity {}", app.package_info().version), false, None::<&str>)?;
             let quit = MenuItem::with_id(app, "quit", "Quit MultiParity", true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&open, &latest, &PredefinedMenuItem::separator(app)?, &quit])?;
+            let menu = Menu::with_items(app, &[&open, &latest, &PredefinedMenuItem::separator(app)?, &update, &quit])?;
             let mut tray = TrayIconBuilder::with_id("main").menu(&menu).tooltip("MultiParity").show_menu_on_left_click(true);
             if let Some(icon) = app.default_window_icon() {
                 tray = tray.icon(icon.clone());
@@ -182,11 +302,20 @@ pub fn run() {
                 "latest" => {
                     tauri::async_runtime::spawn(get_latest_everywhere());
                 }
+                "update" => {
+                    let app = app.clone();
+                    tauri::async_runtime::spawn(async move {
+                        if let Err(e) = install_ready(&app).await {
+                            tracing::warn!(error = %e, "update failed");
+                        }
+                    });
+                }
                 "quit" => app.exit(0),
                 _ => {}
             })
             .build(app)?;
             tauri::async_runtime::spawn(follow_notifications(app.handle().clone(), latest.clone()));
+            tauri::async_runtime::spawn(follow_updates(app.handle().clone(), update.clone()));
             Ok(())
         })
         .on_window_event(|window, event| {

@@ -8,6 +8,7 @@ mod admin;
 mod backups;
 mod branches;
 mod checkpoints;
+mod desktop;
 mod claims;
 mod drafts;
 mod events;
@@ -20,6 +21,10 @@ mod tags;
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/health", get(|| async { axum::Json(serde_json::json!({ "ok": true, "version": env!("CARGO_PKG_VERSION") })) }))
+        // The desktop app's updates and downloads (public)
+        .route("/desktop", get(desktop::info))
+        .route("/desktop/update/:target/:arch/:current", get(desktop::update))
+        .route("/desktop/files/:name", get(desktop::file))
         // Accounts
         .route("/auth/login", post(account::login))
         .route("/auth/logout", post(account::logout))

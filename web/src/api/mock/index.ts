@@ -373,6 +373,13 @@ on('POST', '/api/auth/logout', ({ headers }) => {
   return {};
 });
 on('GET', '/api/me', ({ headers }) => meOf(who(headers)));
+on('GET', '/api/desktop', () => ({
+  version: '0.2.0', notes: 'Files, History, Branches and Drafts in the app; notifications; updates itself.',
+  downloads: [
+    { platform: 'windows-x86_64', name: 'MultiParity_0.2.0_x64-setup.exe', url: '#', size: 9_400_000 },
+    { platform: 'darwin-aarch64', name: 'MultiParity_0.2.0_aarch64.dmg', url: '#', size: 11_200_000 },
+  ],
+}));
 on('GET', '/api/invites/:token', ({ m }) => {
   const inv = invites.find((i) => i.token === m[1]);
   if (!inv || inv.accepted_at) throw new Fail(404, 'not_found', 'This invite link has been used or revoked.');

@@ -29,6 +29,7 @@ export default function TopBar() {
               ))}
               <hr />
               <Link role="menuitem" to="/look" onClick={close}>Look</Link>
+              <Link role="menuitem" to="/get-app" onClick={close}>Get the desktop app</Link>
               <button role="menuitem" onClick={() => { close(); signOut(); }}>Sign out</button>
             </>
           )}

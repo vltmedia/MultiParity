@@ -395,6 +395,30 @@ function renderAccounts() {
     <button class="btn sm" data-signout="${esc(a.id)}">Sign out</button></li>`).join("");
 }
 
+// ------------------------------------------------------------------ updates (app only)
+
+async function renderUpdate(force) {
+  if (!tauri) return;
+  const el = $("#upd");
+  let st;
+  try { st = await tauri.invoke(force ? "check_update" : "update_status"); }
+  catch (e) { el.hidden = false; el.innerHTML = `<span>Version ${esc((await tauri.invoke("update_status")).current)}</span><small>${esc(String(e))}</small>`; return; }
+  el.hidden = false;
+  el.innerHTML = st.ready
+    ? `<button class="btn sm pri" id="upd-go">Restart to update to ${esc(st.ready)}</button>`
+    : `<span>Version ${esc(st.current)}</span><button class="link" id="upd-check" ${st.checking ? "disabled" : ""}>${st.checking ? "Checking…" : force ? "Up to date" : "Check for updates"}</button>`;
+}
+
+$("#upd").addEventListener("click", async (e) => {
+  if (e.target.id === "upd-check") { e.target.textContent = "Checking…"; e.target.disabled = true; renderUpdate(true); }
+  if (e.target.id === "upd-go") {
+    e.target.disabled = true; e.target.textContent = "Updating…";
+    try { await tauri.invoke("install_update"); } catch (err) { alert(String(err)); renderUpdate(); }
+  }
+});
+renderUpdate();
+setInterval(() => renderUpdate(), 10 * 60 * 1000);
+
 async function loadNotifyPrefs() {
   try {
     const p = await api("/notifications/settings");
