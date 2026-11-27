@@ -36,7 +36,10 @@ else {
 }
 const appTar = list(path.join(bundle, 'macos')).filter((f) => f.endsWith('.app.tar.gz'));
 const dmg = find('dmg', (f) => f.endsWith('.dmg'));
-if (appTar.length) found.push([`darwin-${arch}`, appTar[0], dmg[0] || null]);
+if (appTar.length) {
+  // A universal build serves both kinds of Mac.
+  for (const a of arch === 'universal' ? ['aarch64', 'x86_64'] : [arch]) found.push([`darwin-${a}`, appTar[0], dmg[0] || null]);
+}
 const appimage = find('appimage', (f) => f.endsWith('.AppImage'));
 if (appimage.length) found.push([`linux-${arch}`, appimage[0], appimage[0]]);
 if (!found.length) {
