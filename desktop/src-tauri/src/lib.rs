@@ -187,6 +187,8 @@ async fn check_for_update(app: &AppHandle) -> Result<Option<String>, String> {
         let mut endpoints: Vec<String> = servers.iter().map(|s| format!("{s}/api/desktop/update/{{{{target}}}}/{{{{arch}}}}/{{{{current_version}}}}")).collect();
         endpoints.push(GITHUB_LATEST.to_string());
         let mut asked_a_server = false;
+        // An answer from anywhere (even "nothing newer") means the check worked.
+        let mut answered = false;
         for (i, url) in endpoints.into_iter().enumerate() {
             let github = i == servers.len();
             if github && asked_a_server {
@@ -205,12 +207,15 @@ async fn check_for_update(app: &AppHandle) -> Result<Option<String>, String> {
                     *u.ready.lock().await = Some((update, bytes));
                     return Ok(Some(v));
                 }
-                Ok(None) => asked_a_server |= !github,
+                Ok(None) => {
+                    answered = true;
+                    asked_a_server |= !github;
+                }
                 Err(e) => last_err = Some(format!("{server}: {e}")),
             }
         }
         match last_err {
-            Some(e) if !asked_a_server => Err(e),
+            Some(e) if !answered => Err(e),
             _ => Ok(None),
         }
     }

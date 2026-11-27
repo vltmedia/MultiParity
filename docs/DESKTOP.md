@@ -60,6 +60,9 @@ operating system trusting the installer: see [SIGNING.md](SIGNING.md).
    Add files from a second machine later with `gh release upload v0.2.0 <files> --clobber`
    (including the merged `latest.json`).
 
+Updates are checked over `https` or plain `http` (studio servers on the local network often have
+no certificate); either way the app installs only what is signed with the update key.
+
 Servers notice a new release within 15 minutes, and apps ask their servers within a minute of
 starting and every six hours. `MP_DESKTOP_RELEASES` points a server at another `latest.json`, or
 `off` hands out nothing.

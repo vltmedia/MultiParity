@@ -66,7 +66,7 @@ npx tauri build "${TARGET[@]}"
 if [ "$(uname)" = Darwin ]; then
   APP=$( (ls -d "$ROOT"/desktop/src-tauri/target/*/release/bundle/macos/*.app "$ROOT"/desktop/src-tauri/target/release/bundle/macos/*.app 2>/dev/null || true) | head -1)
   if [ -n "$APP" ]; then
-    codesign -dv "$APP" 2>&1 | grep -E "^Authority=Developer" || echo "$(basename "$APP"): not code signed"
+    codesign -dvv "$APP" 2>&1 | grep -E "^Authority=Developer" || echo "$(basename "$APP"): not code signed"
     spctl -a "$APP" 2>/dev/null && echo "Gatekeeper accepts it." || echo "Gatekeeper does not accept it yet (not notarized)."
   fi
 fi
