@@ -22,8 +22,9 @@ export default function AdminOverview() {
               <Link className={`stat ${d.suspended ? 'bad' : ''}`} to="/admin/people?status=suspended"><b>{d.suspended}</b><span>Suspended</span></Link>
               <Link className="stat" to="/admin/orgs"><b>{d.orgs}</b><span>Organizations</span></Link>
               <Link className="stat" to="/admin/projects"><b>{d.projects}</b><span>Projects</span></Link>
-              <div className="stat"><b>{size(d.storage_bytes)}</b><span>Stored, after dedupe and compression</span></div>
-              <div className="stat"><b>{d.chunks.toLocaleString()}</b><span>Chunks</span></div>
+              {/* Storage is shared by every organization, so it is only counted for the whole server. */}
+              {d.storage_bytes != null && <div className="stat"><b>{size(d.storage_bytes)}</b><span>Stored, after dedupe and compression</span></div>}
+              {d.chunks != null && <div className="stat"><b>{d.chunks.toLocaleString()}</b><span>Chunks</span></div>}
               <Link className="stat" to="/admin/fixing"><b>{d.active_claims}</b><span>Files claimed right now</span></Link>
               <Link className={`stat ${d.stale_claims ? 'warn' : ''}`} to="/admin/fixing"><b>{d.stale_claims}</b><span>Claims that look stuck</span></Link>
             </div>

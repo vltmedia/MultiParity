@@ -783,10 +783,12 @@ on('GET', '/api/admin/overview', ({ headers, q }) => {
   const ps = projects.filter((p) => ids.includes(p.org_id));
   const us = users.filter((x) => members.some((mm) => mm.user_id === x.id && ids.includes(mm.org_id)));
   const cl = claims.filter((c) => ps.some((p) => p.id === c.project_id));
+  // As on the server: storage is only counted for the whole server.
+  const all = u.is_server_admin && !org;
   return {
     users: us.length, orgs: ids.length, projects: ps.filter((p) => !p.archived).length,
-    storage_bytes: ps.reduce((a, p) => a + filesOf(p, p.branches[0].id).reduce((b, f) => b + f.size * 1.6, 0), 0),
-    chunks: ps.reduce((a, p) => a + filesOf(p, p.branches[0].id).length * 37, 0),
+    storage_bytes: all ? ps.reduce((a, p) => a + filesOf(p, p.branches[0].id).reduce((b, f) => b + f.size * 1.6, 0), 0) : null,
+    chunks: all ? ps.reduce((a, p) => a + filesOf(p, p.branches[0].id).length * 37, 0) : null,
     active_claims: cl.length, stale_claims: cl.filter((c) => Date.now() - Date.parse(c.created_at) > 3 * DAY).length,
     suspended: us.filter((x) => x.status === 'suspended').length,
   };

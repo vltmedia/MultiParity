@@ -276,8 +276,9 @@ export type AdminOverview = {
   users: number;
   orgs: number;
   projects: number;
-  storage_bytes: number;
-  chunks: number;
+  /** Whole-server figures: null when the overview is for some organizations only. */
+  storage_bytes: number | null;
+  chunks: number | null;
   active_claims: number;
   stale_claims: number;
   suspended: number;
