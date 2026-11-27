@@ -10,3 +10,4 @@
 demo-accounts.txt
 # Local editor and assistant settings
 /.claude/
+*.tsbuildinfo
