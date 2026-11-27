@@ -355,6 +355,53 @@ fn unpack(gz: &[u8], into: &Path) -> Result<()> {
     Ok(())
 }
 
+/// Download a plugin published as an archive (.zip or .tar.gz) on the web, check its SHA-256
+/// when given, and stage it. `source` says where it came from (for updates).
+pub async fn fetch_archive(url: &str, sha256: Option<&str>, source: String, version: Option<String>) -> Result<Staged> {
+    // https only, except on this computer (for trying out an index while making one).
+    let local = url.starts_with("http://127.0.0.1") || url.starts_with("http://localhost");
+    if !url.starts_with("https://") && !local {
+        bail!("Plugins on the web must be on an https address.");
+    }
+    let bytes = http()?.get(url).send().await?.error_for_status().with_context(|| format!("Could not download {url}"))?.bytes().await?;
+    if bytes.len() > 512 * 1024 * 1024 {
+        bail!("That archive is over 512 MB; a plugin should be much smaller.");
+    }
+    use sha2::Digest;
+    let got = hex::encode(sha2::Sha256::digest(&bytes));
+    if let Some(want) = sha256 {
+        if !want.trim().eq_ignore_ascii_case(&got) {
+            bail!("The download does not match its checksum, so it was not installed. The file may have been changed since it was published.");
+        }
+    }
+    let into = staging_dir().join(format!("{}-{}", &got[..12], uuid::Uuid::new_v4().simple()));
+    let into2 = into.clone();
+    let is_zip = bytes.starts_with(b"PK");
+    tokio::task::spawn_blocking(move || -> Result<()> {
+        if is_zip {
+            std::fs::create_dir_all(&into2)?;
+            let mut z = zip::ZipArchive::new(std::io::Cursor::new(bytes.to_vec()))?;
+            // extract() refuses paths that would land outside the folder.
+            z.extract(&into2)?;
+            Ok(())
+        } else {
+            unpack(&bytes, &into2)
+        }
+    })
+    .await??;
+    // The manifest at the top, or in the one folder the archive holds.
+    let dir = if into.join(MANIFEST).exists() {
+        into.clone()
+    } else {
+        let dirs: Vec<PathBuf> = std::fs::read_dir(&into)?.filter_map(|e| e.ok()).map(|e| e.path()).filter(|p| p.is_dir()).collect();
+        match dirs.as_slice() {
+            [one] if one.join(MANIFEST).exists() => one.clone(),
+            _ => bail!("The archive has no {MANIFEST} at its top."),
+        }
+    };
+    stage(dir, source, version, got)
+}
+
 /// Use a folder on this computer as a plugin (for making one): changes there apply straight away.
 pub fn link(folder: &Path) -> Result<Installed> {
     let dir = std::fs::canonicalize(folder).with_context(|| format!("There is no folder {}", folder.display()))?;
@@ -434,11 +481,27 @@ fn copy_dir(from: &Path, to: &Path) -> std::io::Result<()> {
 /// latest release). A plugin pinned to a commit stays where it is.
 pub async fn fetch_update(id: &str) -> Result<Option<Staged>> {
     let p = find(id)?;
+    if p.source.starts_with("web:") {
+        return crate::catalog::fetch_web_update(&p.source, p.git_ref.as_deref()).await;
+    }
     let Some(rest) = p.source.strip_prefix("github:") else { bail!("{} is a folder on this computer; it is always current.", p.manifest.name) };
     if p.git_ref.as_deref().map(|r| r.len() == 40 && r.chars().all(|c| c.is_ascii_hexdigit())).unwrap_or(false) {
         return Ok(None);
     }
-    let spec = match &p.git_ref { Some(r) => format!("{rest}@{r}"), None => rest.to_string() };
+    // Installed from a release: the newest release. From a branch: its newest commit.
+    let target = match &p.git_ref {
+        None => None,
+        Some(r) => {
+            let sp = Spec::parse(rest)?;
+            let versions = crate::catalog::github_versions(&sp.owner, &sp.repo).await?;
+            let was_release = versions.iter().any(|v| v.kind != "branch" && &v.git_ref == r);
+            match versions.iter().find(|v| v.recommended && v.kind == "release") {
+                Some(newest) if was_release => Some(newest.git_ref.clone()),
+                _ => Some(r.clone()),
+            }
+        }
+    };
+    let spec = match &target { Some(r) => format!("{rest}@{r}"), None => rest.to_string() };
     let st = fetch(&spec).await?;
     if st.commit == p.commit {
         let _ = std::fs::remove_dir_all(staging_dir());

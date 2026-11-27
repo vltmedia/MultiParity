@@ -30,6 +30,54 @@ terminal:
     mp plugin remove <id>
 
 Each plugin is pinned to the exact commit installed, in `<config>/plugins/<id>/<commit>/`.
+Updates follow what you chose: a release moves to the newest release, a branch to its newest
+commit; an exact commit stays put.
+
+## Sources: finding plugins
+
+**Plugins > Browse** in the app (or `mp plugin browse [words]`) lists the plugins of all your
+sources, each with **Install…**: choose the newest release (recommended), an older or
+pre-release, or the default branch's newest commit (`mp plugin versions owner/repo` lists them; `mp plugin get <name> --at <version>` installs one).
+**Plugins > Sources** (or `mp plugin source add|list|remove`) manages the sources. A source is:
+
+- **A GitHub repository that is a plugin** (a `multiparity-plugin.json` at its top).
+- **A GitHub repository with plugins in its folders**: every folder holding a
+  `multiparity-plugin.json` is found, with no list to keep up.
+- **A GitHub repository with a `multiparity-plugins.json`** at its top that lists plugins: in its
+  own folders, in other repositories, or on the web.
+- **The web address of a `multiparity-plugins.json`**, for plugins hosted anywhere.
+
+The app starts with one source, the examples in the MultiParity repository.
+
+```json
+{
+  "name": "Cinder Works plugins",
+  "description": "What the studio uses.",
+  "plugins": [
+    { "path": "plugins/naming" },
+    { "path": "plugins/render-preview" },
+    { "repo": "someone/blender-tools" },
+    { "repo": "someone/tools", "path": "multiparity/farm" },
+    { "id": "farm-status", "name": "Farm status", "description": "Shows the render farm queue.",
+      "author": "Cinder Works",
+      "versions": [
+        { "version": "1.2.0", "url": "https://plugins.example.com/farm-status-1.2.0.zip",
+          "sha256": "9f2c…", "notes": "Faster refresh.", "published_at": "2026-11-20" },
+        { "version": "1.1.0", "url": "https://plugins.example.com/farm-status-1.1.0.zip", "sha256": "41ab…" }
+      ] }
+  ]
+}
+```
+
+- `path` alone: a folder of the index's own repository (only in an index on GitHub).
+- `repo` (and `path`): a plugin in another GitHub repository; its name, description and version
+  are read from its `multiparity-plugin.json`, and its releases are offered as versions.
+- `versions`: a plugin published as `.zip` or `.tar.gz` archives on `https` addresses, newest
+  first, each holding `multiparity-plugin.json` at its top (or in its one folder). With `sha256`,
+  a download that does not match is refused. Updates install the newest listed version.
+
+The list is kept for ten minutes; **Refresh** reads the sources again. Private repositories need
+`GITHUB_TOKEN`, as for installing.
 Private repositories: set `GITHUB_TOKEN` (or `MP_GITHUB_TOKEN`) to a token that can read them.
 
 A plugin runs as you, with your access to this computer. Install only plugins you trust, as you

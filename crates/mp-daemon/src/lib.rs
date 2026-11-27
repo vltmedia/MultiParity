@@ -314,6 +314,11 @@ pub async fn run(listen: &str, interval: u64) -> Result<()> {
         .route("/local/plugins/:id/update", post(plugin_update_preview))
         .route("/local/plugins/:id/ui/*rest", get(plugin_page))
         .route("/local/plugin-sdk.js", get(plugin_sdk))
+        .route("/local/plugin-sources", get(sources_list).post(source_add))
+        .route("/local/plugin-sources/:id", axum::routing::delete(source_remove))
+        .route("/local/plugin-catalog", get(catalog_list))
+        .route("/local/plugin-catalog/versions", get(catalog_versions))
+        .route("/local/plugin-catalog/preview", post(catalog_preview))
         .route("/local/workspaces/:id/plugins/:plugin/run", post(plugin_run))
         .layer(middleware::from_fn(origin_guard))
         .layer(cors)
@@ -1333,3 +1338,72 @@ const PLUGIN_SDK: &str = r#"// MultiParity plugin page API. Include with <script
   };
 })();
 "#;
+
+// ---------------------------------------------------------------------------------------------
+// Plugin sources and the catalog (mp_client::catalog)
+
+async fn sources_list() -> DResult<Json<Value>> {
+    Ok(Json(json!(mp_client::catalog::sources()?)))
+}
+
+#[derive(Deserialize)]
+struct SourceBody {
+    location: String,
+}
+
+async fn source_add(Json(b): Json<SourceBody>) -> DResult<Json<Value>> {
+    let (s, n) = mp_client::catalog::add_source(&b.location).await.map_err(|e| DErr(StatusCode::UNPROCESSABLE_ENTITY, format!("{e:#}")))?;
+    Ok(Json(json!({ "source": s, "plugins": n })))
+}
+
+async fn source_remove(Path(id): Path<String>) -> DResult<Json<Value>> {
+    let s = mp_client::catalog::remove_source(&id)?;
+    Ok(Json(json!({ "removed": s.id })))
+}
+
+#[derive(Deserialize)]
+struct CatalogQuery {
+    #[serde(default)]
+    refresh: Option<String>,
+    #[serde(default)]
+    key: Option<String>,
+}
+
+async fn catalog_list(Query(q): Query<CatalogQuery>) -> DResult<Json<Value>> {
+    let all = mp_client::catalog::catalog(q.refresh.is_some()).await?;
+    let installed = mp_client::plugins::installed()?;
+    Ok(Json(json!(all
+        .iter()
+        .map(|(src, entries, problem)| json!({
+            "source": src, "problem": problem,
+            "plugins": entries.iter().map(|e| {
+                let have = installed.iter().find(|p| !e.id.is_empty() && p.manifest.id == e.id);
+                let mut v = json!(e);
+                v["installed"] = have.map(|h| json!({ "version": h.manifest.version, "commit": h.commit, "git_ref": h.git_ref, "source": h.source })).unwrap_or(Value::Null);
+                v
+            }).collect::<Vec<_>>(),
+        }))
+        .collect::<Vec<_>>())))
+}
+
+async fn catalog_versions(Query(q): Query<CatalogQuery>) -> DResult<Json<Value>> {
+    let key = q.key.ok_or_else(|| DErr(StatusCode::BAD_REQUEST, "Say which plugin.".into()))?;
+    let v = mp_client::catalog::versions(&key).await.map_err(|e| DErr(StatusCode::UNPROCESSABLE_ENTITY, format!("{e:#}")))?;
+    Ok(Json(json!(v)))
+}
+
+#[derive(Deserialize)]
+struct CatalogPick {
+    key: String,
+    #[serde(default)]
+    version: Option<String>,
+}
+
+/// Fetch a catalog plugin at the chosen version and show it, as for installing by name.
+async fn catalog_preview(Json(b): Json<CatalogPick>) -> DResult<Json<Value>> {
+    let st = mp_client::catalog::fetch_entry(&b.key, b.version.as_deref()).await.map_err(|e| DErr(StatusCode::UNPROCESSABLE_ENTITY, format!("{e:#}")))?;
+    let key = uuid::Uuid::new_v4().simple().to_string();
+    let v = staged_json(&key, &st);
+    STAGED.lock().unwrap().insert(key, st);
+    Ok(Json(v))
+}

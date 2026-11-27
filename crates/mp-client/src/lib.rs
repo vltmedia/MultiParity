@@ -12,6 +12,7 @@
 
 pub mod accounts;
 pub mod api;
+pub mod catalog;
 pub mod checkpoints;
 pub mod export;
 pub mod plugins;

@@ -340,6 +340,30 @@ enum PluginCmd {
     Off { id: String },
     /// Run a plugin's operation on files in this folder (or on the project when it takes none).
     Run { id: String, operation: String, paths: Vec<String> },
+    /// Plugins in your sources, optionally only those matching some words.
+    Browse { words: Vec<String> },
+    /// Install a plugin from your sources by its name or id (`mp plugin browse` lists them).
+    Get {
+        name: String,
+        /// A release tag or branch (GitHub), or a listed version (web); the newest release when left out.
+        #[arg(long, value_name = "VERSION")]
+        at: Option<String>,
+        #[arg(short, long)]
+        yes: bool,
+    },
+    /// The versions of a GitHub plugin you can install: its releases and its default branch.
+    Versions { repo: String },
+    /// Where plugins are listed: GitHub repositories and web addresses of an index.
+    #[command(subcommand)]
+    Source(SourceCmd),
+}
+
+#[derive(Subcommand)]
+enum SourceCmd {
+    List,
+    /// owner/repo (with a multiparity-plugins.json, or a plugin itself) or an https address of an index.
+    Add { location: String },
+    Remove { id: String },
 }
 
 #[derive(Subcommand)]
@@ -1367,6 +1391,71 @@ async fn plugin_cmd(ctx: &Ctx, c: PluginCmd) -> Result<()> {
         PluginCmd::Off { id } => {
             let p = plugins::set_enabled(&id, false)?;
             ctx.say(&format!("{} is off.", p.manifest.name));
+        }
+        PluginCmd::Browse { words } => {
+            let all = mp_client::catalog::catalog(true).await?;
+            let installed = plugins::installed()?;
+            let w: Vec<String> = words.iter().map(|x| x.to_lowercase()).collect();
+            let mut out = vec![];
+            let mut text = String::new();
+            for (src, entries, problem) in &all {
+                if let Some(p) = problem {
+                    text += &format!("{}: {p}\n", src.name);
+                }
+                for e in entries.iter().filter(|e| w.iter().all(|x| format!("{} {} {}", e.name, e.description, e.id).to_lowercase().contains(x))) {
+                    let have = installed.iter().find(|p| !e.id.is_empty() && p.manifest.id == e.id);
+                    text += &format!("{}  {}{}\n    {}\n    install: mp plugin {}\n", e.name, e.version, have.map(|h| format!(" (installed: {})", h.manifest.version)).unwrap_or_default(),
+                        if e.description.is_empty() { e.problem.clone().unwrap_or_default() } else { e.description.clone() },
+                        if e.id.is_empty() { e.spec.clone().unwrap_or_default() } else { format!("get {}", e.id) });
+                    out.push(json!(e));
+                }
+            }
+            ctx.out(json!(out), || if text.is_empty() { "Nothing found. Add sources with `mp plugin source add owner/repo`.".into() } else { text.trim_end().to_string() });
+        }
+        PluginCmd::Get { name, at: version, yes } => {
+            let n = name.trim().to_lowercase();
+            let mut found = None;
+            for (_, entries, _) in mp_client::catalog::catalog(false).await? {
+                if let Some(e) = entries.into_iter().find(|e| e.id.to_lowercase() == n || e.name.to_lowercase() == n || e.key.to_lowercase() == n) {
+                    found = Some(e);
+                    break;
+                }
+            }
+            let e = found.with_context(|| format!("There is no plugin called {name} in your sources. `mp plugin browse` lists them."))?;
+            // The newest release unless a version was named (the default branch when there are none).
+            let version = match version {
+                Some(v) => Some(v),
+                None => match e.kind.as_str() {
+                    "github" => mp_client::catalog::versions(&e.key).await?.into_iter().find(|v| v.recommended).map(|v| v.git_ref),
+                    _ => None,
+                },
+            };
+            let st = mp_client::catalog::fetch_entry(&e.key, version.as_deref()).await?;
+            eprint!("{}", describe_plugin(&st));
+            if !confirm(yes)? {
+                ctx.say("Not installed.");
+                return Ok(());
+            }
+            let p = plugins::install(st)?;
+            ctx.out(json!(p), || format!("Installed {} {}.", p.manifest.name, p.manifest.version));
+        }
+        PluginCmd::Versions { repo } => {
+            let s = plugins::Spec::parse(&repo)?;
+            let list = mp_client::catalog::github_versions(&s.owner, &s.repo).await?;
+            let base = repo.split('@').next().unwrap_or(&repo).to_string();
+            ctx.out(json!(list), || list.iter().map(|v| format!("{}{}  {}  install: mp plugin install {base}@{}", if v.recommended { "* " } else { "  " }, v.label, v.kind, v.git_ref)).collect::<Vec<_>>().join("\n"));
+        }
+        PluginCmd::Source(SourceCmd::List) => {
+            let list = mp_client::catalog::sources()?;
+            ctx.out(json!(list), || list.iter().map(|s| format!("{}  {}  {}", s.id, s.name, s.location)).collect::<Vec<_>>().join("\n"));
+        }
+        PluginCmd::Source(SourceCmd::Add { location }) => {
+            let (s, n) = mp_client::catalog::add_source(&location).await?;
+            ctx.out(json!(s), || format!("Added {} ({n} plugin{}).", s.name, if n == 1 { "" } else { "s" }));
+        }
+        PluginCmd::Source(SourceCmd::Remove { id }) => {
+            let s = mp_client::catalog::remove_source(&id)?;
+            ctx.say(&format!("Removed {}.", s.name));
         }
         PluginCmd::Run { id, operation, paths } => {
             let ws = ctx.ws()?;

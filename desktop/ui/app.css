@@ -457,3 +457,14 @@ ul.pl-perm li.new { color: var(--hold); }
 .pl-acts { display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
 .pl-card { margin-top: 14px; padding: 14px; border: var(--bw) solid var(--line); background: var(--card); }
 .pl-card code { font-size: 12px; }
+
+#v-plugins .tabs { margin: 0 0 14px; }
+#v-plugins .toolbar-row { display: flex; gap: 8px; margin: 0 0 14px; }
+#v-plugins .toolbar-row input { flex: 1; border: var(--bw) solid var(--btn-line); padding: 8px 11px; border-radius: var(--r-btn); background: var(--field); color: var(--ink); }
+li.cat { display: flex; gap: 16px; align-items: flex-start; padding: 12px 0; border-top: 1px solid var(--line); }
+li.cat .chip { font-size: 11px; padding: 1px 7px; }
+.pl-src a { color: inherit; }
+.pv-notes { display: block; color: var(--mute); font-size: 12px; white-space: pre-line; max-height: 4.5em; overflow: hidden; }
+#v-plugins .pathrow { display: flex; gap: 8px; }
+#v-plugins .pathrow input { flex: 1; min-width: 0; border: var(--bw) solid var(--btn-line); padding: 9px 11px; border-radius: var(--r-btn); background: var(--field); color: var(--ink); }
+.pl-main .pl-src { display: block; margin-top: 2px; }

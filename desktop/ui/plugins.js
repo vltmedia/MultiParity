@@ -5,7 +5,7 @@
 // Uses helpers from app.js, work.js and project.js.
 "use strict";
 
-var plugins = { list: [], loaded: false, appView: null };
+var plugins = { list: [], loaded: false, appView: null, tab: "installed", catalog: null, catalogError: "", q: "", sources: null };
 
 async function loadPlugins() {
   try { plugins.list = await api("/plugins"); } catch (_) { plugins.list = []; }
@@ -176,7 +176,7 @@ function renderPlugins() {
         <strong>${icon("puzzle")}${esc(m.name)} <small>${esc(m.version || "")}</small></strong>
         ${m.description ? `<p>${esc(m.description)}</p>` : ""}
         <ul class="pl-what">${what.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>
-        <small class="pl-src">${p.linked ? `Linked folder ${esc(p.dir)}` : `${esc(p.source.replace(/^github:/, ""))} at ${esc(p.commit.slice(0, 12))}`}${p.required_by ? ` · required by ${esc(p.required_by)}` : ""}</small>
+        <small class="pl-src">${p.linked ? `Linked folder ${esc(p.dir)}` : p.source.startsWith("web:") ? `From ${esc(p.source.slice(4).split("#")[0])}` : `${esc(p.source.replace(/^github:/, ""))}${p.git_ref ? ` (${esc(p.git_ref)})` : ""} at ${esc(p.commit.slice(0, 12))}`}${p.required_by ? ` · required by ${esc(p.required_by)}` : ""}</small>
       </div>
       <div class="pl-acts">
         <label class="switch" data-pl="toggle" data-id="${esc(p.id)}"><span>${p.enabled ? "Enabled" : "Disabled"}</span><span role="switch" tabindex="0" aria-checked="${p.enabled}" aria-label="Use ${esc(m.name)}"></span></label>
@@ -185,13 +185,18 @@ function renderPlugins() {
       </div>
     </li>`;
   }).join("");
-  v.innerHTML = `
-    <header class="head"><div><h1>Plugins</h1><p>Add steps around publishing, actions on files and new views, from plugins on GitHub. A plugin runs on this computer as you, so install only ones you trust.</p></div></header>
+  const tabs = [["installed", `Installed${plugins.list.length ? ` <b>${plugins.list.length}</b>` : ""}`], ["browse", "Browse"], ["sources", "Sources"]];
+  const head = `
+    <header class="head"><div><h1>Plugins</h1><p>Add steps around publishing, actions on files and new views, from plugins on GitHub or the web. A plugin runs on this computer as you, so install only ones you trust.</p></div></header>
+    <nav class="tabs" role="tablist" aria-label="Plugins">${tabs.map(([k, l]) => `<button role="tab" data-pl="tab" data-t="${k}" aria-selected="${plugins.tab === k}">${l}</button>`).join("")}</nav>
+    <div id="pl-preview"></div>`;
+  if (plugins.tab === "browse") { v.innerHTML = head + browseHtml(); return; }
+  if (plugins.tab === "sources") { v.innerHTML = head + sourcesHtml(); return; }
+  v.innerHTML = head + `
     <div class="panel">
       <h2>Install from GitHub</h2>
       <div class="pathrow"><input id="pl-spec" placeholder="owner/repo, owner/repo/folder or owner/repo@v1.2" aria-label="GitHub repository"><button class="btn pri" data-pl="look">Look it up</button></div>
-      <p class="note">You see what it does and what it can reach before anything is installed. Making one? <button class="link" data-pl="link">Use a folder on this computer</button>.</p>
-      <div id="pl-preview"></div>
+      <p class="note">You see what it does and what it can reach before anything is installed. Or <button class="link" data-pl="tab" data-t="browse">browse your sources</button>. Making one? <button class="link" data-pl="link">Use a folder on this computer</button>.</p>
     </div>
     <div class="panel">
       <h2>Installed</h2>
@@ -199,12 +204,107 @@ function renderPlugins() {
     </div>`;
 }
 
+// ------------------------------------------------------------------ Browse and Sources
+
+async function loadCatalog(refresh) {
+  if (plugins.catalogLoading) return;
+  plugins.catalogLoading = true;
+  plugins.catalogError = "";
+  plugins.catalog = null;
+  if (plugins.tab === "browse") renderPlugins();
+  try { plugins.catalog = await api(`/plugin-catalog${refresh ? "?refresh=1" : ""}`); }
+  catch (e) { plugins.catalogError = e.message; plugins.catalog = []; }
+  plugins.catalogLoading = false;
+  if (plugins.tab === "browse") renderPlugins();
+}
+
+async function loadSources() {
+  try { plugins.sources = await api("/plugin-sources"); } catch (e) { plugins.sources = []; toast(e.message, true); }
+  if (plugins.tab === "sources") renderPlugins();
+}
+
+function browseHtml() {
+  if (!plugins.catalog) { if (!plugins.catalogLoading) loadCatalog(false); return `<div class="panel"><p class="note">Reading your sources…</p></div>`; }
+  const q = plugins.q.trim().toLowerCase();
+  const groups = plugins.catalog.map((g) => {
+    const items = g.plugins.filter((e) => !q || `${e.name} ${e.description} ${e.author} ${e.id}`.toLowerCase().includes(q));
+    const cards = items.map((e) => {
+      const have = e.installed;
+      const act = e.problem && !e.manifest && e.kind === "github"
+        ? `<span class="note">${esc(e.problem)}</span>`
+        : `<button class="btn sm ${have ? "" : "pri"}" data-pl="pick" data-key="${esc(e.key)}">${have ? "Other versions…" : "Install…"}</button>`;
+      return `<li class="cat">
+        <div class="pl-main">
+          <strong>${icon("puzzle")}${esc(e.name)} <small>${esc(e.version || "")}</small>${have ? ` <span class="chip">Installed ${esc(have.version || "")}</span>` : ""}</strong>
+          ${e.description ? `<p>${esc(e.description)}</p>` : ""}
+          <small class="pl-src">${e.author ? `${esc(e.author)} · ` : ""}${e.spec ? esc(e.spec) : "Download from the web"}${e.homepage ? ` · <a href="${esc(e.homepage)}" target="_blank" rel="noopener">Page</a>` : ""}</small>
+        </div>
+        <div class="pl-acts">${act}</div>
+      </li>`;
+    }).join("");
+    return `<div class="panel"><h2>${esc(g.source.name || g.source.location)}</h2>
+      ${g.problem ? `<p class="err">${esc(g.problem)}</p>` : ""}
+      ${cards ? `<ul class="plugs">${cards}</ul>` : g.problem ? "" : `<p class="note">${q ? "Nothing here matches." : "No plugins listed."}</p>`}</div>`;
+  }).join("");
+  return `<div class="toolbar-row">
+      <input id="pl-q" type="search" placeholder="Find a plugin" value="${esc(plugins.q)}" aria-label="Find a plugin">
+      <button class="btn sm" data-pl="refresh">Refresh</button>
+    </div>
+    ${plugins.catalogError ? `<p class="err">${esc(plugins.catalogError)}</p>` : ""}
+    ${groups || `<div class="panel"><div class="empty"><b>No sources.</b>Add a GitHub repository or a web address under Sources.</div></div>`}`;
+}
+
+function sourcesHtml() {
+  if (!plugins.sources) { if (!plugins.sourcesLoading) { plugins.sourcesLoading = true; loadSources().finally(() => { plugins.sourcesLoading = false; }); } return `<div class="panel"><p class="note">Loading…</p></div>`; }
+  return `<div class="panel">
+      <h2>Add a source</h2>
+      <div class="pathrow"><input id="src-loc" placeholder="owner/repo, or https://…/multiparity-plugins.json" aria-label="Source"><button class="btn pri" data-pl="src-add">Add</button></div>
+      <p class="note">A GitHub repository that is a plugin, has plugins in its folders, or lists plugins (its own or other repositories') in a <code>multiparity-plugins.json</code>; or the web address of such a list.</p>
+    </div>
+    <div class="panel">
+      <h2>Your sources</h2>
+      ${plugins.sources.length ? `<ul class="plugs">${plugins.sources.map((x) => `<li class="plug">
+        <div class="pl-main"><strong>${esc(x.name || x.location)}</strong><small class="pl-src">${esc(x.location.replace(/^github:/, "github.com/"))}</small></div>
+        <div class="pl-acts"><button class="btn sm" data-pl="src-remove" data-id="${esc(x.id)}">Remove</button></div></li>`).join("")}</ul>` : `<div class="empty"><b>No sources.</b>Add one above.</div>`}
+    </div>`;
+}
+
+/** Choose a version of a catalog plugin, then see what it does before installing. */
+async function pickVersion(key) {
+  let list;
+  try { list = await api(`/plugin-catalog/versions?key=${encodeURIComponent(key)}`); }
+  catch (e) { return toast(e.message, true); }
+  const entry = (plugins.catalog || []).flatMap((g) => g.plugins).find((e) => e.key === key) || { name: "the plugin" };
+  const when = (t) => (t ? ` · ${new Date(t).toLocaleDateString()}` : "");
+  dialog(`<h2>Install ${esc(entry.name)}</h2>
+    <p class="note">Choose what to install. A release is a version its makers published; the branch is whatever is newest there, released or not. Updates follow what you choose.</p>
+    <ul class="choices">${list.map((x, i) => `<li><label><input type="radio" name="pv" value="${i}" ${x.recommended ? "checked" : ""}>
+      <span><strong>${esc(x.label)}</strong>${x.notes ? `<small class="pv-notes">${esc(x.notes)}</small>` : ""}</span>
+      <small>${x.kind === "prerelease" ? "Pre-release" : x.kind === "branch" ? "Branch" : x.recommended ? "Newest release" : "Release"}${when(x.published_at)}</small></label></li>`).join("")}</ul>
+    <p class="err" id="pv-err" role="alert"></p>
+    <div class="dlg-acts"><button class="btn" value="cancel">Cancel</button><button class="btn pri" value="go">Continue</button></div>`,
+    async (what, body, dlg) => {
+      const picked = body.querySelector('input[name="pv"]:checked');
+      if (!picked) { $("#pv-err", body).textContent = "Choose a version."; return; }
+      const go = body.querySelector('button[value="go"]');
+      go.disabled = true; go.textContent = "Downloading…";
+      try {
+        const st = await api("/plugin-catalog/preview", { method: "POST", body: JSON.stringify({ key, version: list[+picked.value].git_ref }) });
+        dlg.close();
+        $("#pl-preview").innerHTML = previewHtml(st, st.replaces ? "Install this version" : "Install");
+        $("#pl-preview").scrollIntoView({ block: "nearest" });
+      } catch (e) { $("#pv-err", body).textContent = e.message; go.disabled = false; go.textContent = "Continue"; }
+    });
+}
+
 function previewHtml(st, verb) {
   const m = st.manifest;
   return `<div class="pl-card">
     <strong>${esc(m.name)} ${esc(m.version || "")}</strong>${m.author ? ` <small>by ${esc(m.author)}</small>` : ""}
     ${m.description ? `<p>${esc(m.description)}</p>` : ""}
-    <p class="note">From ${esc(st.source.replace(/^github:/, ""))} at commit ${esc(st.commit.slice(0, 12))}${st.replaces ? `, replacing version ${esc(st.replaces.version)}` : ""}.</p>
+    <p class="note">${st.source.startsWith("web:")
+      ? `From ${esc(st.source.slice(4).split("#")[0])}, download checksum ${esc(st.commit.slice(0, 12))}`
+      : `From ${esc(st.source.replace(/^github:/, ""))}${st.git_ref ? ` (${esc(st.git_ref)})` : ""} at commit ${esc(st.commit.slice(0, 12))}`}${st.replaces ? `, replacing version ${esc(st.replaces.version)}` : ""}.</p>
     <ul class="pl-what">
       ${(m.hooks || []).map((h) => `<li>Runs ${esc(h.replace(/_/g, " "))}${h.startsWith("before") ? " and can stop it" : ""}</li>`).join("")}
       ${(m.operations || []).map((o) => `<li>Adds <b>${esc(o.title)}</b>${(o.files || []).length ? ` for ${esc(o.files.join(", "))}` : " for a project"}</li>`).join("")}
@@ -221,6 +321,25 @@ $("#v-plugins").addEventListener("click", async (e) => {
   if (!el) return;
   const what = el.dataset.pl;
   const box = $("#pl-preview");
+  if (what === "tab") { plugins.tab = el.dataset.t; renderPlugins(); return; }
+  if (what === "refresh") { loadCatalog(true); return; }
+  if (what === "pick") { pickVersion(el.dataset.key); return; }
+  if (what === "src-add") {
+    const loc = $("#src-loc").value.trim();
+    if (!loc) return toast("Type a GitHub repository or a web address first.", true);
+    el.disabled = true; el.textContent = "Checking…";
+    try {
+      const r = await api("/plugin-sources", { method: "POST", body: JSON.stringify({ location: loc }) });
+      toast(`Added ${r.source.name}: ${r.plugins} plugin${r.plugins === 1 ? "" : "s"}.`);
+      plugins.catalog = null; await loadSources();
+    } catch (err) { toast(err.message, true); el.disabled = false; el.textContent = "Add"; }
+    return;
+  }
+  if (what === "src-remove") {
+    try { await api(`/plugin-sources/${encodeURIComponent(el.dataset.id)}`, { method: "DELETE" }); plugins.catalog = null; await loadSources(); }
+    catch (err) { toast(err.message, true); }
+    return;
+  }
   if (what === "look") {
     const spec = $("#pl-spec").value.trim();
     if (!spec) return toast("Type a GitHub repository first.", true);
@@ -236,7 +355,8 @@ $("#v-plugins").addEventListener("click", async (e) => {
     try {
       const p = await api("/plugins/install", { method: "POST", body: JSON.stringify({ stage: el.dataset.stage }) });
       toast(`Installed ${p.manifest.name} ${p.manifest.version || ""}.`);
-      box.innerHTML = ""; $("#pl-spec").value = "";
+      box.innerHTML = ""; if ($("#pl-spec")) $("#pl-spec").value = "";
+      plugins.catalog = null; // re-read, so Installed marks are right
       await loadPlugins();
     } catch (err) { toast(err.message, true); el.disabled = false; }
     return;
@@ -271,7 +391,16 @@ $("#v-plugins").addEventListener("click", async (e) => {
     el.disabled = false; el.textContent = "Check for update";
   }
 });
+$("#v-plugins").addEventListener("input", (e) => {
+  if (e.target.id === "pl-q") {
+    plugins.q = e.target.value;
+    const at = e.target.selectionStart;
+    renderPlugins();
+    const q = $("#pl-q"); if (q) { q.focus(); q.setSelectionRange(at, at); }
+  }
+});
 $("#v-plugins").addEventListener("keydown", (e) => {
+  if (e.target.id === "src-loc" && e.key === "Enter") $('#v-plugins [data-pl="src-add"]').click();
   if (e.target.id === "pl-spec" && e.key === "Enter") $('#v-plugins [data-pl="look"]').click();
   if ((e.key === "Enter" || e.key === " ") && e.target.matches("[role=switch]")) { e.preventDefault(); e.target.closest("[data-pl]").click(); }
 });
