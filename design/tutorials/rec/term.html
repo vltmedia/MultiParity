@@ -1,0 +1,95 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Terminal</title>
+<style>
+  :root { --bg: #0b1622; --win: #0e1b27; --bar: #142433; --ink: #d6e3ec; --mute: #6f8597; --acc: #26caf3; --grn: #5ee08a; --yel: #f2c66d; --red: #ff7a7a; }
+  html, body { margin: 0; height: 100%; background: radial-gradient(1200px 700px at 30% 20%, #17324a, #08121b 70%); font-family: 'Cascadia Mono', 'JetBrains Mono', Consolas, monospace; overflow: hidden; }
+  .win { position: absolute; left: 80px; top: 56px; right: 80px; bottom: 56px; background: var(--win); border: 1px solid #22394d; border-radius: 10px; box-shadow: 0 30px 80px rgba(0,0,0,.55); display: flex; flex-direction: column; overflow: hidden; }
+  .bar { height: 38px; background: var(--bar); display: flex; align-items: center; gap: 8px; padding: 0 14px; border-bottom: 1px solid #22394d; color: var(--mute); font: 13px 'Segoe UI', sans-serif; }
+  .bar i { width: 12px; height: 12px; border-radius: 50%; background: #2a4157; display: inline-block; }
+  .bar span { margin-left: 10px; }
+  .body { flex: 1; padding: 18px 24px; overflow: hidden; font-size: 19px; line-height: 1.6; color: var(--ink); }
+  .body .ln { white-space: pre; min-height: 1.6em; }
+  .p { color: var(--grn); } .p b { color: var(--acc); font-weight: normal; }
+  .o { color: #aebfcc; } .ok { color: var(--grn); } .warn { color: var(--yel); } .dim { color: var(--mute); }
+  .caret { display: inline-block; width: .6em; height: 1.15em; background: var(--acc); vertical-align: -0.2em; animation: blink 1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  /* Editor */
+  .ed { display: none; flex: 1; flex-direction: column; }
+  .ed.on { display: flex; } .term.off { display: none; }
+  .ed .tabs { display: flex; background: #0c1823; border-bottom: 1px solid #22394d; }
+  .ed .tabs div { padding: 9px 18px; color: var(--ink); font: 14px 'Segoe UI', sans-serif; background: var(--win); border-right: 1px solid #22394d; }
+  .ed .code { flex: 1; padding: 14px 0; font-size: 18px; line-height: 1.6; overflow: hidden; counter-reset: l; color: var(--ink); }
+  .ed .code .ln { display: flex; white-space: pre; padding-right: 20px; }
+  .ed .code .ln::before { counter-increment: l; content: counter(l); width: 56px; padding-right: 18px; text-align: right; color: #3e566b; flex: none; }
+  .ed .cm { color: #5f7a8f; } .ed .k { color: #8fd3ff; } .ed .v { color: #f2c66d; } .ed .ln.hl { background: rgba(38,202,243,.08); }
+</style></head>
+<body>
+<div class="win">
+  <div class="bar"><i></i><i></i><i></i><span id="title">alice@studio-server: ~</span></div>
+  <div class="body term" id="term"></div>
+  <div class="ed" id="ed"><div class="tabs"><div id="edname">.env</div></div><div class="code" id="code"></div></div>
+</div>
+<script>
+const term = document.getElementById('term');
+let cwd = '~';
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+function prompt() {
+  term.querySelectorAll('.caret').forEach((c) => c.remove());
+  const d = document.createElement('div'); d.className = 'ln cmd';
+  d.innerHTML = `<span class="p">alice@studio-server<b>:${esc(cwd)}</b>$ </span><span class="t"></span><span class="caret"></span>`;
+  term.appendChild(d); trim(); return d;
+}
+function trim() { while (term.scrollHeight > term.clientHeight + 2 && term.children.length > 1) term.removeChild(term.firstChild); }
+window.T = {
+  async cmd(text, cps = 17) {
+    const d = term.lastElementChild && term.lastElementChild.classList.contains('cmd') && !term.lastElementChild.dataset.done ? term.lastElementChild : prompt();
+    const t = d.querySelector('.t');
+    for (const ch of text) { t.textContent += ch; await sleep(1000 / cps + Math.random() * 40); }
+    await sleep(350); d.dataset.done = 1; d.querySelector('.caret')?.remove();
+  },
+  async out(lines, gap = 60) {
+    for (const l of lines) {
+      const d = document.createElement('div'); d.className = 'ln o';
+      if (typeof l === 'string') d.textContent = l; else { d.textContent = l[0]; d.className = 'ln ' + l[1]; }
+      term.appendChild(d); trim(); await sleep(gap);
+    }
+  },
+  ready() { prompt(); },
+  cd(dir) {
+    cwd = dir; document.getElementById('title').textContent = 'alice@studio-server: ' + dir;
+    const last = term.lastElementChild; if (last && last.classList.contains('cmd') && !last.dataset.done) last.querySelector('.p b').textContent = ':' + dir;
+  },
+  clear() { term.innerHTML = ''; },
+  // Editor
+  edit(name, text) {
+    document.getElementById('term').classList.add('off'); document.getElementById('ed').classList.add('on');
+    document.getElementById('edname').textContent = name;
+    const code = document.getElementById('code'); code.innerHTML = '';
+    text.split('\n').forEach((l, i) => { const d = document.createElement('div'); d.className = 'ln'; d.id = 'L' + (i + 1); d.innerHTML = paint(l); code.appendChild(d); });
+  },
+  async typeAt(n, text, cps = 16) {
+    const d = document.getElementById('L' + n); d.classList.add('hl');
+    let base = d.textContent; const c = document.createElement('span'); c.className = 'caret';
+    for (const ch of text) { base += ch; d.innerHTML = paint(base); d.appendChild(c); await sleep(1000 / cps + Math.random() * 35); }
+    await sleep(300); c.remove(); d.classList.remove('hl');
+  },
+  setLine(n, text) { document.getElementById('L' + n).innerHTML = paint(text); },
+  // Select the value after "=" (as if double-clicked), then type over it.
+  async replaceValue(n, text, cps = 16) {
+    const d = document.getElementById('L' + n); const key = d.textContent.split('=')[0];
+    d.innerHTML = paint(key + '=') ; d.classList.add('hl'); await sleep(250);
+    await window.T.typeAt(n, text, cps);
+  },
+  scrollTo(n) { document.getElementById('L' + n).scrollIntoView({ block: 'center', behavior: 'smooth' }); },
+  close() { document.getElementById('term').classList.remove('off'); document.getElementById('ed').classList.remove('on'); },
+};
+function paint(l) {
+  if (/^\s*#/.test(l)) return `<span class="cm">${esc(l)}</span>`;
+  const m = l.match(/^([A-Z0-9_]+)=(.*)$/);
+  if (m) return `<span class="k">${m[1]}</span>=<span class="v">${esc(m[2])}</span>`;
+  return esc(l) || ' ';
+}
+T.ready();
+</script>
+</body></html>

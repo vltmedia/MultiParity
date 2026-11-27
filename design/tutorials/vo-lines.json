@@ -1,0 +1,684 @@
+{
+ "t01-setup": [
+  {
+   "id": "hello",
+   "text": "[warmly] Hey. This is MultiParity, and this one's about getting you set up. It takes about a minute.",
+   "assetId": "asset_01M8DF18VJNM9DE57JKHWT06NM",
+   "path": "audio/generated/warmly-Hey-This-is-MultiParity-and-this-hchf5h-generatedSpeech.mp3",
+   "dur": 5.564
+  },
+  {
+   "id": "signin",
+   "text": "Open the app and go to Accounts. Type in your studio's server address, your email and your password, and hit Sign in.",
+   "assetId": "asset_01M8DF19R25JPC0QW1HNVPQ97H",
+   "path": "audio/generated/Open-the-app-and-go-to-Accounts-Type-in-hchf5f-generatedSpeech.mp3",
+   "dur": 8.594
+  },
+  {
+   "id": "project",
+   "text": "Now go to Projects. [curious] See Emberfall there? That's a project your studio already made. Click Sync to this computer.",
+   "assetId": "asset_01M8DF18QJCAJXK3J48QAE3PT3",
+   "path": "audio/generated/Now-go-to-Projects-curious-See-hchf5e-generatedSpeech.mp3",
+   "dur": 7.157
+  },
+  {
+   "id": "folder",
+   "text": "It asks where you want the files. Pick any folder you like. Your D drive, an external drive, wherever there's room. Click Sync this folder...",
+   "assetId": "asset_01M8DF19ACQ8CD296ACSY42W4K",
+   "path": "audio/generated/It-asks-where-you-want-the-files-Pick-hchf5g-generatedSpeech.mp3",
+   "dur": 12.042
+  },
+  {
+   "id": "done",
+   "text": "[short pause] and that's it. The files come down, and from now on the app keeps that folder up to date for you.",
+   "assetId": "asset_01M8DF1EKT13RBKV2CKNF8EHZX",
+   "path": "audio/generated/short-pause-and-that-s-it-The-files-snsttp-generatedSpeech.mp3",
+   "dur": 6.426
+  },
+  {
+   "id": "more",
+   "text": "[lightly] Working with more than one studio? Just add another account. Every project from every account shows up in the same list.",
+   "assetId": "asset_01M8DF1EPBNH23YN9EVXYER5N5",
+   "path": "audio/generated/lightly-Working-with-more-than-one-svt9dx-generatedSpeech.mp3",
+   "dur": 6.609
+  }
+ ],
+ "t02-new-project": [
+  {
+   "id": "hello",
+   "text": "[friendly] Starting something new? Or bringing over a project that's just been sitting in a folder? Here's how to set it up.",
+   "assetId": "asset_01M8DF1J6KR4P0FDF33QGZNK35",
+   "path": "audio/generated/friendly-Starting-something-new-Or-8tegpq-generatedSpeech.mp3",
+   "dur": 6.844
+  },
+  {
+   "id": "make",
+   "text": "First, someone with admin rights makes the project. In the web app, go to Admin, Projects, and click New project. Give it a name, pick your organization, and click Make project. [lightly] It already comes with sensible rules for junk files, like autosaves and engine caches.",
+   "assetId": "asset_01M8DF1QP2WT81WEMYPP69HERB",
+   "path": "audio/generated/First-someone-with-admin-rights-makes-nk9qhx-generatedSpeech.mp3",
+   "dur": 18.756
+  },
+  {
+   "id": "sync",
+   "text": "Now, on the computer that has the files, open the desktop app. The new project's right there. Click Sync to this computer, and choose the folder your files are already in.",
+   "assetId": "asset_01M8DF1Q9HBX1PR14G31KBNCTK",
+   "path": "audio/generated/Now-on-the-computer-that-has-the-files-mn6yw0-generatedSpeech.mp3",
+   "dur": 11.886
+  },
+  {
+   "id": "check",
+   "text": "[reassuring] Don't worry, nothing in that folder gets deleted or replaced. Click Check the folder if you want to see exactly what it'll do first.",
+   "assetId": "asset_01M8DF1WR1VC9RVGM5EWCYK77B",
+   "path": "audio/generated/reassuring-Don-t-worry-nothing-in-that-tkpzgh-generatedSpeech.mp3",
+   "dur": 7.393
+  },
+  {
+   "id": "ignore",
+   "text": "Everything shows up in Your work as New. Before you publish, have a quick look for stuff that shouldn't go up. Renders, backups, that kind of thing. Right-click it, choose Ignore, and pick how wide the rule should be. Just this file, or every file like it.",
+   "assetId": "asset_01M8DF1YPQWHT7XZECP05QFHZY",
+   "path": "audio/generated/Everything-shows-up-in-Your-work-as-New-8130dj-generatedSpeech.mp3",
+   "dur": 16.274
+  },
+  {
+   "id": "publish",
+   "text": "Then tick it all, write \"First version\", and Publish. [pleased] That's your project. Now everyone else just clicks Sync to this computer and gets the lot.",
+   "assetId": "asset_01M8DF24MXS4N303GJE40Y5KF7",
+   "path": "audio/generated/Then-tick-it-all-write-First-version-31pa92-generatedSpeech.mp3",
+   "dur": 9.561
+  }
+ ],
+ "t03-first-publish": [
+  {
+   "id": "hello",
+   "text": "Okay, let's change something and send it to the team.",
+   "assetId": "asset_01M8DF23MH1HB344FQTJ4AWK7V",
+   "path": "audio/generated/Okay-let-s-change-something-and-send-it-z6e16s-generatedSpeech.mp3",
+   "dur": 2.508
+  },
+  {
+   "id": "edit",
+   "text": "I'm going to paint over hero diffuse and save it. Nothing special. Just save the file like you always do.",
+   "assetId": "asset_01M8DF28MYCBFAN0923M5W4PA4",
+   "path": "audio/generated/I-m-going-to-paint-over-hero-diffuse-jgs8w4-generatedSpeech.mp3",
+   "dur": 8.281
+  },
+  {
+   "id": "shows",
+   "text": "[curious] Now look at the app. It's already in Your work, marked Edited. You didn't have to tell it anything.",
+   "assetId": "asset_01M8DF2ABSEYR946N5NVS0K7EC",
+   "path": "audio/generated/curious-Now-look-at-the-app-It-s-mfj4tv-generatedSpeech.mp3",
+   "dur": 5.956
+  },
+  {
+   "id": "claimed",
+   "text": "And see that little \"Claimed\"? The moment you changed the file, it got claimed for you. So nobody else can publish over your work while you're on it.",
+   "assetId": "asset_01M8DF2D5RN3X4P74DA0Q26SMN",
+   "path": "audio/generated/And-see-that-little-Claimed-The-moment-4msbby-generatedSpeech.mp3",
+   "dur": 9.326
+  },
+  {
+   "id": "message",
+   "text": "Tick the files you're happy with, and say what you changed. Something your team will understand. \"Warmer skin tones on the hero,\" that kind of thing.",
+   "assetId": "asset_01M8DF2G3XH8G20QRAN86HCSH6",
+   "path": "audio/generated/Tick-the-files-you-re-happy-with-and-x3771t-generatedSpeech.mp3",
+   "dur": 7.314
+  },
+  {
+   "id": "publish",
+   "text": "Hit Publish. [satisfied] Done. Everyone gets it as one change, and your claim is handed back.",
+   "assetId": "asset_01M8DF2J5VH2YFEGQ1CCQ0K1BH",
+   "path": "audio/generated/Hit-Publish-satisfied-Done-Everyone-16ybna-generatedSpeech.mp3",
+   "dur": 5.564
+  }
+ ],
+ "t04-get-latest": [
+  {
+   "id": "hello",
+   "text": "[casual] So, what happens when someone else publishes?",
+   "assetId": "asset_01M8DF2KC7NF8A5PFTGFMZ5PJ0",
+   "path": "audio/generated/casual-So-what-happens-when-someone-768gkh-generatedSpeech.mp3",
+   "dur": 2.508
+  },
+  {
+   "id": "toast",
+   "text": "You get a little notification. Like this one. Mara just published a new version of the wolf fur.",
+   "assetId": "asset_01M8DF2P7C6MV1W9VF5XSKE08S",
+   "path": "audio/generated/You-get-a-little-notification-Like-this-be34cd-generatedSpeech.mp3",
+   "dur": 4.989
+  },
+  {
+   "id": "click",
+   "text": "Open the app and you'll see Get latest. Click it.",
+   "assetId": "asset_01M8DF2R1VFVA67VHBN5FVKJTC",
+   "path": "audio/generated/Open-the-app-and-you-ll-see-Get-latest-8e31d2-generatedSpeech.mp3",
+   "dur": 2.769
+  },
+  {
+   "id": "parts",
+   "text": "[impressed] And here's the nice part. If a file is huge, a four gig scene say, and she only changed a bit of it, only that bit comes down. So it's quick, even on big projects.",
+   "assetId": "asset_01M8DF2VQV5TSYN8PXAEGENMPJ",
+   "path": "audio/generated/impressed-And-here-s-the-nice-part-If-a-ch0w4n-generatedSpeech.mp3",
+   "dur": 10.188
+  },
+  {
+   "id": "safe",
+   "text": "If you've got your own edits going, don't worry. Getting latest never touches files you're working on.",
+   "assetId": "asset_01M8DF2WK72XJ76M5B0MK4VCDH",
+   "path": "audio/generated/If-you-ve-got-your-own-edits-going-don-qhqtvc-generatedSpeech.mp3",
+   "dur": 4.754
+  }
+ ],
+ "t05-claims": [
+  {
+   "id": "hello",
+   "text": "[thoughtful] One of the worst feelings is spending an afternoon on a file and finding out someone else was on it too.",
+   "assetId": "asset_01M8DF30NTJR5MW1HYDXE50XTN",
+   "path": "audio/generated/thoughtful-One-of-the-worst-feelings-is-p32rrs-generatedSpeech.mp3",
+   "dur": 5.642
+  },
+  {
+   "id": "shows",
+   "text": "So MultiParity just shows you. Here's the hero cape sim. It says \"Claimed by Mara\". She's working on it.",
+   "assetId": "asset_01M8DF30HV3J0R2J8ZEH1N84ZD",
+   "path": "audio/generated/So-MultiParity-just-shows-you-Here-s-k67act-generatedSpeech.mp3",
+   "dur": 6.348
+  },
+  {
+   "id": "working",
+   "text": "And over here, Working right now lists who's on what, across the whole project.",
+   "assetId": "asset_01M8DF345E6BEN96S0S66Y8RWK",
+   "path": "audio/generated/And-over-here-Working-right-now-lists-1zspyw-generatedSpeech.mp3",
+   "dur": 4.284
+  },
+  {
+   "id": "ask",
+   "text": "Need it? Select the file and click Ask Mara to release. She gets a nudge, [lightly] a polite one, and once she publishes, the claim goes away and it's yours to grab.",
+   "assetId": "asset_01M8DF367EBN2YCBH8FX7JWXW9",
+   "path": "audio/generated/Need-it-Select-the-file-and-click-Ask-1efayb-generatedSpeech.mp3",
+   "dur": 9.404
+  },
+  {
+   "id": "yours",
+   "text": "Your own claims show up as You. They're there so nobody publishes over you, not to lock people out of looking.",
+   "assetId": "asset_01M8DF38N9G3SHKWDXZCDEEGTQ",
+   "path": "audio/generated/Your-own-claims-show-up-as-You-They-re-48kbam-generatedSpeech.mp3",
+   "dur": 6.113
+  }
+ ],
+ "t06-checkpoints": [
+  {
+   "id": "hello",
+   "text": "[conspiratorial] Here's a habit worth picking up.",
+   "assetId": "asset_01M8DF3AN0DZAHYRQS03HZWPJP",
+   "path": "audio/generated/conspiratorial-Here-s-a-habit-worth-vhdhh4-generatedSpeech.mp3",
+   "dur": 1.724
+  },
+  {
+   "id": "save",
+   "text": "Before you do something risky, like a retopo or a big lighting change, save a checkpoint. Click Save checkpoint, give it a name, \"before retopo\", done.",
+   "assetId": "asset_01M8DF3F7YBSKGP8CY0YVXA2KX",
+   "path": "audio/generated/Before-you-do-something-risky-like-a-xphdrr-generatedSpeech.mp3",
+   "dur": 9.953
+  },
+  {
+   "id": "private",
+   "text": "It's private. Nobody else sees it, and it barely takes up any space, even with huge files.",
+   "assetId": "asset_01M8DF3F94CZ4SCCJ2683PPN7Y",
+   "path": "audio/generated/It-s-private-Nobody-else-sees-it-and-it-ts0xkr-generatedSpeech.mp3",
+   "dur": 5.486
+  },
+  {
+   "id": "oops",
+   "text": "[chuckles] Now, say the retopo goes badly. It happens.",
+   "assetId": "asset_01M8DF3M1RQRE0HGY8J5W51A82",
+   "path": "audio/generated/chuckles-Now-say-the-retopo-goes-badly-hxwrza-generatedSpeech.mp3",
+   "dur": 3.239
+  },
+  {
+   "id": "rewind",
+   "text": "Find your checkpoint down here, click Rewind, and your files go back to exactly how they were. Your checkpoints are all still there, so you can jump around between them as much as you want.",
+   "assetId": "asset_01M8DF3NN87W8F23AY087Z9A7N",
+   "path": "audio/generated/Find-your-checkpoint-down-here-click-cayjz2-generatedSpeech.mp3",
+   "dur": 8.281
+  }
+ ],
+ "t07-versions": [
+  {
+   "id": "hello",
+   "text": "[warm] Every version of every file stays on the server. Forever. So going back is easy.",
+   "assetId": "asset_01M8DF3S5EBRDEC8WSP5PA1VW6",
+   "path": "audio/generated/warm-Every-version-of-every-file-stays-kdrvsp-generatedSpeech.mp3",
+   "dur": 5.486
+  },
+  {
+   "id": "open",
+   "text": "Right-click a file and pick Older versions. You'll see every version, who made it, and what they said about it.",
+   "assetId": "asset_01M8DF3V9F9GP6EBDNEXZPNB7G",
+   "path": "audio/generated/Right-click-a-file-and-pick-Older-rade3a-generatedSpeech.mp3",
+   "dur": 5.799
+  },
+  {
+   "id": "choices",
+   "text": "You've got a few choices. Save a copy just puts that version next to the file. Put back drops that version into your folder, so you can look at it, and publish it if you want.",
+   "assetId": "asset_01M8DFH7JMCZ5V2ZJ18E2EVK68",
+   "path": "audio/generated/You-ve-got-a-few-choices-Save-a-copy-c56kgh-generatedSpeech.mp3",
+   "dur": 10.684063
+  },
+  {
+   "id": "latest",
+   "text": "And Make latest makes it the current version for everyone, right away.",
+   "assetId": "asset_01M8DF404104M15KNSVTC5N049",
+   "path": "audio/generated/And-Make-latest-makes-it-the-current-z2pt80-generatedSpeech.mp3",
+   "dur": 3.317
+  },
+  {
+   "id": "safe",
+   "text": "[reassuring] Nothing is lost. The newer versions stay in the history, so you can always change your mind.",
+   "assetId": "asset_01M8DF445Y00TDJ48EPQMBCWPT",
+   "path": "audio/generated/reassuring-Nothing-is-lost-The-newer-twmr5c-generatedSpeech.mp3",
+   "dur": 4.362
+  }
+ ],
+ "t08-drafts": [
+  {
+   "id": "hello",
+   "text": "[casual] Got work that isn't ready yet, but you want it off your machine? Maybe you're switching computers, or heading home for the weekend.",
+   "assetId": "asset_01M8DF4548PVXG7F7PG9JWPP84",
+   "path": "audio/generated/casual-Got-work-that-isn-t-ready-yet-p2j6gd-generatedSpeech.mp3",
+   "dur": 6.034
+  },
+  {
+   "id": "save",
+   "text": "Save a draft. It goes up to the server, but only you can see it. Nobody else gets it.",
+   "assetId": "asset_01M8DF49CY9HAF1WRVJQ03BQBK",
+   "path": "audio/generated/Save-a-draft-It-goes-up-to-the-server-4rpzq1-generatedSpeech.mp3",
+   "dur": 8.516
+  },
+  {
+   "id": "pickup",
+   "text": "Then on your other computer, open Drafts, find it, and click Pick up. Your files come right back, ready to keep going.",
+   "assetId": "asset_01M8DF49BPF7922VEFKBQEQQ6Z",
+   "path": "audio/generated/Then-on-your-other-computer-open-Drafts-yarw8z-generatedSpeech.mp3",
+   "dur": 8.516
+  },
+  {
+   "id": "pocket",
+   "text": "[lightly] It's basically a really safe pocket for half-finished work.",
+   "assetId": "asset_01M8DF4DKF342YW8GG5W5N0S1K",
+   "path": "audio/generated/lightly-It-s-basically-a-really-safe-zkzcmc-generatedSpeech.mp3",
+   "dur": 3.239
+  }
+ ],
+ "t09-branches": [
+  {
+   "id": "hello",
+   "text": "[thoughtful] Sometimes you want to try something big without getting in everyone's way. A whole new lighting pass, for example.",
+   "assetId": "asset_01M8DF4F7PSZVG58N0DSN3M94B",
+   "path": "audio/generated/thoughtful-Sometimes-you-want-to-try-qxbgcj-generatedSpeech.mp3",
+   "dur": 5.721
+  },
+  {
+   "id": "new",
+   "text": "That's what branches are for. Go to Branches, click New branch, and call it \"lighting pass\".",
+   "assetId": "asset_01M8DF4JWR1X11ZTRNPTMKAXZA",
+   "path": "audio/generated/That-s-what-branches-are-for-Go-to-gv7x3f-generatedSpeech.mp3",
+   "dur": 6.609
+  },
+  {
+   "id": "switch",
+   "text": "Click Switch here, and now everything you publish goes to that branch. Main stays exactly how it was for everyone else.",
+   "assetId": "asset_01M8DF4K8YVS2977J036B4TGJG",
+   "path": "audio/generated/Click-Switch-here-and-now-everything-jtqf4t-generatedSpeech.mp3",
+   "dur": 6.034
+  },
+  {
+   "id": "merge",
+   "text": "When it's ready, click Merge into Main. [pleased] Your changes come across, and the team gets them the next time they get latest.",
+   "assetId": "asset_01M8DF4Q7CGMSBCNK4NASRPFDY",
+   "path": "audio/generated/When-it-s-ready-click-Merge-into-Main-1bhyqw-generatedSpeech.mp3",
+   "dur": 6.687
+  }
+ ],
+ "t10-web-app": [
+  {
+   "id": "hello",
+   "text": "[friendly] You don't need the desktop app just to look around. There's a web app too.",
+   "assetId": "asset_01M8DF4RBBSK2JX67HCZNV2VPW",
+   "path": "audio/generated/friendly-You-don-t-need-the-desktop-app-gmatsg-generatedSpeech.mp3",
+   "dur": 3.082
+  },
+  {
+   "id": "today",
+   "text": "Today shows what's happened since you last got latest. Who published what, with thumbnails, so you can see the changes before you even read about them.",
+   "assetId": "asset_01M8DF4V5MJGF207PR2QHWJBPE",
+   "path": "audio/generated/Today-shows-what-s-happened-since-you-rm5yeh-generatedSpeech.mp3",
+   "dur": 7.157
+  },
+  {
+   "id": "files",
+   "text": "Files is the whole project. Images and Blender scenes show real previews, and you can tag things, like Approved or Needs review.",
+   "assetId": "asset_01M8DF4WNJX9F9EPAF4VTAKM5P",
+   "path": "audio/generated/Files-is-the-whole-project-Images-and-xq17qf-generatedSpeech.mp3",
+   "dur": 7.628
+  },
+  {
+   "id": "history",
+   "text": "History has every change ever made, and People shows who's on the project.",
+   "assetId": "asset_01M8DF4YV0J2PQH2HB87FZDC42",
+   "path": "audio/generated/History-has-every-change-ever-made-and-epneas-generatedSpeech.mp3",
+   "dur": 4.519
+  },
+  {
+   "id": "leads",
+   "text": "[lightly] It's handy for leads and producers who just want to check in, without syncing a hundred gigs.",
+   "assetId": "asset_01M8DF507P7HQS2NXZA2S7FYDJ",
+   "path": "audio/generated/lightly-It-s-handy-for-leads-and-pgjw1m-generatedSpeech.mp3",
+   "dur": 4.441
+  }
+ ],
+ "t11-admin": [
+  {
+   "id": "hello",
+   "text": "[confident] If you look after the server, this one's for you.",
+   "assetId": "asset_01M8DF53B2DCY61C2A1KX9QHM6",
+   "path": "audio/generated/confident-If-you-look-after-the-server-ekjw7s-generatedSpeech.mp3",
+   "dur": 2.586
+  },
+  {
+   "id": "invite",
+   "text": "Everything lives in Admin. To add someone, invite them by email and pick their role. They get a link, set a password, and they're in.",
+   "assetId": "asset_01M8DF55AQ55W5YD2Y1ZDTW6KY",
+   "path": "audio/generated/Everything-lives-in-Admin-To-add-4t485c-generatedSpeech.mp3",
+   "dur": 8.673
+  },
+  {
+   "id": "projects",
+   "text": "Only admins can make projects, so things stay tidy. We covered making one back in the new project video. One extra thing here: if your server has more than one place to keep files, you choose which one when you make the project, and you can move it later.",
+   "assetId": "asset_01M8DF5AJBG61RASFHK69ZGFVV",
+   "path": "audio/generated/Only-admins-can-make-projects-so-things-cbrpze-generatedSpeech.mp3",
+   "dur": 16.039
+  },
+  {
+   "id": "look",
+   "text": "[playful] And yes, you can pick how it looks. Set a theme for the whole studio, or a different one per project, so everyone always knows where they are.",
+   "assetId": "asset_01M8DF5CDVZDTK1HS1JR6D7ENK",
+   "path": "audio/generated/playful-And-yes-you-can-pick-how-it-tq8gb9-generatedSpeech.mp3",
+   "dur": 9.561
+  },
+  {
+   "id": "bye",
+   "text": "[warmly] That's it. Have fun making stuff.",
+   "assetId": "asset_01M8DF5EA3J3V00VD6H60TCNS4",
+   "path": "audio/generated/warmly-That-s-it-Have-fun-making-stuff-xt7nhk-generatedSpeech.mp3",
+   "dur": 1.881
+  }
+ ],
+ "s01-server": [
+  {
+   "id": "hello",
+   "text": "[friendly] Let's get a MultiParity server running. All you need is a machine with Docker, and some room for files.",
+   "assetId": "asset_01M8DF5GV30RPRST8SY4GGN9ZH",
+   "path": "audio/generated/friendly-Let-s-get-a-MultiParity-server-33sqq3-generatedSpeech.mp3",
+   "dur": 4.754
+  },
+  {
+   "id": "clone",
+   "text": "Clone the repo, go into it, and copy the example settings file to dot env.",
+   "assetId": "asset_01M8DF5JV0EH8XTJPCX9T2J2HF",
+   "path": "audio/generated/Clone-the-repo-go-into-it-and-copy-the-ehy2e2-generatedSpeech.mp3",
+   "dur": 4.989
+  },
+  {
+   "id": "env",
+   "text": "Open dot env. There are only four things you have to fill in. The admin's email and password, for you. A long random password for the database. You'll never type that one, so make it ugly. And the public URL, which is the address people will actually use to reach this machine.",
+   "assetId": "asset_01M8DF5R3G1ZH6XJSY9VBAFRTE",
+   "path": "audio/generated/Open-dot-env-There-are-only-four-things-xg1tsw-generatedSpeech.mp3",
+   "dur": 17.241
+  },
+  {
+   "id": "up",
+   "text": "Then docker compose up, dash d. [short pause] That starts the server and its database.",
+   "assetId": "asset_01M8DF5QBQRE9HCZK2PN0NCNKD",
+   "path": "audio/generated/Then-docker-compose-up-dash-d-short-smpe8e-generatedSpeech.mp3",
+   "dur": 7.889
+  },
+  {
+   "id": "signin",
+   "text": "Open that address in a browser and sign in with your admin email. [pleased] Your first organization is already there. Next stop is Admin, to make a project and invite people.",
+   "assetId": "asset_01M8DF5W6FVK4Q01XJEQ6JWAHW",
+   "path": "audio/generated/Open-that-address-in-a-browser-and-sign-tg6n59-generatedSpeech.mp3",
+   "dur": 10.449
+  }
+ ],
+ "s02-storage": [
+  {
+   "id": "hello",
+   "text": "[thoughtful] Before your team starts throwing gigabytes at this, decide where the files go.",
+   "assetId": "asset_01M8DF5WHGAMV6H6FVB4PW1KAX",
+   "path": "audio/generated/thoughtful-Before-your-team-starts-fm7ph2-generatedSpeech.mp3",
+   "dur": 3.553
+  },
+  {
+   "id": "local",
+   "text": "By default it's a Docker volume on the server. That's fine to start with.",
+   "assetId": "asset_01M8DF60GQDWB5Y4BHZ8NY1869",
+   "path": "audio/generated/By-default-it-s-a-Docker-volume-on-the-fs864g-generatedSpeech.mp3",
+   "dur": 3.317
+  },
+  {
+   "id": "mount",
+   "text": "If you've got a NAS or a big second drive, set storage to mount, and point it at that folder. [reassuring] If that drive is ever missing, the server refuses to start, instead of quietly filling up your system disk.",
+   "assetId": "asset_01M8DF63PEZ2J61BHQT9XBAWAN",
+   "path": "audio/generated/If-you-ve-got-a-NAS-or-a-big-second-pw2zbn-generatedSpeech.mp3",
+   "dur": 14.759
+  },
+  {
+   "id": "s3",
+   "text": "Or use S3. That works with Backblaze, Cloudflare R2, Wasabi, AWS, or the MinIO that comes bundled.",
+   "assetId": "asset_01M8DF653B269NRFBPY7W3VWZZ",
+   "path": "audio/generated/Or-use-S3-That-works-with-Backblaze-31bk9a-generatedSpeech.mp3",
+   "dur": 7.157
+  },
+  {
+   "id": "move",
+   "text": "You can also have more than one location. Say the NAS for active projects, and a bucket for finished ones. Then move a project between them from Admin, Projects. People keep working while it moves.",
+   "assetId": "asset_01M8DF6DWHS8YSWTZZB1E1C032",
+   "path": "audio/generated/You-can-also-have-more-than-one-a9z345-generatedSpeech.mp3",
+   "dur": 12.434
+  }
+ ],
+ "s03-remote": [
+  {
+   "id": "hello",
+   "text": "[casual] In the office, the plain address works. From home, the server has to be reachable over HTTPS. There are a few ways to do that. Pick one.",
+   "assetId": "asset_01M8DF6A86TEXKBBAB3N53YEK6",
+   "path": "audio/generated/casual-In-the-office-the-plain-address-nyrt0e-generatedSpeech.mp3",
+   "dur": 9.091
+  },
+  {
+   "id": "tailscale",
+   "text": "Tailscale is the easiest for small teams. Everyone installs it, joins your network, and nothing is on the public internet at all.",
+   "assetId": "asset_01M8DF6F0PWMH6BY93RPM4AXVA",
+   "path": "audio/generated/Tailscale-is-the-easiest-for-small-3qnp8b-generatedSpeech.mp3",
+   "dur": 6.348
+  },
+  {
+   "id": "cloudflare",
+   "text": "A Cloudflare tunnel is good when contractors shouldn't have to install anything. No open ports.",
+   "assetId": "asset_01M8DF6JPR5QC3V80BDGXTCZ5N",
+   "path": "audio/generated/A-Cloudflare-tunnel-is-good-when-hat6ep-generatedSpeech.mp3",
+   "dur": 4.833
+  },
+  {
+   "id": "caddy",
+   "text": "Or, if the machine has a public address, use the built-in Caddy. Set your domain and an email in dot env, start it with the HTTPS profile, and it gets a certificate by itself and keeps it renewed.",
+   "assetId": "asset_01M8DF6P29RQ53HK4PC2F7DDZY",
+   "path": "audio/generated/Or-if-the-machine-has-a-public-address-xm3mrh-generatedSpeech.mp3",
+   "dur": 16.431
+  },
+  {
+   "id": "size",
+   "text": "[lightly] Oh, and file size doesn't matter here. Files travel in small parts, so proxy upload limits never get in the way.",
+   "assetId": "asset_01M8DF6R395WMM723A25HC8GDC",
+   "path": "audio/generated/lightly-Oh-and-file-size-doesn-t-matter-95mnvh-generatedSpeech.mp3",
+   "dur": 6.348
+  }
+ ],
+ "s04-backups": [
+  {
+   "id": "hello",
+   "text": "[warm] Okay. The boring one that saves your studio someday.",
+   "assetId": "asset_01M8DF6TWPVPC0BSDREY380T94",
+   "path": "audio/generated/warm-Okay-The-boring-one-that-saves-qnjqmp-generatedSpeech.mp3",
+   "dur": 3.082
+  },
+  {
+   "id": "nightly",
+   "text": "The server backs itself up every night. The database, and every file. And it only copies what's new, so even a huge studio backs up fast.",
+   "assetId": "asset_01M8DF6XQGEJP14BP6X81X5CZ9",
+   "path": "audio/generated/The-server-backs-itself-up-every-night-c1prg3-generatedSpeech.mp3",
+   "dur": 8.986
+  },
+  {
+   "id": "target",
+   "text": "Out of the box it backs up to the same disk, which protects you from mistakes, but not from that disk dying. So point the backup target somewhere else. A second drive, a NAS, or a bucket off site.",
+   "assetId": "asset_01M8DF70FPT8BNJG9J1NZSJ1PG",
+   "path": "audio/generated/Out-of-the-box-it-backs-up-to-the-same-cc9g8f-generatedSpeech.mp3",
+   "dur": 11.964
+  },
+  {
+   "id": "now",
+   "text": "You can see the last backups in Admin, Fixing, and there's a Back up now button. Hit it before any big change.",
+   "assetId": "asset_01M8DF7362GZQSV47NFGJCZR90",
+   "path": "audio/generated/You-can-see-the-last-backups-in-Admin-70h8bq-generatedSpeech.mp3",
+   "dur": 9.404
+  },
+  {
+   "id": "restore",
+   "text": "Restoring is a few commands. Stop the server, start an empty database, run restore, and start it back up. [reassuring] It's all in the backup docs, and it's been tested end to end.",
+   "assetId": "asset_01M8DF76GP6S0MB94NPQBV1SXQ",
+   "path": "audio/generated/Restoring-is-a-few-commands-Stop-the-j9aeny-generatedSpeech.mp3",
+   "dur": 10.109
+  }
+ ],
+ "s05-email": [
+  {
+   "id": "hello",
+   "text": "[friendly] Email is optional, but it makes life nicer.",
+   "assetId": "asset_01M8DF76482H0Q8FPPRBPGVC54",
+   "path": "audio/generated/friendly-Email-is-optional-but-it-makes-2w5az6-generatedSpeech.mp3",
+   "dur": 1.959
+  },
+  {
+   "id": "why",
+   "text": "With it, invites go out by themselves, people can reset their own passwords, and they get a heads-up when someone asks for a file they've claimed. You also get told if a backup fails.",
+   "assetId": "asset_01M8DF7C5GH29H3ZAAZA5XP209",
+   "path": "audio/generated/With-it-invites-go-out-by-themselves-27v3eb-generatedSpeech.mp3",
+   "dur": 9.404
+  },
+  {
+   "id": "set",
+   "text": "Set who it's from, then either your SMTP details, or a SendGrid key. [aside] For Google or Microsoft, that's usually an app password, not your real one.",
+   "assetId": "asset_01M8DF7C2BR8ST0HWMJKAF0YFW",
+   "path": "audio/generated/Set-who-it-s-from-then-either-your-SMTP-t4fhqk-generatedSpeech.mp3",
+   "dur": 7.628
+  },
+  {
+   "id": "test",
+   "text": "Restart, go to Admin, Fixing, Email, and click Send me a test email. If anything's wrong, it shows you the provider's actual error. Which is a lot more useful than \"it didn't work.\"",
+   "assetId": "asset_01M8DF7JNT7RHBBP6ZTC92P8AY",
+   "path": "audio/generated/Restart-go-to-Admin-Fixing-Email-and-pe6e8c-generatedSpeech.mp3",
+   "dur": 15.804
+  }
+ ],
+ "s06-updating": [
+  {
+   "id": "hello",
+   "text": "[casual] Updating takes two commands.",
+   "assetId": "asset_01M8DF7FSXTFEDW6G40CA407A0",
+   "path": "audio/generated/casual-Updating-takes-two-commands-gqnqwn-generatedSpeech.mp3",
+   "dur": 1.489
+  },
+  {
+   "id": "backup",
+   "text": "First, take a backup. Admin, Fixing, Back up now. [lightly] Every time. Future you will thank you.",
+   "assetId": "asset_01M8DF7NEWT9E9YCS08BMN72M9",
+   "path": "audio/generated/First-take-a-backup-Admin-Fixing-Back-yxksgr-generatedSpeech.mp3",
+   "dur": 8.438
+  },
+  {
+   "id": "pull",
+   "text": "Then git pull, and docker compose up dash d, dash dash build. The database updates itself when the new server starts.",
+   "assetId": "asset_01M8DF7RP38X92TWRCR1TG3F55",
+   "path": "audio/generated/Then-git-pull-and-docker-compose-up-m1e9yk-generatedSpeech.mp3",
+   "dur": 7.889
+  },
+  {
+   "id": "apps",
+   "text": "And the desktop apps? You don't have to do anything. They check your server for updates, and offer to restart when one's ready. Updates are signed, so they only install genuine builds.",
+   "assetId": "asset_01M8DF7T2CX6QD14SKS8Q32QAJ",
+   "path": "audio/generated/And-the-desktop-apps-You-don-t-have-to-d689sb-generatedSpeech.mp3",
+   "dur": 8.986
+  }
+ ],
+ "s07-pipeline": [
+  {
+   "id": "hello",
+   "text": "[interested] Want a message in your team chat every time someone publishes? Or a build kicked off?",
+   "assetId": "asset_01M8DF7XA1WT7JWQK1ZXSZHDZ6",
+   "path": "audio/generated/interested-Want-a-message-in-your-team-h3ywf6-generatedSpeech.mp3",
+   "dur": 4.676
+  },
+  {
+   "id": "hook",
+   "text": "Go to Admin, Fixing, Webhooks. Paste in an address, pick which events you care about, like published changes or new claims, and save. Hit Send a test to check it arrives.",
+   "assetId": "asset_01M8DF8111WRS70V4T0ZSG6VZ8",
+   "path": "audio/generated/Go-to-Admin-Fixing-Webhooks-Paste-in-an-bhh6gk-generatedSpeech.mp3",
+   "dur": 13.009
+  },
+  {
+   "id": "signed",
+   "text": "Every delivery is signed with a secret, so your end can check it really came from your server.",
+   "assetId": "asset_01M8DF80YMB5APS7M6KJNTJ8PG",
+   "path": "audio/generated/Every-delivery-is-signed-with-a-secret-cacgea-generatedSpeech.mp3",
+   "dur": 4.833
+  },
+  {
+   "id": "watch",
+   "text": "If you'd rather just run a script, use M P watch, on any machine that's signed in. Give it a project, an event and a command, and it runs your command each time that happens.",
+   "assetId": "asset_01M8DF86YVQWCFAF8J7NJVGAXH",
+   "path": "audio/generated/If-you-d-rather-just-run-a-script-use-M-cq05p6-generatedSpeech.mp3",
+   "dur": 9.874
+  }
+ ],
+ "s08-cli": [
+  {
+   "id": "hello",
+   "text": "[matter-of-fact] Artists get the app. Build machines get M P.",
+   "assetId": "asset_01M8DF851FST5FNFHEX7Z9BDQF",
+   "path": "audio/generated/matter-of-fact-Artists-get-the-app-xjab6d-generatedSpeech.mp3",
+   "dur": 2.769
+  },
+  {
+   "id": "login",
+   "text": "Log in once with M P login, and your server address. Then it's the same ideas as the app. Get latest, claim, publish. All from scripts.",
+   "assetId": "asset_01M8DF8A54J28AY2CC4ZJMAGFZ",
+   "path": "audio/generated/Log-in-once-with-M-P-login-and-your-z556bh-generatedSpeech.mp3",
+   "dur": 10.841
+  },
+  {
+   "id": "aliases",
+   "text": "If you're used to Perforce, the old words work too, like sync and submit. And add dash dash JSON to anything when a script needs to read the output.",
+   "assetId": "asset_01M8DF8BDP9ZR5MZW4RS43591Z",
+   "path": "audio/generated/If-you-re-used-to-Perforce-the-old-5wjcf8-generatedSpeech.mp3",
+   "dur": 8.908
+  },
+  {
+   "id": "mcp",
+   "text": "[curious] One more. M P M C P. It lets an AI assistant like Claude look at your project, find files, read the history, and see who has what claimed. Handy for \"who touched the forge last week?\"",
+   "assetId": "asset_01M8DF8H3E74ZBFX8Q7YW0EB22",
+   "path": "audio/generated/curious-One-more-M-P-M-C-P-It-lets-an-qzq16y-generatedSpeech.mp3",
+   "dur": 14.681
+  }
+ ]
+}

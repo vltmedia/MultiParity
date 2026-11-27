@@ -1,0 +1,132 @@
+{
+  "t01-setup": [
+    ["hello", "[warmly] Hey. This is MultiParity, and this one's about getting you set up. It takes about a minute."],
+    ["signin", "Open the app and go to Accounts. Type in your studio's server address, your email and your password, and hit Sign in."],
+    ["project", "Now go to Projects. [curious] See Emberfall there? That's a project your studio already made. Click Sync to this computer."],
+    ["folder", "It asks where you want the files. Pick any folder you like. Your D drive, an external drive, wherever there's room. Click Sync this folder..."],
+    ["done", "[short pause] and that's it. The files come down, and from now on the app keeps that folder up to date for you."],
+    ["more", "[lightly] Working with more than one studio? Just add another account. Every project from every account shows up in the same list."]
+  ],
+  "t02-new-project": [
+    ["hello", "[friendly] Starting something new? Or bringing over a project that's just been sitting in a folder? Here's how to set it up."],
+    ["make", "First, someone with admin rights makes the project. In the web app, go to Admin, Projects, and click New project. Give it a name, pick your organization, and click Make project. [lightly] It already comes with sensible rules for junk files, like autosaves and engine caches."],
+    ["sync", "Now, on the computer that has the files, open the desktop app. The new project's right there. Click Sync to this computer, and choose the folder your files are already in."],
+    ["check", "[reassuring] Don't worry, nothing in that folder gets deleted or replaced. Click Check the folder if you want to see exactly what it'll do first."],
+    ["ignore", "Everything shows up in Your work as New. Before you publish, have a quick look for stuff that shouldn't go up. Renders, backups, that kind of thing. Right-click it, choose Ignore, and pick how wide the rule should be. Just this file, or every file like it."],
+    ["publish", "Then tick it all, write \"First version\", and Publish. [pleased] That's your project. Now everyone else just clicks Sync to this computer and gets the lot."]
+  ],
+  "t03-first-publish": [
+    ["hello", "Okay, let's change something and send it to the team."],
+    ["edit", "I'm going to paint over hero diffuse and save it. Nothing special. Just save the file like you always do."],
+    ["shows", "[curious] Now look at the app. It's already in Your work, marked Edited. You didn't have to tell it anything."],
+    ["claimed", "And see that little \"Claimed\"? The moment you changed the file, it got claimed for you. So nobody else can publish over your work while you're on it."],
+    ["message", "Tick the files you're happy with, and say what you changed. Something your team will understand. \"Warmer skin tones on the hero,\" that kind of thing."],
+    ["publish", "Hit Publish. [satisfied] Done. Everyone gets it as one change, and your claim is handed back."]
+  ],
+  "t04-get-latest": [
+    ["hello", "[casual] So, what happens when someone else publishes?"],
+    ["toast", "You get a little notification. Like this one. Mara just published a new version of the wolf fur."],
+    ["click", "Open the app and you'll see Get latest. Click it."],
+    ["parts", "[impressed] And here's the nice part. If a file is huge, a four gig scene say, and she only changed a bit of it, only that bit comes down. So it's quick, even on big projects."],
+    ["safe", "If you've got your own edits going, don't worry. Getting latest never touches files you're working on."]
+  ],
+  "t05-claims": [
+    ["hello", "[thoughtful] One of the worst feelings is spending an afternoon on a file and finding out someone else was on it too."],
+    ["shows", "So MultiParity just shows you. Here's the hero cape sim. It says \"Claimed by Mara\". She's working on it."],
+    ["working", "And over here, Working right now lists who's on what, across the whole project."],
+    ["ask", "Need it? Select the file and click Ask Mara to release. She gets a nudge, [lightly] a polite one, and once she publishes, the claim goes away and it's yours to grab."],
+    ["yours", "Your own claims show up as You. They're there so nobody publishes over you, not to lock people out of looking."]
+  ],
+  "t06-checkpoints": [
+    ["hello", "[conspiratorial] Here's a habit worth picking up."],
+    ["save", "Before you do something risky, like a retopo or a big lighting change, save a checkpoint. Click Save checkpoint, give it a name, \"before retopo\", done."],
+    ["private", "It's private. Nobody else sees it, and it barely takes up any space, even with huge files."],
+    ["oops", "[chuckles] Now, say the retopo goes badly. It happens."],
+    ["rewind", "Find your checkpoint down here, click Rewind, and your files go back to exactly how they were. Your checkpoints are all still there, so you can jump around between them as much as you want."]
+  ],
+  "t07-versions": [
+    ["hello", "[warm] Every version of every file stays on the server. Forever. So going back is easy."],
+    ["open", "Right-click a file and pick Older versions. You'll see every version, who made it, and what they said about it."],
+    ["choices", "You've got a few choices. Save a copy just puts that version next to the file. Put back drops that version into your folder, so you can look at it, and publish it if you want."],
+    ["latest", "And Make latest makes it the current version for everyone, right away."],
+    ["safe", "[reassuring] Nothing is lost. The newer versions stay in the history, so you can always change your mind."]
+  ],
+  "t08-drafts": [
+    ["hello", "[casual] Got work that isn't ready yet, but you want it off your machine? Maybe you're switching computers, or heading home for the weekend."],
+    ["save", "Save a draft. It goes up to the server, but only you can see it. Nobody else gets it."],
+    ["pickup", "Then on your other computer, open Drafts, find it, and click Pick up. Your files come right back, ready to keep going."],
+    ["pocket", "[lightly] It's basically a really safe pocket for half-finished work."]
+  ],
+  "t09-branches": [
+    ["hello", "[thoughtful] Sometimes you want to try something big without getting in everyone's way. A whole new lighting pass, for example."],
+    ["new", "That's what branches are for. Go to Branches, click New branch, and call it \"lighting pass\"."],
+    ["switch", "Click Switch here, and now everything you publish goes to that branch. Main stays exactly how it was for everyone else."],
+    ["merge", "When it's ready, click Merge into Main. [pleased] Your changes come across, and the team gets them the next time they get latest."]
+  ],
+  "t10-web-app": [
+    ["hello", "[friendly] You don't need the desktop app just to look around. There's a web app too."],
+    ["today", "Today shows what's happened since you last got latest. Who published what, with thumbnails, so you can see the changes before you even read about them."],
+    ["files", "Files is the whole project. Images and Blender scenes show real previews, and you can tag things, like Approved or Needs review."],
+    ["history", "History has every change ever made, and People shows who's on the project."],
+    ["leads", "[lightly] It's handy for leads and producers who just want to check in, without syncing a hundred gigs."]
+  ],
+  "t11-admin": [
+    ["hello", "[confident] If you look after the server, this one's for you."],
+    ["invite", "Everything lives in Admin. To add someone, invite them by email and pick their role. They get a link, set a password, and they're in."],
+    ["projects", "Only admins can make projects, so things stay tidy. We covered making one back in the new project video. One extra thing here: if your server has more than one place to keep files, you choose which one when you make the project, and you can move it later."],
+    ["look", "[playful] And yes, you can pick how it looks. Set a theme for the whole studio, or a different one per project, so everyone always knows where they are."],
+    ["bye", "[warmly] That's it. Have fun making stuff."]
+  ],
+  "s01-server": [
+    ["hello", "[friendly] Let's get a MultiParity server running. All you need is a machine with Docker, and some room for files."],
+    ["clone", "Clone the repo, go into it, and copy the example settings file to dot env."],
+    ["env", "Open dot env. There are only four things you have to fill in. The admin's email and password, for you. A long random password for the database. You'll never type that one, so make it ugly. And the public URL, which is the address people will actually use to reach this machine."],
+    ["up", "Then docker compose up, dash d. [short pause] That starts the server and its database."],
+    ["signin", "Open that address in a browser and sign in with your admin email. [pleased] Your first organization is already there. Next stop is Admin, to make a project and invite people."]
+  ],
+  "s02-storage": [
+    ["hello", "[thoughtful] Before your team starts throwing gigabytes at this, decide where the files go."],
+    ["local", "By default it's a Docker volume on the server. That's fine to start with."],
+    ["mount", "If you've got a NAS or a big second drive, set storage to mount, and point it at that folder. [reassuring] If that drive is ever missing, the server refuses to start, instead of quietly filling up your system disk."],
+    ["s3", "Or use S3. That works with Backblaze, Cloudflare R2, Wasabi, AWS, or the MinIO that comes bundled."],
+    ["move", "You can also have more than one location. Say the NAS for active projects, and a bucket for finished ones. Then move a project between them from Admin, Projects. People keep working while it moves."]
+  ],
+  "s03-remote": [
+    ["hello", "[casual] In the office, the plain address works. From home, the server has to be reachable over HTTPS. There are a few ways to do that. Pick one."],
+    ["tailscale", "Tailscale is the easiest for small teams. Everyone installs it, joins your network, and nothing is on the public internet at all."],
+    ["cloudflare", "A Cloudflare tunnel is good when contractors shouldn't have to install anything. No open ports."],
+    ["caddy", "Or, if the machine has a public address, use the built-in Caddy. Set your domain and an email in dot env, start it with the HTTPS profile, and it gets a certificate by itself and keeps it renewed."],
+    ["size", "[lightly] Oh, and file size doesn't matter here. Files travel in small parts, so proxy upload limits never get in the way."]
+  ],
+  "s04-backups": [
+    ["hello", "[warm] Okay. The boring one that saves your studio someday."],
+    ["nightly", "The server backs itself up every night. The database, and every file. And it only copies what's new, so even a huge studio backs up fast."],
+    ["target", "Out of the box it backs up to the same disk, which protects you from mistakes, but not from that disk dying. So point the backup target somewhere else. A second drive, a NAS, or a bucket off site."],
+    ["now", "You can see the last backups in Admin, Fixing, and there's a Back up now button. Hit it before any big change."],
+    ["restore", "Restoring is a few commands. Stop the server, start an empty database, run restore, and start it back up. [reassuring] It's all in the backup docs, and it's been tested end to end."]
+  ],
+  "s05-email": [
+    ["hello", "[friendly] Email is optional, but it makes life nicer."],
+    ["why", "With it, invites go out by themselves, people can reset their own passwords, and they get a heads-up when someone asks for a file they've claimed. You also get told if a backup fails."],
+    ["set", "Set who it's from, then either your SMTP details, or a SendGrid key. [aside] For Google or Microsoft, that's usually an app password, not your real one."],
+    ["test", "Restart, go to Admin, Fixing, Email, and click Send me a test email. If anything's wrong, it shows you the provider's actual error. Which is a lot more useful than \"it didn't work.\""]
+  ],
+  "s06-updating": [
+    ["hello", "[casual] Updating takes two commands."],
+    ["backup", "First, take a backup. Admin, Fixing, Back up now. [lightly] Every time. Future you will thank you."],
+    ["pull", "Then git pull, and docker compose up dash d, dash dash build. The database updates itself when the new server starts."],
+    ["apps", "And the desktop apps? You don't have to do anything. They check your server for updates, and offer to restart when one's ready. Updates are signed, so they only install genuine builds."]
+  ],
+  "s07-pipeline": [
+    ["hello", "[interested] Want a message in your team chat every time someone publishes? Or a build kicked off?"],
+    ["hook", "Go to Admin, Fixing, Webhooks. Paste in an address, pick which events you care about, like published changes or new claims, and save. Hit Send a test to check it arrives."],
+    ["signed", "Every delivery is signed with a secret, so your end can check it really came from your server."],
+    ["watch", "If you'd rather just run a script, use M P watch, on any machine that's signed in. Give it a project, an event and a command, and it runs your command each time that happens."]
+  ],
+  "s08-cli": [
+    ["hello", "[matter-of-fact] Artists get the app. Build machines get M P."],
+    ["login", "Log in once with M P login, and your server address. Then it's the same ideas as the app. Get latest, claim, publish. All from scripts."],
+    ["aliases", "If you're used to Perforce, the old words work too, like sync and submit. And add dash dash JSON to anything when a script needs to read the output."],
+    ["mcp", "[curious] One more. M P M C P. It lets an AI assistant like Claude look at your project, find files, read the history, and see who has what claimed. Handy for \"who touched the forge last week?\""]
+  ]
+}

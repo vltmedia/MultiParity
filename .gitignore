@@ -13,3 +13,7 @@ demo-accounts.txt
 *.tsbuildinfo
 __pycache__/
 *.pyc
+
+# Tutorial recordings and renders (large; regenerate with design/tutorials/rec)
+/design/tutorials/out/
+/design/tutorials/final/
