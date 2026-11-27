@@ -22,8 +22,10 @@ function Set-Secret([string]$Name, [string]$Value) {
 }
 
 function From-Mac([string]$Script) {
-  # The script goes over stdin too; its output is the value.
-  $out = $Script.Replace("`r", "") | ssh -o BatchMode=yes $Mac "bash -s"
+  # The script goes over stdin too; its output is the value. PowerShell ends what it sends with a
+  # Windows line break; the explicit exit stops bash before it reads that stray "\r".
+  $body = $Script.Replace("`r", "") + "`nexit `$?`n"
+  $out = $body | ssh -o BatchMode=yes $Mac "bash -s"
   if ($LASTEXITCODE) { throw "The Mac could not do that (exit $LASTEXITCODE)." }
   ($out -join "`n").Trim()
 }
