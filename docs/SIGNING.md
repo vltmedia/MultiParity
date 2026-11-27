@@ -62,6 +62,11 @@ script's last line (`code signature Valid by CN=...`).
    - or instead of the API key: `APPLE_ID`, `APPLE_PASSWORD` (an app-specific password) and
      `APPLE_TEAM_ID`.
 
+Building over SSH (a headless build Mac): the login keychain stays locked in an SSH session, so
+keep the Developer ID identity in a keychain of its own and set `MP_SIGNING_KEYCHAIN` (its path)
+and `MP_SIGNING_KEYCHAIN_PASS_FILE` (a file only your account can read, holding its password).
+The script searches only that keychain while signing, and builds the disk image without Finder.
+
 The build signs the app with the hardened runtime, sends it to Apple, waits for the answer and
 staples the ticket. `--universal` builds one app for Apple silicon and Intel Macs.
 
