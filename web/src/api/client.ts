@@ -164,6 +164,14 @@ export async function request<T>(method: string, path: string, body?: unknown, q
   return data as T;
 }
 
+/** A GET with the bearer token, as a raw response (images, file bytes). */
+export async function fetchAuthed(path: string): Promise<Response> {
+  const headers: Record<string, string> = {};
+  const token = getToken();
+  if (token) headers.Authorization = `Bearer ${token}`;
+  return transport(path, { headers });
+}
+
 /** Fetch a file with the bearer token and hand it to the browser as a download. */
 export async function downloadFile(projectId: string, branchId: string, path: string, change?: number) {
   const headers: Record<string, string> = {};

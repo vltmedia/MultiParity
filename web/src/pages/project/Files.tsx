@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { api, downloadFile } from '../../api/client';
+import { api, downloadFile, fetchAuthed } from '../../api/client';
 import { daemon } from '../../api/daemon';
 import type { FileEntry, FileVersion, Tag, TagRef } from '../../api/types';
 import { useAsync } from '../../lib/useAsync';
 import { useDaemon } from '../../lib/daemon';
 import { useSession } from '../../lib/session';
 import { baseName, dateTime, firstName, held, KIND_LABEL, plural, since, size } from '../../lib/format';
-import { Dialog, Empty, ErrorNote, Loading, Menu, Thumb, Who, useAction, useUi } from '../../components/ui';
+import { Dialog, Empty, ErrorNote, FileThumb, Loading, Menu, Thumb, Who, useAction, useUi } from '../../components/ui';
+import { DRAWABLE, useThumb } from '../../lib/thumbs';
 import { useHref, useProject, ViewHead } from './context';
 
 const COLORS = ['#00806a', '#ff6a13', '#7a3cff', '#1b1324', '#c2185b', '#1f6fd1', '#b88a00', '#6d6378'];
@@ -34,6 +35,7 @@ export default function Files() {
   const [sel, setSel] = useState<Set<string>>(new Set());
   const [newTag, setNewTag] = useState(false);
   const [versionsOf, setVersionsOf] = useState<FileEntry | null>(null);
+  const [previewOf, setPreviewOf] = useState<FileEntry | null>(null);
 
   useEffect(() => {
     const t = setTimeout(() => setQLive(q), 250);
@@ -243,6 +245,7 @@ export default function Files() {
             {selected.length === 1 && (
               <>
                 <button className="btn sm" onClick={() => downloadFile(project.id, branch.id, selected[0].path).catch((e) => fail(e, 'download the file'))}>Download</button>
+                <button className="btn sm" onClick={() => setPreviewOf(selected[0])}>Preview</button>
                 <button className="btn sm" onClick={() => setVersionsOf(selected[0])}>Older versions</button>
               </>
             )}
@@ -312,7 +315,9 @@ export default function Files() {
                       <input type="checkbox" aria-label={`Select ${baseName(f.path)}`} checked={sel.has(f.path)} onChange={() => toggle(f.path)} />
                     </td>
                     <td className="name" title={f.path}>
-                      <Thumb seed={f.path} />
+                      <button className="thumbbtn" aria-label={`Preview ${baseName(f.path)}`} onClick={() => setPreviewOf(f)}>
+                        <FileThumb projectId={project.id} hash={f.file_hash} path={f.path} />
+                      </button>
                       {qLive ? f.path : baseName(f.path)}
                     </td>
                     <td><span className={`st ${st.cls}`}>{st.label}</span></td>
@@ -359,6 +364,7 @@ export default function Files() {
           </div>
         )}
       </div>
+      {previewOf && <PreviewDialog file={previewOf} onClose={() => setPreviewOf(null)} />}
       {versionsOf && (
         <VersionsDialog
           file={versionsOf}
@@ -502,6 +508,47 @@ function VersionsDialog({ file, edited, onClose, onChanged }: { file: FileEntry;
       )}
       <div className="actions">
         <button className="btn" onClick={onClose}>Done</button>
+      </div>
+    </Dialog>
+  );
+}
+
+const TEXT = /\.(txt|md|json|ya?ml|toml|ini|cfg|xml|csv|html|css|js|ts|tsx|jsx|py|lua|gd|cs|cpp|c|h|hpp|rs|go|java|shader|hlsl|glsl|usf|ush|uproject|uplugin|meta)$/i;
+
+/** A big picture of the file (images and Blender files), or its text. */
+function PreviewDialog({ file, onClose }: { file: FileEntry; onClose: () => void }) {
+  const { project, branch } = useProject();
+  const { fail } = useUi();
+  const drawable = DRAWABLE.test(file.path);
+  const big = useThumb(project.id, drawable ? file.file_hash : null, 'large');
+  const [text, setText] = useState<string | null>(null);
+  const [waited, setWaited] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setWaited(true), 20_000);
+    return () => clearTimeout(t);
+  }, []);
+  useEffect(() => {
+    if (!TEXT.test(file.path)) return;
+    let live = true;
+    fetchAuthed(`/api/projects/${encodeURIComponent(project.id)}/download?path=${encodeURIComponent(file.path)}&branch=${encodeURIComponent(branch.id)}`)
+      .then((r) => (r.ok ? r.blob() : null))
+      .then(async (b) => { if (live && b) setText(await b.slice(0, 64 * 1024).text() + (b.size > 64 * 1024 ? '\n…' : '')); })
+      .catch(() => {});
+    return () => { live = false; };
+  }, [file.path, project.id, branch.id]);
+  return (
+    <Dialog title={baseName(file.path)} onClose={onClose} wide>
+      <p className="fine">{file.path} · {size(file.size)} · change {file.change}</p>
+      <div className="preview">
+        {big ? <img src={big} alt={`Preview of ${baseName(file.path)}`} />
+          : text !== null ? <pre>{text}</pre>
+          : drawable ? <p className="fine">{waited ? 'No picture of this file yet. Blender files show one when they were saved with a preview.' : 'Drawing a preview…'}</p>
+          : TEXT.test(file.path) ? <p className="fine">Loading…</p>
+          : <p className="fine">No preview for this kind of file yet. Download it to open it.</p>}
+      </div>
+      <div className="actions">
+        <button className="btn" onClick={() => downloadFile(project.id, branch.id, file.path).catch((e) => fail(e, 'download the file'))}>Download</button>
+        <button className="btn pri" onClick={onClose}>Done</button>
       </div>
     </Dialog>
   );

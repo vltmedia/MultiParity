@@ -109,6 +109,18 @@ ignored, and by which rule. The files currently ignored can always be listed.
 - CLI: `mp ignore <pattern>`, `mp ignore --mine <pattern>`, `mp ignore --check <path>`,
   `mp ignored`.
 
+## Thumbnails and previews
+
+The server draws a picture of every published image (PNG, JPEG, GIF, WebP, BMP, TGA, TIFF, and
+EXR and HDR, tone mapped) and Blender file (the preview Blender saves inside the `.blend`, also
+when the file is compressed). A background worker does it after each publish and for files
+published before, keeping a 256 px thumbnail for lists and a 1280 px preview, by content, so a
+file is drawn once however often it is published. Thumbnails are not backed up; they are drawn
+again after a restore.
+
+On the web, file lists show them, and clicking one (or Preview) opens the big picture, or the
+text of text files. Other kinds keep a coloured placeholder for now (models, video, audio, PSD).
+
 ## Older versions of a file
 
 Every published version of a file stays on the server. Right-click a file (desktop) or select it

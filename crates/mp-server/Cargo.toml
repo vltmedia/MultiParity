@@ -23,6 +23,7 @@ tracing.workspace = true
 tracing-subscriber.workspace = true
 blake3.workspace = true
 zstd.workspace = true
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "gif", "webp", "bmp", "tga", "tiff", "exr", "hdr"] }
 hex.workspace = true
 rand.workspace = true
 axum = { version = "0.7", features = ["macros"] }

@@ -571,6 +571,14 @@ on('GET', '/api/projects/:p/download', ({ headers, m, q }) => {
   const at = q.get('change');
   return new Response(new Blob([`Mock contents of ${q.get('path')}${at ? ` as of change ${at}` : ''}\n`], { type: 'application/octet-stream' }), { status: 200 });
 });
+on('GET', '/api/projects/:p/thumbs/:hash', ({ headers, m, q }) => {
+  getProject(who(headers), m[1]);
+  // A little picture coloured from the hash, so lists show what real thumbnails look like.
+  const h = parseInt(m[2].slice(0, 6), 16) % 360;
+  const big = q.get('size') === 'large' ? 640 : 128;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${big}" height="${big}" viewBox="0 0 100 100"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="hsl(${h},60%,62%)"/><stop offset="1" stop-color="hsl(${(h + 50) % 360},55%,28%)"/></linearGradient></defs><rect width="100" height="100" fill="url(#g)"/><circle cx="34" cy="38" r="14" fill="hsl(${(h + 30) % 360},90%,85%)" opacity=".7"/><path d="M0 80 L35 52 L60 72 L78 58 L100 76 L100 100 L0 100Z" fill="hsl(${(h + 80) % 360},40%,20%)" opacity=".8"/></svg>`;
+  return new Response(new Blob([svg], { type: 'image/svg+xml' }), { status: 200 });
+});
 on('GET', '/api/projects/:p/versions', ({ headers, m, q }) => {
   const p = getProject(who(headers), m[1]);
   const b = getBranch(p, q.get('branch'));

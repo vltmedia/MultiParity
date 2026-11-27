@@ -532,6 +532,37 @@ check "turning off change notifications stops them" test "$(curl -fs "$D/notific
 bob -C "$B" release Docs/notes.txt >/dev/null
 kill $DPID 2>/dev/null || true
 
+step "Thumbnails: pictures of images and Blender files"
+mkdir -p "$A2/Art/Pictures"
+python3 - "$A2/Art/Pictures" <<'PY'
+import struct, sys, zlib
+d = sys.argv[1]
+w, h = 300, 200
+NUL = bytes([0])
+raw = b"".join(NUL + bytes([200, 40, 30]) * w for _ in range(h))
+chunk = lambda t, b: struct.pack(">I", len(b)) + t + b + struct.pack(">I", zlib.crc32(t + b) & 0xffffffff)
+sig = bytes([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A])
+open(f"{d}/red.png", "wb").write(sig + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0)) + chunk(b"IDAT", zlib.compress(raw)) + chunk(b"IEND", b""))
+# A Blender file with a 2x1 preview (TEST block), 8-byte pointers, little endian.
+body = struct.pack("<II", 2, 1) + bytes([255, 0, 0, 255, 0, 0, 255, 255])
+blend = b"BLENDER-v405" + b"TEST" + struct.pack("<I", len(body)) + NUL * 8 + struct.pack("<II", 0, 1) + body + b"ENDB" + NUL * 20
+open(f"{d}/rig.blend", "wb").write(blend)
+open(f"{d}/mesh.fbx", "wb").write(b"Kaydara FBX Binary  " + NUL * 101)
+PY
+alice -C "$A2" publish -m "Pictures" Art/Pictures >/dev/null
+hash_of() { curl -fs "$SERVER/api/projects/$PID/branches/$MAIN/files?prefix=Art/Pictures/" -H "authorization: Bearer $TOKEN" | jq -r --arg p "$1" '.[] | select(.path==$p) | .file_hash'; }
+thumb() { curl -s -o "$WORK/thumb.jpg" -D "$WORK/thumb.h" -w '%{http_code}' "$SERVER/api/projects/$PID/thumbs/$1${2:-}" -H "authorization: Bearer $TOKEN"; }
+PNG=$(hash_of Art/Pictures/red.png); BL=$(hash_of Art/Pictures/rig.blend); FBX=$(hash_of Art/Pictures/mesh.fbx)
+for i in $(seq 1 40); do [ "$(thumb "$PNG")" = 200 ] && [ "$(thumb "$BL")" = 200 ] && break; sleep 0.5; done
+check "the PNG is drawn" test "$(thumb "$PNG")" = 200
+check "as a JPEG of the right shape" bash -c "grep -qi 'content-type: image/jpeg' '$WORK/thumb.h' && grep -qi 'x-image-size: 300x200' '$WORK/thumb.h'"
+check "and a large preview" test "$(thumb "$PNG" '?size=large')" = 200
+check "the Blender file's own preview is used" bash -c "test \"\$(curl -s -o /dev/null -D - '$SERVER/api/projects/$PID/thumbs/$BL' -H 'authorization: Bearer $TOKEN' | grep -i x-image-size | tr -d '[:cntrl:]')\" = 'x-image-size: 2x1'"
+check "a model has no picture (404)" test "$(thumb "$FBX")" = 404
+check "a hash from outside the project is refused" test "$(thumb "$(printf 'a%.0s' $(seq 1 64))")" = 404
+thumb "$PNG" >/dev/null
+check "thumbnails are cached for good" grep -qi 'cache-control: private, max-age=31536000, immutable' "$WORK/thumb.h"
+
 step "Backups: back up, restore into a fresh database and storage, and serve from it"
 AUTH=(-H "authorization: Bearer $TOKEN" -H 'content-type: application/json')
 wait_backup() { for i in $(seq 1 240); do B=$(curl -fs "$SERVER/api/admin/backups" "${AUTH[@]}"); [ "$(echo "$B" | jq .running)" = false ] && [ "$(echo "$B" | jq -r '.runs[0].status // "none"')" != running ] && return 0; sleep 0.5; done; return 1; }

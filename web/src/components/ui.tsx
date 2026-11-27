@@ -10,6 +10,7 @@ import {
 } from 'react';
 import { explain } from '../api/client';
 import { hue, initial, personColors } from '../lib/format';
+import { DRAWABLE, useThumb } from '../lib/thumbs';
 
 // ---------- small pieces ----------
 
@@ -21,6 +22,17 @@ export function Thumb({ seed, size, className = '' }: { seed: string; size?: num
       style={{ ['--h' as string]: hue(seed), ...(size ? { width: size, height: size } : {}) }}
       aria-hidden="true"
     />
+  );
+}
+
+/** A published file's real thumbnail when the server can draw it, the coloured placeholder otherwise. */
+export function FileThumb({ projectId, hash, path, size }: { projectId: string; hash?: string | null; path: string; size?: number }) {
+  const url = useThumb(projectId, DRAWABLE.test(path) ? hash : null);
+  if (!url) return <Thumb seed={path} size={size} />;
+  return (
+    <span className="thumb img" style={size ? { width: size, height: size } : undefined} aria-hidden="true">
+      <img src={url} alt="" />
+    </span>
   );
 }
 

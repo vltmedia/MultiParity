@@ -71,7 +71,8 @@ pub struct Manifest {
 }
 
 const PARALLEL: usize = 8;
-const SKIP_TABLES: &[&str] = &["_sqlx_migrations"];
+/// Not backed up: migrations (the server version has them) and thumbnails (drawn again).
+const SKIP_TABLES: &[&str] = &["_sqlx_migrations", "thumbnails"];
 
 fn chunk_rel(hash: &str) -> String {
     format!("chunks/{}/{}", &hash[..2], hash)

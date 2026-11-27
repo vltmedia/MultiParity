@@ -17,6 +17,7 @@ mod projects;
 pub mod storage;
 mod sync;
 mod tags;
+mod thumbs;
 
 pub fn router() -> Router<AppState> {
     Router::new()
@@ -52,6 +53,7 @@ pub fn router() -> Router<AppState> {
         .route("/projects/:p/history", get(files::history))
         .route("/projects/:p/download", get(files::download))
         .route("/projects/:p/versions", get(files::versions))
+        .route("/projects/:p/thumbs/:hash", get(thumbs::get))
         .route("/projects/:p/branches/:b/restore-version", post(files::restore_version))
         // Claims
         .route("/projects/:p/claims", get(claims::list).post(claims::claim))
