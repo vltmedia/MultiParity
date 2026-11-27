@@ -303,3 +303,8 @@ dialog .pathrow input { flex: 1; border: var(--bw) solid var(--btn-line); paddin
 .upd .link { margin: 0; text-align: left; font-size: 12px; color: inherit; }
 .upd small { opacity: .8; word-break: break-word; }
 .upd .btn { width: 100%; }
+
+/* "Automatic" in Look: the light and dark defaults, split on the diagonal. */
+.look-split { display: grid; overflow: hidden; }
+.look-split > .look-art { grid-area: 1 / 1; }
+.look-split > .look-art:last-child { clip-path: polygon(62% 0, 100% 0, 100% 100%, 38% 100%); }

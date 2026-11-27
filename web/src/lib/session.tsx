@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { useNavigate } from 'react-router-dom';
 import { api, ApiError, getToken, onUnauthorized, setToken } from '../api/client';
 import type { Me } from '../api/types';
+import { setOrgTheme } from './theme';
 
 type SessionValue = {
   me: Me | null;
@@ -18,6 +19,10 @@ const Ctx = createContext<SessionValue | null>(null);
 
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [me, setMe] = useState<Me | null>(null);
+  useEffect(() => {
+    const o = me?.orgs.map((x) => x.org).find((x) => x.theme_light || x.theme_dark);
+    setOrgTheme(o ? { light: o.theme_light, dark: o.theme_dark } : null);
+  }, [me]);
   const [loading, setLoading] = useState<boolean>(!!getToken());
   const [error, setError] = useState<unknown>(undefined);
   const navigate = useNavigate();

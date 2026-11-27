@@ -21,23 +21,61 @@ export type Theme = {
   bgsize?: string;
 };
 
-type Engine = { apply(t: Theme): void; saved(): string; save(id: string): void };
+export type ThemeContext = { light?: string | null; dark?: string | null } | null;
+
+type Engine = {
+  apply(t: Theme): void;
+  saved(): string;
+  save(id: string): void;
+  chosen(ctx?: ThemeContext): string;
+  applyChosen(ctx?: ThemeContext): Theme | undefined;
+  mode(): 'light' | 'dark';
+  AUTO: string;
+  DEFAULTS: { light: string; dark: string };
+  list?: Theme[];
+};
 const engine = (globalThis as unknown as { MPTheme: Engine }).MPTheme;
 
 export const THEMES = themesJson as unknown as Theme[];
+engine.list = THEMES;
 
+/** "auto" means: follow the organization or project, else the light or dark default. */
+export const AUTO = engine.AUTO;
+export const DEFAULT_THEMES = engine.DEFAULTS;
+export const themeById = (id?: string | null) => THEMES.find((t) => t.id === id);
+
+/** The person's own pick in this browser, or AUTO. */
 export function currentThemeId(): string {
   return engine.saved();
 }
 
-export function applyTheme(id: string, remember = true) {
-  const t = THEMES.find((x) => x.id === id) || THEMES[0];
-  engine.apply(t);
-  if (remember) engine.save(t.id);
-  return t;
+/** The theme showing now. */
+export function shownThemeId(): string {
+  return engine.chosen();
 }
 
-/** Apply the remembered theme; called before the first render. */
+/** Remember the person's pick (a theme id, or AUTO) and show the result. */
+export function applyTheme(id: string) {
+  engine.save(id);
+  return engine.applyChosen();
+}
+
+// The organization's look applies everywhere; a project's on top while it is open.
+let base: ThemeContext = null;
+let project: ThemeContext = null;
+const merged = (): ThemeContext => ({ light: project?.light || base?.light || null, dark: project?.dark || base?.dark || null });
+
+export function setOrgTheme(ctx: ThemeContext) {
+  base = ctx;
+  engine.applyChosen(merged());
+}
+
+export function setProjectTheme(ctx: ThemeContext) {
+  project = ctx;
+  engine.applyChosen(merged());
+}
+
+/** Apply what should show; called before the first render. */
 export function applySavedTheme() {
-  applyTheme(engine.saved(), false);
+  engine.applyChosen(null);
 }

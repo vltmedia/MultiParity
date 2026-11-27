@@ -20,6 +20,9 @@ export type Org = {
   created_at: Time;
   member_count?: number;
   project_count?: number;
+  /** The organization's look for light and dark mode (theme ids), when an admin set one. */
+  theme_light?: string | null;
+  theme_dark?: string | null;
 };
 
 export type Me = {
@@ -58,6 +61,9 @@ export type ProjectSummary = {
   checkpoint_storage: CheckpointStorage;
   /** take checkpoints automatically every few minutes while people work; off unless turned on */
   auto_checkpoints: boolean;
+  /** The look for people who have not picked their own: the project's, else its organization's.
+   * own_* are the project's own settings (null: follow the organization). */
+  theme?: { light: string | null; dark: string | null; own_light: string | null; own_dark: string | null };
   /** name of the storage location that holds this project's file data; "main" is the default */
   storage: string;
   /** file data is being moved to another storage location right now */

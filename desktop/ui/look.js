@@ -36,6 +36,31 @@
     return b;
   }
 
+  // "Automatic": the light and dark defaults side by side.
+  function autoCard() {
+    const cur = MPTheme.saved() === MPTheme.AUTO;
+    const light = MP_THEMES.find((t) => t.id === MPTheme.DEFAULTS.light);
+    const dark = MP_THEMES.find((t) => t.id === MPTheme.DEFAULTS.dark);
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "look auto" + (cur ? " cur" : "");
+    b.setAttribute("aria-pressed", String(cur));
+    b.dataset.id = MPTheme.AUTO;
+    b.title = `A project's own look when it has one; otherwise ${light.name} in light mode and ${dark.name} in dark mode, following this computer.`;
+    const l = card(light).querySelector(".look-art");
+    const d = card(dark).querySelector(".look-art");
+    const split = document.createElement("span");
+    split.className = "look-split";
+    split.append(l, d);
+    const name = document.createElement("span");
+    name.className = "look-name";
+    name.innerHTML = "<strong>Automatic</strong><small></small>";
+    const showing = MP_THEMES.find((t) => t.id === MPTheme.chosen());
+    name.querySelector("small").textContent = cur ? `In use: ${showing ? showing.name : ""}` : "Follows light and dark mode";
+    b.append(split, name);
+    return b;
+  }
+
   function render() {
     const bar = document.getElementById("look-filters");
     bar.replaceChildren(...GROUPS.map((g) => {
@@ -47,18 +72,20 @@
       return x;
     }));
     const list = MP_THEMES.filter((t) => filter === "All" || t.grp === filter);
-    document.getElementById("looks").replaceChildren(...list.map(card));
+    document.getElementById("looks").replaceChildren(...(filter === "All" ? [autoCard()] : []), ...list.map(card));
   }
 
   document.getElementById("looks").addEventListener("click", (e) => {
     const b = e.target.closest(".look");
     if (!b) return;
-    const t = MP_THEMES.find((x) => x.id === b.dataset.id);
-    MPTheme.apply(t);
-    MPTheme.save(t.id);
+    MPTheme.save(b.dataset.id);
+    const t = MPTheme.applyChosen();
     render();
-    if (window.toast) toast(`Now using ${t.name}.`);
+    if (window.toast) toast(b.dataset.id === MPTheme.AUTO ? `Now automatic: ${t.name} for now.` : `Now using ${t.name}.`);
   });
+
+  // Keep "In use" right when the computer switches between light and dark.
+  if (typeof matchMedia === "function") matchMedia("(prefers-color-scheme: dark)").addEventListener("change", render);
 
   render();
 })();

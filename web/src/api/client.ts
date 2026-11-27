@@ -292,7 +292,8 @@ export const api = {
       request<Invite[]>('POST', `/admin/orgs/${enc(org)}/invites`, body),
     revokeInvite: (id: string) => request<object>('DELETE', `/admin/invites/${enc(id)}`),
     projects: (org?: string) => request<ProjectSummary[]>('GET', '/admin/projects', undefined, { org }),
-    updateProject: (pid: string, body: { name?: string; org?: string; checkpoints?: CheckpointSetting; auto_checkpoints?: boolean }) =>
+    updateOrg: (org: string, body: { name?: string; theme_light?: string; theme_dark?: string }) => request<Org>('PATCH', `/admin/orgs/${enc(org)}`, body),
+    updateProject: (pid: string, body: { name?: string; org?: string; checkpoints?: CheckpointSetting; auto_checkpoints?: boolean; theme_light?: string; theme_dark?: string }) =>
       request<Project>('PATCH', `/admin/projects/${enc(pid)}`, body),
     archiveProject: (pid: string) => request<Project>('POST', `/admin/projects/${enc(pid)}/archive`),
     restoreProject: (pid: string) => request<Project>('POST', `/admin/projects/${enc(pid)}/restore`),

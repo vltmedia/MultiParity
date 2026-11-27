@@ -17,7 +17,7 @@ use crate::AppState;
 
 pub async fn list_orgs(State(s): State<AppState>, user: CurrentUser) -> ApiResult<Json<Vec<Org>>> {
     let rows = sqlx::query(
-        "SELECT o.id, o.slug, o.name, o.created_at,
+        "SELECT o.id, o.slug, o.name, o.created_at, o.theme_light, o.theme_dark,
            (SELECT count(*) FROM memberships m WHERE m.org_id = o.id) AS member_count,
            (SELECT count(*) FROM projects p WHERE p.org_id = o.id AND p.archived_at IS NULL) AS project_count
          FROM orgs o WHERE $2 OR EXISTS (SELECT 1 FROM memberships m WHERE m.org_id = o.id AND m.user_id = $1) ORDER BY o.name",
@@ -103,6 +103,7 @@ pub async fn create_project(State(s): State<AppState>, user: CurrentUser, Path(o
 pub fn summary_sql(where_sql: &str) -> String {
     format!(
         "SELECT p.id, p.slug, p.name, p.archived_at IS NOT NULL AS archived, p.next_change - 1 AS head_change, p.checkpoints_on_server, p.auto_checkpoints, p.storage, p.storage_previous,
+           p.theme_light, p.theme_dark, o.theme_light AS o_theme_light, o.theme_dark AS o_theme_dark,
            o.id AS o_id, o.slug AS o_slug, o.name AS o_name, o.created_at AS o_created_at,
            COALESCE(st.size, 0)::BIGINT AS size, COALESCE(st.files, 0)::BIGINT AS file_count,
            (SELECT count(*) FROM claims c WHERE c.project_id = p.id) AS claims,
@@ -147,6 +148,12 @@ pub fn summary_json(r: &PgRow) -> Value {
         "size": r.get::<i64,_>("size"), "file_count": r.get::<i64,_>("file_count"),
         "claims": r.get::<i64,_>("claims"), "my_claims": r.get::<i64,_>("my_claims"),
         "branches": r.get::<i64,_>("branches"), "last_change": last,
+        // The look for people who have not picked their own: the project's, else its organization's.
+        "theme": {
+            "light": r.get::<Option<String>,_>("theme_light").or(r.get("o_theme_light")),
+            "dark": r.get::<Option<String>,_>("theme_dark").or(r.get("o_theme_dark")),
+            "own_light": r.get::<Option<String>,_>("theme_light"), "own_dark": r.get::<Option<String>,_>("theme_dark"),
+        },
     })
 }
 

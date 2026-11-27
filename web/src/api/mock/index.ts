@@ -147,6 +147,11 @@ function summary(p: MProject, u: MUser): ProjectSummary {
     checkpoint_storage: p.checkpoints === 'auto' ? (bytes >= 20 * GB ? 'server' : 'local') : p.checkpoints,
     storage: p.storage,
     storage_moving: advanceMoves().some((x) => x.project_id === p.id && x.status === 'running'),
+    theme: (() => {
+      const o = orgs.find((x) => x.id === p.org_id) as { theme_light?: string | null; theme_dark?: string | null } | undefined;
+      const q = p as unknown as { theme_light?: string | null; theme_dark?: string | null };
+      return { light: q.theme_light || o?.theme_light || null, dark: q.theme_dark || o?.theme_dark || null, own_light: q.theme_light || null, own_dark: q.theme_dark || null };
+    })(),
   };
 }
 
@@ -426,6 +431,15 @@ on('POST', '/api/invites/:token/accept', ({ m, body, headers }) => {
   return { token: issue(u), user: meOf(u) };
 });
 
+on('PATCH', '/api/admin/orgs/:org', ({ headers, m, body }) => {
+  const u = who(headers);
+  const o = orgs.find((x) => x.id === m[1]);
+  if (!o) throw new Fail(404, 'not_found', 'That organization does not exist.');
+  needAdmin(u, o.id);
+  if (body?.name) o.name = String(body.name).trim();
+  for (const k of ['theme_light', 'theme_dark'] as const) if (typeof body?.[k] === 'string') (o as unknown as Record<string, string | null>)[k] = body[k] || null;
+  return orgWithCounts(o);
+});
 on('GET', '/api/orgs', ({ headers }) => {
   const u = who(headers);
   return (u.is_server_admin ? orgs : orgsOf(u).map((o) => o.org)).map(orgWithCounts);
@@ -939,6 +953,7 @@ on('PATCH', '/api/admin/projects/:p', ({ headers, m, body }) => {
     p.org_id = o.id;
   }
   if (typeof body?.auto_checkpoints === 'boolean') p.auto_checkpoints = body.auto_checkpoints;
+  for (const k of ['theme_light', 'theme_dark'] as const) if (typeof body?.[k] === 'string') (p as unknown as Record<string, string | null>)[k] = body[k] || null;
   if (body?.checkpoints) {
     if (!['auto', 'server', 'local'].includes(body.checkpoints)) throw new Fail(422, 'invalid', 'Choose where this project keeps checkpoints.');
     p.checkpoints = body.checkpoints;

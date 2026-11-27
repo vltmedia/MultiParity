@@ -321,3 +321,4 @@ tr:hover .addtag, .addtag:focus-visible { opacity: 1; }
 .preview pre { width: 100%; max-height: 60vh; overflow: auto; margin: 0; padding: 14px; font: 12.5px/1.5 ui-monospace, Consolas, monospace; background: var(--card); white-space: pre-wrap; word-break: break-word; }
 .preview .fine { padding: 30px; text-align: center; }
 .thumbbtn { padding: 0; border: 0; background: none; cursor: zoom-in; display: inline-flex; line-height: 0; }
+.themepick { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; max-width: 560px; }

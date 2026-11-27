@@ -109,6 +109,19 @@ ignored, and by which rule. The files currently ignored can always be listed.
 - CLI: `mp ignore <pattern>`, `mp ignore --mine <pattern>`, `mp ignore --check <path>`,
   `mp ignored`.
 
+## Looks
+
+47 themes ship with the web and desktop apps. Which one shows:
+
+1. The person's own pick, kept in that browser or desktop app (Look, in the account menu or the
+   sidebar).
+2. Otherwise (Automatic, the starting point) the open project's look, then its organization's,
+   each a theme for light mode and one for dark mode, following the computer's setting.
+3. Otherwise Ice Lab in light mode and Orbital HUD in dark mode.
+
+Organization admins set an organization's look on its admin page, and a project's with Look…
+in Admin > Projects.
+
 ## Thumbnails and previews
 
 The server draws a picture of every published image (PNG, JPEG, GIF, WebP, BMP, TGA, TIFF, and

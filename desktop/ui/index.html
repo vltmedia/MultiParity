@@ -10,7 +10,8 @@
 <script src="theme-engine.js"></script>
 <script>
   // Apply the chosen theme before anything is drawn.
-  (function () { var id = MPTheme.saved(); var t = MP_THEMES.find(function (x) { return x.id === id; }) || MP_THEMES[0]; MPTheme.apply(t); })();
+  // The person's own pick, or (Automatic) Ice Lab in light mode and Orbital HUD in dark mode.
+  MPTheme.applyChosen(null);
 </script>
 </head>
 <body>

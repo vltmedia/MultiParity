@@ -601,6 +601,24 @@ check "mcp: release_files releases it" test "$(curl -fs "$SERVER/api/projects/$P
 check "mcp: a mistake comes back as a tool error, not a crash" test "$(mcp 6 | jq -c '[.result.isError, (.result.content[0].text | test("no project called"))]')" = '[true,true]'
 check "mcp: unknown methods get a JSON-RPC error" test "$(mcp 7 | jq .error.code)" = -32601
 
+step "Looks: an organization's and a project's themes"
+AH=(-H "authorization: Bearer $TOKEN" -H 'content-type: application/json')
+ptheme() { curl -fs "$SERVER/api/projects/$PID" -H "authorization: Bearer $TOKEN" | jq -c '.theme | [.light, .dark, .own_light, .own_dark]'; }
+check "a project starts with no look of its own" test "$(ptheme)" = '[null,null,null,null]'
+curl -fs -X PATCH "$SERVER/api/admin/orgs/$ORG_ID" "${AH[@]}" -d '{"theme_light":"aqua","theme_dark":"dracula"}' >/dev/null
+check "the organization's look is saved" test "$(curl -fs "$SERVER/api/orgs" -H "authorization: Bearer $TOKEN" | jq -r --arg o "$ORG_ID" '.[] | select(.id == $o) | .theme_light + " " + .theme_dark')" = "aqua dracula"
+check "and reaches its people with their account" test "$(curl -fs "$SERVER/api/me" -H "authorization: Bearer $TOKEN" | jq -r '.orgs[0].org.theme_dark')" = dracula
+check "projects follow it" test "$(ptheme)" = '["aqua","dracula",null,null]'
+curl -fs -X PATCH "$SERVER/api/admin/projects/$PID" "${AH[@]}" -d '{"theme_dark":"deepocean"}' >/dev/null
+check "a project can have its own" test "$(ptheme)" = '["aqua","deepocean",null,"deepocean"]'
+check "which the command line and desktop app see too" test "$(alice projects --json | jq -r '.[0].project.theme.dark')" = deepocean
+curl -fs -X PATCH "$SERVER/api/admin/projects/$PID" "${AH[@]}" -d '{"theme_dark":""}' >/dev/null
+check "clearing it goes back to the organization's" test "$(ptheme | jq -r '.[1]')" = dracula
+check "a theme name has to look like one" test "$(curl -s -o /dev/null -w '%{http_code}' -X PATCH "$SERVER/api/admin/orgs/$ORG_ID" "${AH[@]}" -d '{"theme_dark":"Not A Theme"}')" = 422
+check "members cannot change the look" test "$(curl -s -o /dev/null -w '%{http_code}' -X PATCH "$SERVER/api/admin/orgs/$ORG_ID" -H "authorization: Bearer $(jq -r '.accounts[0].token' "$WORK/cfg-bob/accounts.json")" -H 'content-type: application/json' -d '{"theme_dark":"hud"}')" = 403
+curl -fs -X PATCH "$SERVER/api/admin/orgs/$ORG_ID" "${AH[@]}" -d '{"theme_light":"","theme_dark":""}' >/dev/null
+check "and clearing the organization's goes back to the defaults" test "$(ptheme | jq -c '.[0:2]')" = '[null,null]'
+
 step "Thumbnails: pictures of images and Blender files"
 mkdir -p "$A2/Art/Pictures"
 python3 - "$A2/Art/Pictures" <<'PY'

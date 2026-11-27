@@ -221,13 +221,14 @@ body field required for them).
 | DELETE | `/api/admin/users/{id}` | `{confirm: name, transfer_to?: userId}` | `{}` (server admin) |
 | POST | `/api/admin/users/{id}/password` | `{password}` | `{}` |
 | GET | `/api/admin/orgs/{org}/members` | | `Member[]` |
+| PATCH | `/api/admin/orgs/{org}` | `{name?, theme_light?, theme_dark?}` (theme ids; `""` back to the default) | `Org` |
 | PATCH | `/api/admin/orgs/{org}/members/{user}` | `{role?, expires_at?}` | `Member` |
 | DELETE | `/api/admin/orgs/{org}/members/{user}` | | `{}` (revoke from org) |
 | GET | `/api/admin/orgs/{org}/invites` | | `Invite[]` |
 | POST | `/api/admin/orgs/{org}/invites` | `{emails?: string[], role, expires_in_days?}` | `Invite[]` (with `url`) |
 | DELETE | `/api/admin/invites/{id}` | | `{}` |
 | GET | `/api/admin/projects` | `org?` | `ProjectSummary[]` incl. archived |
-| PATCH | `/api/admin/projects/{p}` | `{name?, org?, checkpoints?: 'auto'\|'server'\|'local', auto_checkpoints?: boolean}` | `Project` |
+| PATCH | `/api/admin/projects/{p}` | `{name?, org?, checkpoints?: 'auto'\|'server'\|'local', auto_checkpoints?: boolean, theme_light?, theme_dark?}` (theme ids; `""` follows the organization) | `Project`, whose `theme` is `{light, dark, own_light, own_dark}` |
 | POST | `/api/admin/projects/{p}/archive` / `restore` | | `Project` |
 | GET | `/api/admin/claims` | `older_than_hours?`, `org?` | `Array<Claim & {project: {id,name}}>` |
 | POST | `/api/admin/claims/release` | `{claims: Array<{project, branch, path}>}` | `{released}` |

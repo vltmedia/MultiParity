@@ -6,6 +6,8 @@ import { useAsync } from '../../lib/useAsync';
 import { STORAGE_KIND_LABEL, movePercent, moveStatus, plural, since, size } from '../../lib/format';
 import { Dialog, Empty, ErrorNote, Loading, Parity, useAction, useUi } from '../../components/ui';
 import { AdminHead, useAdmin } from './AdminLayout';
+import ThemePicker from '../../components/ThemePicker';
+import { DEFAULT_THEMES, themeById } from '../../lib/theme';
 
 const KEEP: Array<[CheckpointSetting, string]> = [
   ['auto', 'Automatic (on the server from 20 GB)'],
@@ -31,6 +33,7 @@ export default function AdminProjects() {
   const [err, setErr] = useState('');
   const [showArchived, setShowArchived] = useState(false);
   const [stor, setStor] = useState<ProjectSummary | null>(null);
+  const [look, setLook] = useState<ProjectSummary | null>(null);
 
   const open = (e: Edit) => {
     setErr('');
@@ -171,6 +174,7 @@ export default function AdminProjects() {
                   <td className="r">
                     <span className="row" style={{ justifyContent: 'flex-end', flexWrap: 'nowrap' }}>
                       <button className="btn sm" onClick={() => open({ kind: 'rename', p })}>Rename</button>
+                      <button className="btn sm" onClick={() => setLook(p)}>Look…</button>
                       {orgs.length > 1 && <button className="btn sm" onClick={() => open({ kind: 'move', p })}>Move</button>}
                       {isServerAdmin && locations.length > 1 && <button className="btn sm" onClick={() => setStor(p)}>Change storage…</button>}
                       {p.archived ? (
@@ -186,6 +190,7 @@ export default function AdminProjects() {
           </table>
         )}
       </div>
+      {look && <LookDialog p={look} onClose={() => setLook(null)} onChanged={(np) => { setLook(np); list.reload(); }} />}
       {edit && (
         <Dialog
           title={edit.kind === 'create' ? 'New project' : edit.kind === 'rename' ? `Rename ${edit.p.name}` : `Move ${edit.p.name} to another organization`}
@@ -365,6 +370,32 @@ function StorageDialog({ p, locations, onClose, onChanged }: { p: ProjectSummary
           </button>
         )}
       </div>
+    </Dialog>
+  );
+}
+
+/** A project's own look, or its organization's. */
+function LookDialog({ p, onClose, onChanged }: { p: ProjectSummary; onClose: () => void; onChanged: (p: ProjectSummary) => void }) {
+  const { orgs } = useAdmin();
+  const { run, busy } = useAction();
+  const { toast } = useUi();
+  const org = orgs.find((o) => o.id === p.org.id);
+  const orgName = (which: 'light' | 'dark') => {
+    const id = which === 'light' ? org?.theme_light || DEFAULT_THEMES.light : org?.theme_dark || DEFAULT_THEMES.dark;
+    return `Same as ${p.org.name} (${themeById(id)?.name ?? id})`;
+  };
+  async function set(which: 'light' | 'dark', id: string) {
+    const r = await run('look', 'change the look', () => api.admin.updateProject(p.id, which === 'light' ? { theme_light: id } : { theme_dark: id }));
+    if (r) {
+      toast(`${p.name} now uses ${id ? themeById(id)?.name : `${p.org.name}'s look`} in ${which} mode.`);
+      onChanged(r as ProjectSummary);
+    }
+  }
+  return (
+    <Dialog title={`Look of ${p.name}`} onClose={onClose}>
+      <p className="fine">Shown while someone has {p.name} open, unless they chose their own look.</p>
+      <ThemePicker light={p.theme?.own_light || ''} dark={p.theme?.own_dark || ''} inherit={{ light: orgName('light'), dark: orgName('dark') }} onChange={set} disabled={busy === 'look'} />
+      <div className="actions"><button className="btn pri" onClick={onClose}>Done</button></div>
     </Dialog>
   );
 }

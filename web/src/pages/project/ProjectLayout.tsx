@@ -13,6 +13,7 @@ import { ErrorNote, Loading, Menu, Who, useUi } from '../../components/ui';
 import NotFound from '../NotFound';
 import { Ctx, type Nudge, type ProjectCtx, type Versions } from './context';
 import YourWork from './YourWork';
+import { setProjectTheme } from '../../lib/theme';
 
 export default function ProjectLayout() {
   const { projectId = '' } = useParams();
@@ -24,6 +25,12 @@ export default function ProjectLayout() {
   const bump = useCallback((k: keyof Versions) => setV((x) => ({ ...x, [k]: x[k] + 1 })), []);
 
   const proj = useAsync(() => api.project(projectId), [projectId, v.changes, v.branches]);
+  // The project's look (or its organization's) while it is open.
+  const pt = proj.data?.theme;
+  useEffect(() => {
+    setProjectTheme(pt ? { light: pt.light, dark: pt.dark } : null);
+  }, [pt?.light, pt?.dark]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => () => setProjectTheme(null), []);
   const branchesQ = useAsync(() => api.branches(projectId), [projectId, v.branches, v.changes]);
   const claimsQ = useAsync(() => api.claims(projectId), [projectId, v.claims, v.changes]);
   const drafts = useAsync(() => api.drafts(projectId), [projectId, v.drafts]);

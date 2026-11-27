@@ -5,6 +5,8 @@ import { useAsync } from '../../lib/useAsync';
 import { useSession } from '../../lib/session';
 import { firstName, plural, ROLE_LABEL, since, until } from '../../lib/format';
 import { Empty, ErrorNote, Loading, Who, useAction, useUi } from '../../components/ui';
+import ThemePicker from '../../components/ThemePicker';
+import { DEFAULT_THEMES, themeById } from '../../lib/theme';
 import NotFound from '../NotFound';
 import { AdminHead, useAdmin } from './AdminLayout';
 
@@ -12,8 +14,8 @@ const ROLES: Role[] = ['owner', 'admin', 'member', 'guest'];
 
 export default function AdminOrg() {
   const { orgId = '' } = useParams();
-  const { orgs } = useAdmin();
-  const { me } = useSession();
+  const { orgs, reloadOrgs } = useAdmin();
+  const { me, refresh } = useSession();
   const org = orgs.find((o) => o.id === orgId);
   const members = useAsync(() => api.admin.members(orgId), [orgId], !!org);
   const { confirm, toast } = useUi();
@@ -47,6 +49,15 @@ export default function AdminOrg() {
     if (r) {
       toast(`${firstName(m.user.name)} is no longer in ${org!.name}.`);
       members.reload();
+    }
+  }
+
+  async function setTheme(which: 'light' | 'dark', id: string) {
+    const r = await run('theme', 'change the look', () => api.admin.updateOrg(org!.id, which === 'light' ? { theme_light: id } : { theme_dark: id }));
+    if (r) {
+      toast(`${org!.name} now uses ${themeById(id)?.name ?? 'the MultiParity default'} in ${which} mode, for people who have not picked their own.`);
+      reloadOrgs();
+      refresh();
     }
   }
 
@@ -92,6 +103,17 @@ export default function AdminOrg() {
             </tbody>
           </table>
         )}
+        <section className="section">
+          <h2>Look</h2>
+          <p>How MultiParity looks for {org.name}'s people who have not chosen their own look (Look, in the account menu). Projects can have their own.</p>
+          <ThemePicker
+            light={org.theme_light || ''}
+            dark={org.theme_dark || ''}
+            inherit={{ light: `MultiParity default (${themeById(DEFAULT_THEMES.light)?.name})`, dark: `MultiParity default (${themeById(DEFAULT_THEMES.dark)?.name})` }}
+            onChange={setTheme}
+            disabled={busy === 'theme'}
+          />
+        </section>
       </div>
     </>
   );

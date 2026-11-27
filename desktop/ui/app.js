@@ -460,6 +460,8 @@ function showView(v) {
   document.querySelectorAll(".nav button").forEach((b) => b.dataset.view === v ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current"));
   document.querySelectorAll(".view").forEach((s) => s.classList.toggle("on", s.id === `v-${v}`));
   if (v !== "work" && window.work) work.close();
+  // A project's own look shows only inside it.
+  if (v !== "work") MPTheme.applyChosen(null);
   renderHere();
 }
 

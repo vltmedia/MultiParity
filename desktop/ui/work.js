@@ -74,6 +74,9 @@ async function openWork(wsId) {
   work.wsId = wsId;
   for (const g of state.groups) for (const p of g.projects) for (const w of p.workspaces) if (w.id === wsId) Object.assign(work, { ws: w, project: p.project, account: g.account });
   showView("work");
+  // The project's look (or its organization's), unless the person chose their own.
+  const pt = work.project && work.project.theme;
+  MPTheme.applyChosen(pt ? { light: pt.light, dark: pt.dark } : null);
   renderWork();
   await refreshWork();
   work.timer = setInterval(() => { if (!document.hidden && !$("#dlg").open && $("#ctx").hidden && !work.busy) refreshWork(false); }, 10000);

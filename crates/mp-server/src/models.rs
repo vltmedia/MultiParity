@@ -37,6 +37,9 @@ pub struct Org {
     pub member_count: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub project_count: Option<i64>,
+    /// The organization's look for light and dark mode, when an admin set one.
+    pub theme_light: Option<String>,
+    pub theme_dark: Option<String>,
 }
 
 impl Org {
@@ -48,6 +51,8 @@ impl Org {
             created_at: row.get("created_at"),
             member_count: row.try_get("member_count").ok(),
             project_count: row.try_get("project_count").ok(),
+            theme_light: row.try_get("theme_light").ok().flatten(),
+            theme_dark: row.try_get("theme_dark").ok().flatten(),
         }
     }
 }
@@ -70,7 +75,7 @@ pub struct Me {
 
 pub async fn org_roles(db: &PgPool, user: Uuid) -> sqlx::Result<Vec<OrgRole>> {
     let rows = sqlx::query(
-        "SELECT o.id, o.slug, o.name, o.created_at, m.role FROM memberships m JOIN orgs o ON o.id = m.org_id
+        "SELECT o.id, o.slug, o.name, o.created_at, o.theme_light, o.theme_dark, m.role FROM memberships m JOIN orgs o ON o.id = m.org_id
          WHERE m.user_id = $1 AND (m.expires_at IS NULL OR m.expires_at > now()) ORDER BY o.name",
     )
     .bind(user)

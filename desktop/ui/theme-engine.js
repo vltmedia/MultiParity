@@ -113,13 +113,42 @@
     } else if (link) link.remove();
   }
 
+  // Which theme shows: the person's own pick; otherwise ("auto") the project's or organization's
+  // theme for the current light or dark mode, else the default for that mode.
   const KEY = "mp.theme";
+  const AUTO = "auto";
+  const DEFAULTS = { light: "icelab", dark: "hud" };
+  let context = {}; // {light, dark} set by an organization or project admin
+  const mq = typeof matchMedia === "function" ? matchMedia("(prefers-color-scheme: dark)") : null;
+  const list = () => globalThis.MP_THEMES || (globalThis.MPTheme && globalThis.MPTheme.list) || [];
+  const find = (id) => list().find((t) => t.id === id);
+  const mode = () => (mq && mq.matches ? "dark" : "light");
+
   function saved() {
-    try { return localStorage.getItem(KEY) || "ember"; } catch (_) { return "ember"; }
+    try { return localStorage.getItem(KEY) || AUTO; } catch (_) { return AUTO; }
   }
   function save(id) {
-    try { localStorage.setItem(KEY, id); } catch (_) {}
+    try { if (id === AUTO) localStorage.removeItem(KEY); else localStorage.setItem(KEY, id); } catch (_) {}
+  }
+  /** The theme id that shows right now, with `ctx` (or the current context) as the fallback. */
+  function chosen(ctx) {
+    const c = ctx || context;
+    const own = saved();
+    if (own !== AUTO && find(own)) return own;
+    const m = mode();
+    return (c && c[m] && find(c[m]) ? c[m] : DEFAULTS[m]);
+  }
+  /** Apply what should show; pass a context ({light, dark}) to change it, null to clear it. */
+  function applyChosen(ctx) {
+    if (ctx !== undefined) context = ctx || {};
+    const t = find(chosen()) || list()[0];
+    if (t) apply(t);
+    return t;
+  }
+  if (mq) {
+    const follow = () => { if (saved() === AUTO) applyChosen(); };
+    if (mq.addEventListener) mq.addEventListener("change", follow); else if (mq.addListener) mq.addListener(follow);
   }
 
-  globalThis.MPTheme = { apply, vars, fontsUrl, saved, save, KEY };
+  globalThis.MPTheme = { apply, vars, fontsUrl, saved, save, chosen, applyChosen, mode, KEY, AUTO, DEFAULTS, list: undefined };
 })();

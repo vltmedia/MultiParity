@@ -48,6 +48,9 @@ pub struct ProjectSummary {
     pub checkpoint_setting: String,
     /// Whether the project asks for automatic checkpoints while people work.
     pub auto_checkpoints: bool,
+    /// The project's look ({light, dark, own_light, own_dark}), from the project or its
+    /// organization; passed through to the desktop app.
+    pub theme: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]

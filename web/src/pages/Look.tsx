@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useReducer, useState } from 'react';
 import TopBar from '../components/TopBar';
 import { useUi } from '../components/ui';
-import { THEMES, applyTheme, currentThemeId, type Theme } from '../lib/theme';
+import { AUTO, DEFAULT_THEMES, THEMES, applyTheme, currentThemeId, shownThemeId, themeById, type Theme } from '../lib/theme';
 
 const GROUPS = ['All', ...new Set(THEMES.map((t) => t.grp))];
 const solid = (c: string) => (c.includes('gradient') ? '#ffffff' : c);
@@ -30,6 +30,13 @@ export default function Look() {
   const { toast } = useUi();
   const [current, setCurrent] = useState(currentThemeId());
   const [group, setGroup] = useState('All');
+  // Redraw when the computer switches between light and dark, so "Showing now" stays right.
+  const [, redraw] = useReducer((n: number) => n + 1, 0);
+  useEffect(() => {
+    const mq = matchMedia('(prefers-color-scheme: dark)');
+    mq.addEventListener('change', redraw);
+    return () => mq.removeEventListener('change', redraw);
+  }, []);
   const list = THEMES.filter((t) => group === 'All' || t.grp === group);
 
   function choose(t: Theme) {
@@ -37,6 +44,13 @@ export default function Look() {
     setCurrent(t.id);
     toast(`Now using ${t.name}.`);
   }
+  function chooseAuto() {
+    applyTheme(AUTO);
+    setCurrent(AUTO);
+    toast(`Now automatic: ${themeById(shownThemeId())?.name ?? 'the default'} for now.`);
+  }
+  const light = themeById(DEFAULT_THEMES.light)!;
+  const dark = themeById(DEFAULT_THEMES.dark)!;
 
   return (
     <>
@@ -45,7 +59,7 @@ export default function Look() {
         <header className="head">
           <div>
             <h1>Look</h1>
-            <p>Choose how MultiParity looks in this browser. It changes right away and only for you.</p>
+            <p>Choose how MultiParity looks in this browser. It changes right away and only for you. Automatic uses your organization's or project's look, or Ice Lab and Orbital HUD by light and dark mode.</p>
           </div>
         </header>
         <div className="body">
@@ -55,12 +69,25 @@ export default function Look() {
             ))}
           </div>
           <div className="looks">
+            {group === 'All' && (
+              <button type="button" className="look auto" aria-pressed={current === AUTO} onClick={chooseAuto}
+                title="Your organization's or project's look when it has one; otherwise Ice Lab in light mode and Orbital HUD in dark mode, following this computer.">
+                <span className="look-split">
+                  <Swatch t={light} />
+                  <Swatch t={dark} />
+                </span>
+                <span className="look-name">
+                  <strong>Automatic</strong>
+                  <small>{current === AUTO ? `In use: ${themeById(shownThemeId())?.name ?? ''}` : 'Follows light and dark mode'}</small>
+                </span>
+              </button>
+            )}
             {list.map((t) => (
               <button key={t.id} type="button" className="look" aria-pressed={t.id === current} title={t.desc} onClick={() => choose(t)}>
                 <Swatch t={t} />
                 <span className="look-name">
                   <strong>{t.name}</strong>
-                  <small>{t.id === current ? 'In use' : t.grp}</small>
+                  <small>{t.id === current ? 'In use' : current === AUTO && t.id === shownThemeId() ? 'Showing now (automatic)' : t.grp}</small>
                 </span>
               </button>
             ))}

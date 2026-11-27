@@ -505,6 +505,21 @@ pub async fn revoke_invite(State(s): State<AppState>, user: CurrentUser, Path(id
 #[derive(Deserialize)]
 pub struct UpdateOrg {
     name: Option<String>,
+    /// Theme ids for light and dark mode; "" clears one (back to the apps' default).
+    theme_light: Option<String>,
+    theme_dark: Option<String>,
+}
+
+/// A theme id from the apps' list (letters, digits, dashes), or None for "".
+fn theme_value(v: &str) -> ApiResult<Option<String>> {
+    let v = v.trim();
+    if v.is_empty() {
+        return Ok(None);
+    }
+    if v.len() > 40 || !v.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-') {
+        return Err(ApiError::invalid(format!("{v} is not a theme.")));
+    }
+    Ok(Some(v.to_string()))
 }
 
 pub async fn update_org(State(s): State<AppState>, user: CurrentUser, Path(org): Path<Uuid>, Json(b): Json<UpdateOrg>) -> ApiResult<Json<Org>> {
@@ -512,7 +527,13 @@ pub async fn update_org(State(s): State<AppState>, user: CurrentUser, Path(org):
     if let Some(name) = b.name.as_deref().map(str::trim).filter(|n| !n.is_empty()) {
         sqlx::query("UPDATE orgs SET name = $2 WHERE id = $1").bind(org).bind(name).execute(&s.db).await?;
     }
-    let r = sqlx::query("SELECT id, slug, name, created_at FROM orgs WHERE id = $1").bind(org).fetch_one(&s.db).await?;
+    if let Some(t) = b.theme_light.as_deref() {
+        sqlx::query("UPDATE orgs SET theme_light = $2 WHERE id = $1").bind(org).bind(theme_value(t)?).execute(&s.db).await?;
+    }
+    if let Some(t) = b.theme_dark.as_deref() {
+        sqlx::query("UPDATE orgs SET theme_dark = $2 WHERE id = $1").bind(org).bind(theme_value(t)?).execute(&s.db).await?;
+    }
+    let r = sqlx::query("SELECT id, slug, name, created_at, theme_light, theme_dark FROM orgs WHERE id = $1").bind(org).fetch_one(&s.db).await?;
     Ok(Json(Org::from_row(&r)))
 }
 
@@ -548,6 +569,9 @@ pub struct UpdateProject {
     checkpoints: Option<String>,
     /// Take checkpoints automatically every few minutes while people work (off by default).
     auto_checkpoints: Option<bool>,
+    /// Theme ids for light and dark mode; "" clears one (back to the organization's).
+    theme_light: Option<String>,
+    theme_dark: Option<String>,
 }
 
 pub async fn update_project(State(s): State<AppState>, user: CurrentUser, Path(p): Path<Uuid>, Json(b): Json<UpdateProject>) -> ApiResult<Json<Value>> {
@@ -568,6 +592,12 @@ pub async fn update_project(State(s): State<AppState>, user: CurrentUser, Path(p
     }
     if let Some(name) = b.name.as_deref().map(str::trim).filter(|n| !n.is_empty()) {
         sqlx::query("UPDATE projects SET name = $2 WHERE id = $1").bind(p).bind(name).execute(&mut *tx).await?;
+    }
+    if let Some(t) = b.theme_light.as_deref() {
+        sqlx::query("UPDATE projects SET theme_light = $2 WHERE id = $1").bind(p).bind(theme_value(t)?).execute(&mut *tx).await?;
+    }
+    if let Some(t) = b.theme_dark.as_deref() {
+        sqlx::query("UPDATE projects SET theme_dark = $2 WHERE id = $1").bind(p).bind(theme_value(t)?).execute(&mut *tx).await?;
     }
     if let Some(to) = b.org.filter(|o| *o != acc.org_id) {
         access::org_admin(&s, &user, to).await?;

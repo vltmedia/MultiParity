@@ -122,3 +122,7 @@ input[type='checkbox']:indeterminate::after { background: var(--toast-ink); }
 [data-fx~="sticky"] :is(.head h1) { color: #ffffff; text-shadow: 0 2px 0 rgba(0,0,0,.25); } [data-fx~="sticky"] .head p { color: #fff4e0; }
 [data-fx~="split"] :is(.head h1, .head p) { color: var(--on-paper); background: var(--card); padding-inline: 4px; }
 @media (prefers-reduced-motion: reduce) { [data-fx~="sticky"] * { transform: none !important; } }
+/* "Automatic": the light and dark defaults side by side, split on the diagonal. */
+.look-split { display: grid; height: 104px; overflow: hidden; }
+.look-split > .look-art { grid-area: 1 / 1; height: 104px; }
+.look-split > .look-art:last-child { clip-path: polygon(62% 0, 100% 0, 100% 100%, 38% 100%); }
