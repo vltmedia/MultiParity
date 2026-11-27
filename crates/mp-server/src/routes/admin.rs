@@ -467,12 +467,32 @@ pub async fn create_invites(State(s): State<AppState>, user: CurrentUser, Path(o
         .bind(&token)
         .fetch_one(&mut *tx)
         .await?;
-        out.push(invite_json(&r, Some(invite_url(&s, &token))));
+        let mut j = invite_json(&r, Some(invite_url(&s, &token)));
+        j["emailed"] = json!(email.is_some() && s.config.email.is_some());
+        out.push((j, email.map(|e| (e, invite_url(&s, &token)))));
     }
     let ev = events::record(&mut *tx, Some(org), None, Some(user.id), "admin.invites_created", json!({ "count": out.len(), "role": b.role })).await?;
+    let org_name: String = sqlx::query_scalar("SELECT name FROM orgs WHERE id = $1").bind(org).fetch_one(&mut *tx).await?;
     tx.commit().await?;
     events::publish_saved(&s.db, &s.events, ev).await;
-    Ok(Json(out))
+    if let Some(mail) = &s.config.email {
+        for (_, to) in &out {
+            if let Some((addr, url)) = to {
+                mail.send_later(
+                    addr.clone(),
+                    format!("{} invited you to {org_name} on MultiParity", user.name),
+                    format!("{} invited you to join {org_name} on MultiParity, where the team shares its project files.
+
+Open this link to make your account (it works for {days} days):
+
+{url}
+
+Then get the desktop app from the account menu to keep projects on your computer.", user.name),
+                );
+            }
+        }
+    }
+    Ok(Json(out.into_iter().map(|(j, _)| j).collect()))
 }
 
 pub async fn revoke_invite(State(s): State<AppState>, user: CurrentUser, Path(id): Path<Uuid>) -> ApiResult<Json<Value>> {
@@ -852,4 +872,26 @@ pub async fn audit(State(s): State<AppState>, user: CurrentUser, Query(q): Query
         .fetch_all(&s.db)
         .await?;
     Ok(Json(rows.iter().map(|r| serde_json::to_value(event_from_row(r)).unwrap_or_default()).collect()))
+}
+
+// ---------------------------------------------------------------------------------------------
+// Email
+
+/// Whether and how the server sends email (server admins).
+pub async fn email_status(State(s): State<AppState>, user: CurrentUser) -> ApiResult<Json<Value>> {
+    access::server_admin(&user)?;
+    Ok(Json(match &s.config.email {
+        Some(e) => json!({ "configured": true, "kind": e.kind(), "via": e.describe(), "from": e.from.to_string() }),
+        None => json!({ "configured": false }),
+    }))
+}
+
+/// Send a test email to the admin asking, and say what happened.
+pub async fn email_test(State(s): State<AppState>, user: CurrentUser) -> ApiResult<Json<Value>> {
+    access::server_admin(&user)?;
+    let mail = s.config.email.as_ref().ok_or_else(|| ApiError::invalid("Email is not set up on this server. See docs/EMAIL.md."))?;
+    mail.send(&user.email, "MultiParity test email", &format!("This is a test from MultiParity at {}, sent through {}. Email works.", s.config.public_url, mail.describe()))
+        .await
+        .map_err(|e| ApiError::new(axum::http::StatusCode::BAD_GATEWAY, "email_failed", format!("The email was not sent: {e:#}")))?;
+    Ok(Json(json!({ "sent_to": user.email })))
 }

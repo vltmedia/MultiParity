@@ -28,6 +28,7 @@ import AdminAudit from './pages/admin/Audit';
 import NotFound from './pages/NotFound';
 import Look from './pages/Look';
 import GetApp from './pages/GetApp';
+import { ForgotPassword, ResetPassword } from './pages/auth/ResetPassword';
 import ErrorBoundary from './components/ErrorBoundary';
 
 function RequireAuth({ children }: { children: ReactNode }) {
@@ -55,6 +56,8 @@ export default function App() {
           <ErrorBoundary resetKey={loc.pathname}>
           <Routes>
             <Route path="/sign-in" element={<SignIn />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/invite/:token" element={<AcceptInvite />} />
             <Route path="/" element={<RequireAuth><ProjectsPage /></RequireAuth>} />
             <Route path="/look" element={<RequireAuth><Look /></RequireAuth>} />

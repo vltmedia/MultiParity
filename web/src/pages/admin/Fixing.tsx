@@ -7,6 +7,7 @@ import { STORAGE_KIND_LABEL, baseName, firstName, held, moveStatus, plural, sinc
 import { Empty, ErrorNote, Loading, Who, useAction, useUi } from '../../components/ui';
 import { AdminHead, useAdmin } from './AdminLayout';
 import BackupsSection from './Backups';
+import EmailSection from './Email';
 
 const AGES: Array<[number, string]> = [
   [24, 'More than a day'],
@@ -263,6 +264,7 @@ export default function AdminFixing() {
           </div>
 
           {isServerAdmin && <BackupsSection />}
+          {isServerAdmin && <EmailSection />}
 
           <section className="section">
             <h2>Where file data is kept</h2>

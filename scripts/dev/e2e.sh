@@ -22,7 +22,11 @@ check() { local what="$1"; shift; if "$@"; then echo "   ok: $what"; else fail "
 same() { [ "$(sha256sum < "$1")" = "$(sha256sum < "$2")" ]; }
 alice() { MP_CONFIG_DIR="$WORK/cfg-alice" MP_DEVICE=alice-pc "$BIN/mp" "$@"; }
 bob() { MP_CONFIG_DIR="$WORK/cfg-bob" MP_DEVICE=bob-pc "$BIN/mp" "$@"; }
-cleanup() { [ -n "${SPID:-}" ] && kill "$SPID" 2>/dev/null || true; [ -n "${DPID:-}" ] && kill "$DPID" 2>/dev/null || true; }
+cleanup() { for p in ${SPID:-} ${DPID:-} ${MPID:-} ${GPID:-} ${S2PID:-}; do kill "$p" 2>/dev/null || true; done; }
+# The plain text of a caught email (SMTP sink files are raw messages, often quoted-printable).
+mail_text() { python3 -c 'import sys, email, email.policy; m = email.message_from_bytes(open(sys.argv[1], "rb").read(), policy=email.policy.default); print(m["To"]); print(m["Subject"]); print(m.get_body(("plain",)).get_content())' "$1"; }
+# The newest caught email to an address, as text.
+mail_to() { local f; for f in $(ls -t "$WORK/mail"/*.eml 2>/dev/null); do if mail_text "$f" | head -1 | grep -qi "$1"; then mail_text "$f"; return 0; fi; done; return 1; }
 trap cleanup EXIT
 
 step "Fresh database and server"
@@ -38,7 +42,10 @@ else
   echo "psql not found; install postgresql-client" >&2; exit 2
 fi
 export DATABASE_URL="${psql_url}/$DBNAME"
-MP_DESKTOP_DIR="$WORK/desktop" MP_BACKUP_TARGET="local:$WORK/backups" MP_STORAGE_LOCATIONS="second=local:$WORK/blobs2" MP_LISTEN="127.0.0.1:$PORT" MP_PUBLIC_URL="$SERVER" MP_STORAGE="${E2E_STORAGE:-local}" MP_STORAGE_PATH="${E2E_STORAGE_PATH:-$WORK/blobs}" \
+MPORT=$((PORT+7))
+python3 "$ROOT/scripts/dev/mail-sink.py" smtp "$MPORT" "$WORK/mail" &
+MPID=$!
+MP_SMTP_HOST=127.0.0.1 MP_SMTP_PORT=$MPORT MP_SMTP_SECURITY=none MP_EMAIL_FROM="MultiParity <mp@example.com>" MP_DESKTOP_DIR="$WORK/desktop" MP_BACKUP_TARGET="local:$WORK/backups" MP_STORAGE_LOCATIONS="second=local:$WORK/blobs2" MP_LISTEN="127.0.0.1:$PORT" MP_PUBLIC_URL="$SERVER" MP_STORAGE="${E2E_STORAGE:-local}" MP_STORAGE_PATH="${E2E_STORAGE_PATH:-$WORK/blobs}" \
   MP_ADMIN_EMAIL=alice@example.com MP_ADMIN_PASSWORD="$PASS_A" MP_DEFAULT_ORG="Cinder Works" \
   RUST_LOG=info,tower_http=warn "$BIN/mp-server" > "$WORK/server.log" 2>&1 &
 SPID=$!
@@ -562,6 +569,45 @@ check "a model has no picture (404)" test "$(thumb "$FBX")" = 404
 check "a hash from outside the project is refused" test "$(thumb "$(printf 'a%.0s' $(seq 1 64))")" = 404
 thumb "$PNG" >/dev/null
 check "thumbnails are cached for good" grep -qi 'cache-control: private, max-age=31536000, immutable' "$WORK/thumb.h"
+
+step "Email: invites, forgot password, requests to release, test emails, SMTP and SendGrid"
+R=$(alice admin invite cinder-works carol@example.com --json)
+check "the invite says it was emailed" test "$(echo "$R" | jq '.[0].emailed')" = true
+for i in $(seq 1 20); do mail_to carol@example.com >/dev/null && break; sleep 0.3; done
+CAROL_URL=$(mail_to carol@example.com | grep -o 'http[^ ]*/invite/[A-Za-z0-9_-]*' | head -1)
+check "carol got an email with her invite link" test "$CAROL_URL" = "$(echo "$R" | jq -r '.[0].url')"
+curl -fs -X POST "$SERVER/api/invites/${CAROL_URL##*/}/accept" -H 'content-type: application/json' -d '{"name":"Carol","password":"carol-password-12"}' >/dev/null
+check "and joined with it" test "$(login_code carol@example.com carol-password-12)" = 200
+check "the server says it sends email (for the Forgot password link)" test "$(curl -fs "$SERVER/api/server" | jq .email)" = true
+check "asking for a link for an unknown address looks the same" test "$(curl -fs -X POST "$SERVER/api/auth/forgot" -H 'content-type: application/json' -d '{"email":"nobody@example.com"}' | jq .sent)" = true
+curl -fs -X POST "$SERVER/api/auth/forgot" -H 'content-type: application/json' -d '{"email":"Carol@Example.com"}' >/dev/null
+for i in $(seq 1 20); do mail_to carol@example.com | grep -q reset-password && break; sleep 0.3; done
+RESET=$(mail_to carol@example.com | grep -o 'reset-password?token=[A-Za-z0-9_-]*' | head -1)
+check "carol got a reset link" test -n "$RESET"
+check "a short password is refused" test "$(curl -s -o /dev/null -w '%{http_code}' -X POST "$SERVER/api/auth/reset" -H 'content-type: application/json' -d "{\"token\":\"${RESET#*token=}\",\"password\":\"short\"}")" = 422
+curl -fs -X POST "$SERVER/api/auth/reset" -H 'content-type: application/json' -d "{\"token\":\"${RESET#*token=}\",\"password\":\"carol-new-password\"}" >/dev/null
+check "the new password works" test "$(login_code carol@example.com carol-new-password)" = 200
+check "the old one does not" test "$(login_code carol@example.com carol-password-12)" = 401
+check "the link works once" test "$(curl -s -o /dev/null -w '%{http_code}' -X POST "$SERVER/api/auth/reset" -H 'content-type: application/json' -d "{\"token\":\"${RESET#*token=}\",\"password\":\"another-password-1\"}")" = 422
+check "a second request within five minutes sends nothing more" bash -c "n=\$(ls '$WORK/mail' | wc -l); curl -fs -X POST '$SERVER/api/auth/forgot' -H 'content-type: application/json' -d '{\"email\":\"carol@example.com\"}' >/dev/null; sleep 1; test \$(ls '$WORK/mail' | wc -l) = \$n"
+check "bob was emailed when alice asked for his file" bash -c "ls -t '$WORK/mail'/*.eml | while read f; do python3 -c 'import sys,email,email.policy; m=email.message_from_bytes(open(sys.argv[1],\"rb\").read(),policy=email.policy.default); print(m[\"To\"], m[\"Subject\"])' \$f; done | grep -q 'bob@example.com.*is waiting for notes.txt'"
+check "admins see how email is sent" test "$(curl -fs "$SERVER/api/admin/email" -H "authorization: Bearer $TOKEN" | jq -r .kind)" = smtp
+check "and can send themselves a test" test "$(curl -fs -X POST "$SERVER/api/admin/email/test" -H "authorization: Bearer $TOKEN" | jq -r .sent_to)" = alice@example.com
+check "which arrives" bash -c "sleep 0.5; grep -rl 'MultiParity test email' '$WORK/mail' >/dev/null"
+GPORT=$((PORT+12)); S2PORT=$((PORT+11))
+python3 "$ROOT/scripts/dev/mail-sink.py" sendgrid "$GPORT" "$WORK/sendgrid" &
+GPID=$!
+MP_SENDGRID_API_KEY=test-sendgrid-key MP_SENDGRID_URL="http://127.0.0.1:$GPORT" MP_EMAIL_FROM="Studio Files <files@example.com>"   MP_LISTEN="127.0.0.1:$S2PORT" MP_PUBLIC_URL="http://127.0.0.1:$S2PORT" MP_STORAGE_PATH="$WORK/blobs" MP_STORAGE_LOCATIONS="second=local:$WORK/blobs2" RUST_LOG=warn "$BIN/mp-server" > "$WORK/server-sendgrid.log" 2>&1 &
+S2PID=$!
+for i in $(seq 1 50); do curl -fs "http://127.0.0.1:$S2PORT/api/health" >/dev/null && break; sleep 0.2; done
+curl -fs "http://127.0.0.1:$S2PORT/api/health" >/dev/null || { echo "--- SendGrid server log"; cat "$WORK/server-sendgrid.log"; }
+check "a server set up for SendGrid says so" test "$(curl -fs "http://127.0.0.1:$S2PORT/api/admin/email" -H "authorization: Bearer $TOKEN" | jq -r .kind)" = sendgrid
+curl -fs -X POST "http://127.0.0.1:$S2PORT/api/admin/email/test" -H "authorization: Bearer $TOKEN" >/dev/null
+SG=$(cat "$WORK/sendgrid"/*.json)
+check "SendGrid got the message with the API key" test "$(echo "$SG" | jq -r .auth)" = "Bearer test-sendgrid-key"
+check "addressed to alice, from the studio's address" test "$(echo "$SG" | jq -c '[.body.personalizations[0].to[0].email, .body.from.email, .body.from.name]')" = '["alice@example.com","files@example.com","Studio Files"]'
+check "with text and HTML" test "$(echo "$SG" | jq -c '[.body.content[].type]')" = '["text/plain","text/html"]'
+kill $S2PID $GPID 2>/dev/null || true
 
 step "Backups: back up, restore into a fresh database and storage, and serve from it"
 AUTH=(-H "authorization: Bearer $TOKEN" -H 'content-type: application/json')

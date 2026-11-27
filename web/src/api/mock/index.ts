@@ -373,6 +373,15 @@ on('POST', '/api/auth/logout', ({ headers }) => {
   return {};
 });
 on('GET', '/api/me', ({ headers }) => meOf(who(headers)));
+on('GET', '/api/server', () => ({ email: true }));
+on('POST', '/api/auth/forgot', () => ({ sent: true }));
+on('POST', '/api/auth/reset', ({ body }) => {
+  if (String(body?.password || '').length < 10) throw new Fail(422, 'invalid', 'Use a password of at least 10 characters.');
+  if (body?.token === 'used') throw new Fail(422, 'invalid', 'This link has expired or was already used. Ask for a new one.');
+  return { email: 'justin@cinderworks.example' };
+});
+on('GET', '/api/admin/email', () => ({ configured: true, kind: 'smtp', via: 'SMTP smtp.example.com:587 (starttls)', from: 'MultiParity <multiparity@cinderworks.example>' }));
+on('POST', '/api/admin/email/test', ({ headers }) => ({ sent_to: who(headers).email }));
 on('GET', '/api/desktop', () => ({
   version: '0.2.0', notes: 'Files, History, Branches and Drafts in the app; notifications; updates itself.',
   downloads: [

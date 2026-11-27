@@ -213,3 +213,71 @@ pub async fn accept_invite(State(s): State<AppState>, Path(token): Path<String>,
     };
     Ok(Json(json!({ "token": token, "user": load_me(&s.db, uid).await? })))
 }
+
+// ---------------------------------------------------------------------------------------------
+// Forgot password (needs email set up)
+
+#[derive(Deserialize)]
+pub struct ForgotBody {
+    email: String,
+}
+
+/// Email a one-hour link to set a new password. Answers the same whether or not the address
+/// has an account, so nobody can find out who has one. At most one email per address per
+/// five minutes.
+pub async fn forgot(State(s): State<AppState>, Json(b): Json<ForgotBody>) -> ApiResult<Json<Value>> {
+    let Some(mail) = s.config.email.clone() else {
+        return Err(ApiError::new(axum::http::StatusCode::SERVICE_UNAVAILABLE, "email_off", "This server does not send email. Ask an admin to set a new password for you."));
+    };
+    let email = b.email.trim().to_lowercase();
+    let user = sqlx::query("SELECT id, name FROM users WHERE lower(email) = $1 AND status = 'active'").bind(&email).fetch_optional(&s.db).await?;
+    if let Some(u) = user {
+        let id: Uuid = u.get("id");
+        let recent: bool = sqlx::query_scalar("SELECT EXISTS (SELECT 1 FROM password_resets WHERE user_id = $1 AND created_at > now() - interval '5 minutes')").bind(id).fetch_one(&s.db).await?;
+        if !recent {
+            let token = crate::util::new_token();
+            sqlx::query("INSERT INTO password_resets (user_id, token_hash, expires_at) VALUES ($1, $2, now() + interval '1 hour')").bind(id).bind(hash_token(&token)).execute(&s.db).await?;
+            let url = format!("{}/reset-password?token={token}", s.config.public_url.trim_end_matches('/'));
+            let name: String = u.get("name");
+            mail.send_later(
+                email.clone(),
+                "Set a new MultiParity password".into(),
+                format!("Hi {name},\n\nSomeone (hopefully you) asked to set a new password for {email} on MultiParity. Open this link within an hour to choose one:\n\n{url}\n\nIf it was not you, ignore this email: your password stays as it is."),
+            );
+            events::emit(&s.db, &s.events, None, None, Some(id), "account.reset_requested", json!({ "user_id": id })).await;
+        }
+    }
+    Ok(Json(json!({ "sent": true })))
+}
+
+#[derive(Deserialize)]
+pub struct ResetBody {
+    token: String,
+    password: String,
+}
+
+/// Set a new password with a link from `forgot`. Signs out every other session.
+pub async fn reset(State(s): State<AppState>, Json(b): Json<ResetBody>) -> ApiResult<Json<Value>> {
+    check_password_strength(&b.password)?;
+    let mut tx = s.db.begin().await?;
+    let r = sqlx::query("UPDATE password_resets SET used_at = now() WHERE token_hash = $1 AND used_at IS NULL AND expires_at > now() RETURNING user_id")
+        .bind(hash_token(b.token.trim()))
+        .fetch_optional(&mut *tx)
+        .await?
+        .ok_or_else(|| ApiError::invalid("This link has expired or was already used. Ask for a new one."))?;
+    let id: Uuid = r.get("user_id");
+    sqlx::query("UPDATE users SET password_hash = $2 WHERE id = $1").bind(id).bind(hash_password(&b.password)?).execute(&mut *tx).await?;
+    sqlx::query("UPDATE sessions SET revoked_at = now() WHERE user_id = $1 AND kind = 'session' AND revoked_at IS NULL").bind(id).execute(&mut *tx).await?;
+    sqlx::query("UPDATE password_resets SET used_at = now() WHERE user_id = $1 AND used_at IS NULL").bind(id).execute(&mut *tx).await?;
+    let email: String = sqlx::query_scalar("SELECT email FROM users WHERE id = $1").bind(id).fetch_one(&mut *tx).await?;
+    let ev = events::record(&mut *tx, None, None, Some(id), "account.password_reset", json!({ "user_id": id })).await?;
+    tx.commit().await?;
+    s.sign_in.clear(&format!("account:{}", email.to_lowercase()));
+    events::publish_saved(&s.db, &s.events, ev).await;
+    Ok(Json(json!({ "email": email })))
+}
+
+/// Whether this server sends email (the sign-in page shows "Forgot password?" when it does).
+pub async fn server_info(State(s): State<AppState>) -> Json<Value> {
+    Json(json!({ "email": s.config.email.is_some() }))
+}

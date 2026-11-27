@@ -2,6 +2,7 @@ use axum::extract::{Path, State};
 use axum::Json;
 use serde::Deserialize;
 use serde_json::{json, Value};
+use sqlx::Row;
 use uuid::Uuid;
 
 use crate::access::{self, Level};
@@ -116,5 +117,31 @@ pub async fn nudge(State(s): State<AppState>, user: CurrentUser, Path(p): Path<U
         .await?;
     let holder = holder.ok_or_else(|| ApiError::not_found("A claim on that file"))?;
     events::emit(&s.db, &s.events, Some(acc.org_id), Some(p), Some(user.id), "claim.nudged", json!({ "path": b.path, "holder": holder, "holder_id": holder, "from": user.name, "branch_id": b.branch })).await;
-    Ok(Json(json!({})))
+    let mut emailed = false;
+    if let Some(mail) = &s.config.email {
+        static SENT: std::sync::OnceLock<std::sync::Mutex<std::collections::HashMap<String, std::time::Instant>>> = std::sync::OnceLock::new();
+        let key = format!("{holder}|{p}|{}", b.path);
+        let fresh = {
+            let mut m = SENT.get_or_init(Default::default).lock().unwrap_or_else(|e| e.into_inner());
+            m.retain(|_, t| t.elapsed() < std::time::Duration::from_secs(3600));
+            m.insert(key.clone(), std::time::Instant::now()).is_none()
+        };
+        if fresh {
+            let r = sqlx::query("SELECT u.email, u.name, p.name AS project FROM users u, projects p WHERE u.id = $1 AND p.id = $2").bind(holder).bind(p).fetch_one(&s.db).await?;
+            let (to, name, project): (String, String, String) = (r.get("email"), r.get("name"), r.get("project"));
+            let file = b.path.rsplit('/').next().unwrap_or(&b.path);
+            let link = format!("{}/p/{p}/files?q={}", s.config.public_url.trim_end_matches('/'), file);
+            mail.send_later(
+                to,
+                format!("{} is waiting for {file}", user.name),
+                format!("Hi {name},
+
+{} would like to work on {} in {project}, which you have claimed. When you can, publish your changes or release the file.
+
+{link}", user.name, b.path),
+            );
+            emailed = true;
+        }
+    }
+    Ok(Json(json!({ "emailed": emailed })))
 }

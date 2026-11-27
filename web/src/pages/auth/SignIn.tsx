@@ -1,5 +1,5 @@
-import { useState, type FormEvent } from 'react';
-import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
+import { useEffect, useState, type FormEvent } from 'react';
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { api, ApiError, explain } from '../../api/client';
 import { MOCK } from '../../api/mode';
 import { useSession } from '../../lib/session';
@@ -31,6 +31,8 @@ export default function SignIn() {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const next = params.get('next') || '/';
+  const [canEmail, setCanEmail] = useState(false);
+  useEffect(() => { api.serverInfo().then((i) => setCanEmail(i.email)).catch(() => {}); }, []);
 
   if (me) return <Navigate to={next} replace />;
 
@@ -74,7 +76,10 @@ export default function SignIn() {
           </label>
           {error && <div className="notice bad" role="alert">{error}</div>}
           <button className="btn pri" type="submit" disabled={busy}>{busy ? 'Signing in' : 'Sign in'}</button>
-          <p className="fine">No account yet? Ask an admin for an invite link. Forgot your password? An admin can set a new one for you.</p>
+          <p className="fine">
+            No account yet? Ask an admin for an invite link.{' '}
+            {canEmail ? <Link to="/forgot-password">Forgot your password?</Link> : 'Forgot your password? An admin can set a new one for you.'}
+          </p>
           {MOCK && <p className="fine">Mock mode: any password works. Try pell@cinderworks.example to see a suspended account.</p>}
         </form>
       </div>

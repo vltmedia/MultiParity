@@ -289,7 +289,23 @@ pub async fn run_recorded(s: &AppState, cfg: &BackupConfig, by: Option<uuid::Uui
     s.backup_running.store(false, Ordering::SeqCst);
     match &result {
         Ok(m) => tracing::info!(snapshot = %m.id, new_chunks = m.new_chunks, "backup finished"),
-        Err(e) => tracing::error!(error = %format!("{e:#}"), "backup failed"),
+        Err(e) => {
+            tracing::error!(error = %format!("{e:#}"), "backup failed");
+            if let Some(mail) = &s.config.email {
+                let admins: Vec<String> = sqlx::query_scalar("SELECT email FROM users WHERE is_server_admin AND status = 'active'").fetch_all(&s.db).await.unwrap_or_default();
+                for a in admins {
+                    mail.send_later(
+                        a,
+                        "MultiParity backup failed".into(),
+                        format!("Last night's backup of {} to {} failed:
+
+{e:#}
+
+Admin > Fixing shows the recent backups and has Back up now.", s.config.public_url, cfg.target.describe()),
+                    );
+                }
+            }
+        }
     }
     result.map(|_| ())
 }

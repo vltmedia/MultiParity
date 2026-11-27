@@ -6,6 +6,7 @@ pub mod auth;
 pub mod backup;
 pub mod branches;
 pub mod chunks;
+pub mod email;
 pub mod error;
 pub mod events;
 pub mod limits;
@@ -59,6 +60,8 @@ pub struct Config {
     pub client_ip_header: Option<String>,
     /// Nightly backups (`MP_BACKUP_TARGET`); none when unset.
     pub backup: Option<backup::BackupConfig>,
+    /// Sending email (SMTP or SendGrid); none when not set up.
+    pub email: Option<email::Email>,
 }
 
 impl Config {
@@ -74,6 +77,7 @@ impl Config {
             admin_password: std::env::var("MP_ADMIN_PASSWORD").ok().filter(|s| !s.is_empty()),
             default_org: std::env::var("MP_DEFAULT_ORG").unwrap_or_else(|_| "My Studio".into()),
             backup: backup::BackupConfig::from_env()?,
+            email: email::Email::from_env()?,
             client_ip_header: std::env::var("MP_CLIENT_IP_HEADER").ok().map(|h| h.trim().to_string()).filter(|h| !h.is_empty()),
             listen,
         })

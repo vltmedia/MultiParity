@@ -126,12 +126,19 @@ export default function AdminInvites() {
             {made.length > 0 && (
               <div className="result good">
                 <b>{made.length === 1 ? 'Here is the link' : `Here are ${made.length} links`}</b>
-                <p className="fine">The server does not send email by itself. Copy each link and send it.</p>
+                <p className="fine">
+                  {made.every((i) => i.emailed)
+                    ? `Emailed to ${made.length === 1 ? made[0].email : `all ${made.length}`}. You can copy the links too.`
+                    : made.some((i) => i.emailed)
+                      ? 'The ones with an address were emailed. Copy the others and send them.'
+                      : 'This server does not send email. Copy each link and send it.'}
+                </p>
                 <ul className="links">
                   {made.map((i) => (
                     <li key={i.id}>
                       <span style={{ minWidth: 0 }}>{i.email || 'Anyone'}</span>
                       <code title={i.url}>{i.url}</code>
+                      {i.emailed && <span className="fine">Emailed</span>}
                       <CopyButton text={i.url} />
                     </li>
                   ))}

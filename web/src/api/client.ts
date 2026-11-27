@@ -204,6 +204,9 @@ export const api = {
     request<LoginResponse>('POST', '/auth/login', { email, password, device: 'Web browser' }),
   logout: () => request<object>('POST', '/auth/logout'),
   me: () => request<Me>('GET', '/me'),
+  serverInfo: () => request<{ email: boolean }>('GET', '/server'),
+  forgotPassword: (email: string) => request<{ sent: boolean }>('POST', '/auth/forgot', { email }),
+  resetPassword: (token: string, password: string) => request<{ email: string }>('POST', '/auth/reset', { token, password }),
   desktop: () =>
     request<{ version: string | null; notes?: string; downloads: Array<{ platform: string; name: string; url: string; size?: number | null }> }>('GET', '/desktop'),
   invite: (token: string) => request<InviteInfo>('GET', `/invites/${enc(token)}`),
@@ -302,6 +305,8 @@ export const api = {
     gcRun: () => request<GcResult>('POST', '/admin/storage/gc'),
     storage: () => request<StorageOverview>('GET', '/admin/storage'),
     backups: () => request<BackupStatus>('GET', '/admin/backups'),
+    email: () => request<{ configured: boolean; kind?: string; via?: string; from?: string }>('GET', '/admin/email'),
+    emailTest: () => request<{ sent_to: string }>('POST', '/admin/email/test'),
     backupNow: () => request<{ started: boolean }>('POST', '/admin/backups/run'),
     projectStorage: (pid: string) => request<ProjectStorage>('GET', `/admin/projects/${enc(pid)}/storage`),
     moveProjectStorage: (pid: string, to: string) =>

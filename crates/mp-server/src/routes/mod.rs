@@ -29,6 +29,9 @@ pub fn router() -> Router<AppState> {
         // Accounts
         .route("/auth/login", post(account::login))
         .route("/auth/logout", post(account::logout))
+        .route("/auth/forgot", post(account::forgot))
+        .route("/auth/reset", post(account::reset))
+        .route("/server", get(account::server_info))
         .route("/me", get(account::me))
         .route("/me/tokens", get(account::list_tokens).post(account::create_token))
         .route("/me/tokens/:id", delete(account::revoke_token))
@@ -98,6 +101,8 @@ pub fn router() -> Router<AppState> {
         .route("/admin/claims/release", post(admin::release_claims))
         .route("/admin/checkpoints", get(checkpoints::admin_usage))
         .route("/admin/checkpoints/clear", post(checkpoints::admin_clear))
+        .route("/admin/email", get(admin::email_status))
+        .route("/admin/email/test", post(admin::email_test))
         .route("/admin/backups", get(backups::status))
         .route("/admin/backups/run", post(backups::run_now))
         .route("/admin/storage", get(storage::locations))

@@ -300,6 +300,8 @@ export type Invite = {
   created_by: UserRef;
   url: string;
   accepted_at?: Time;
+  /** Just made, and sent by email (when the server sends email). */
+  emailed?: boolean;
 };
 
 export type Session = {
