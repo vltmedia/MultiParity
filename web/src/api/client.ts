@@ -211,7 +211,7 @@ export const api = {
   desktop: () =>
     request<{ version: string | null; notes?: string; downloads: Array<{ platform: string; name: string; url: string; size?: number | null }> }>('GET', '/desktop'),
   invite: (token: string) => request<InviteInfo>('GET', `/invites/${enc(token)}`),
-  acceptInvite: (token: string, body: { name: string; password: string } | Record<string, never>) =>
+  acceptInvite: (token: string, body: { name: string; password: string; email?: string } | Record<string, never>) =>
     request<LoginResponse>('POST', `/invites/${enc(token)}/accept`, body),
 
   // orgs and projects
@@ -288,7 +288,8 @@ export const api = {
       request<Member>('PATCH', `/admin/orgs/${enc(org)}/members/${enc(user)}`, body),
     removeMember: (org: string, user: string) => request<object>('DELETE', `/admin/orgs/${enc(org)}/members/${enc(user)}`),
     invites: (org: string) => request<Invite[]>('GET', `/admin/orgs/${enc(org)}/invites`),
-    createInvites: (org: string, body: { emails?: string[]; role: Role; expires_in_days?: number }) =>
+    addMember: (org: string, user: string, role: Role) => request<object>('POST', `/admin/orgs/${enc(org)}/members`, { user, role }),
+    createInvites: (org: string, body: { emails?: string[]; role: Role; expires_in_days?: number; also?: Array<{ org: string; role: Role }> }) =>
       request<Invite[]>('POST', `/admin/orgs/${enc(org)}/invites`, body),
     revokeInvite: (id: string) => request<object>('DELETE', `/admin/invites/${enc(id)}`),
     projects: (org?: string) => request<ProjectSummary[]>('GET', '/admin/projects', undefined, { org }),

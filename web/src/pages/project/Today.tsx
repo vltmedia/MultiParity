@@ -5,7 +5,7 @@ import type { Change, ChangeFile } from '../../api/types';
 import { useAsync } from '../../lib/useAsync';
 import { useSession } from '../../lib/session';
 import { clock, dayLabel, firstName, plural, size } from '../../lib/format';
-import { Empty, ErrorNote, Loading, Thumb, Who } from '../../components/ui';
+import { Empty, ErrorNote, FileThumb, Loading, Who } from '../../components/ui';
 import { useHref, useProject, ViewHead } from './context';
 
 const PAGE = 25;
@@ -102,7 +102,7 @@ export default function Today() {
                   {fs && fs.length > 0 && (
                     <div className="strip">
                       {fs.slice(0, 4).map((f) => (
-                        <Thumb key={f.path} seed={f.path} />
+                        <FileThumb key={f.path} projectId={project.id} hash={f.op === 'delete' ? null : f.file_hash} path={f.path} />
                       ))}
                       {fs.length > 4 && <div className="more">{fs.length - 4} more</div>}
                     </div>

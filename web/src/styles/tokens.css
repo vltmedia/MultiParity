@@ -322,3 +322,8 @@ tr:hover .addtag, .addtag:focus-visible { opacity: 1; }
 .preview .fine { padding: 30px; text-align: center; }
 .thumbbtn { padding: 0; border: 0; background: none; cursor: zoom-in; display: inline-flex; line-height: 0; }
 .themepick { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; max-width: 560px; }
+
+/* Invites: the other organizations one link can join. */
+fieldset.field.also { border: 0; padding: 0; margin: 0 0 14px; display: grid; gap: 8px; }
+fieldset.field.also legend { padding: 0; margin-bottom: 6px; font-weight: 600; font-size: 13.5px; }
+fieldset.field.also .check { display: flex; align-items: center; gap: 8px; }

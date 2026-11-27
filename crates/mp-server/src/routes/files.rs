@@ -125,13 +125,14 @@ pub async fn list_changes(State(s): State<AppState>, user: CurrentUser, Path(p):
 pub async fn get_change(State(s): State<AppState>, user: CurrentUser, Path((p, n)): Path<(Uuid, i32)>) -> ApiResult<Json<Value>> {
     access::project(&s, &user, p, Level::Read).await?;
     let change = load_change(&s.db, p, n).await?;
-    let files: Vec<Value> = sqlx::query("SELECT path, op, size FROM change_files WHERE project_id = $1 AND change_number = $2 ORDER BY path")
+    let files: Vec<Value> = sqlx::query("SELECT path, op, size, file_hash FROM change_files WHERE project_id = $1 AND change_number = $2 ORDER BY path")
         .bind(p)
         .bind(n)
         .fetch_all(&s.db)
         .await?
         .iter()
-        .map(|r| json!({ "path": r.get::<String,_>("path"), "op": r.get::<String,_>("op"), "size": r.get::<i64,_>("size") }))
+        .map(|r| json!({ "path": r.get::<String,_>("path"), "op": r.get::<String,_>("op"), "size": r.get::<i64,_>("size"),
+                         "file_hash": r.get::<Option<String>,_>("file_hash") }))
         .collect();
     let mut v = serde_json::to_value(change).unwrap_or_default();
     v["files"] = json!(files);

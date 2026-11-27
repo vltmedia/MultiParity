@@ -26,6 +26,8 @@ export default function AdminPerson() {
   const [pwErr, setPwErr] = useState('');
   const [delOpen, setDelOpen] = useState(false);
   const [sel, setSel] = useState<Set<string>>(new Set());
+  const [addOrg, setAddOrg] = useState('');
+  const [addRole, setAddRole] = useState<Role>('member');
 
   if (u.loading && !u.data) return <div className="view" style={{ paddingTop: 28 }}><Loading what="Loading this person" /></div>;
   if (u.error !== undefined && !u.data) return <div className="view" style={{ paddingTop: 28 }}><ErrorNote error={u.error} doing="load this person" retry={u.reload} /></div>;
@@ -73,7 +75,7 @@ export default function AdminPerson() {
   }
   async function setPassword() {
     setPwErr('');
-    if (pw.length < 8) return setPwErr('Choose a password with at least 8 characters.');
+    if (pw.length < 10) return setPwErr('Choose a password with at least 10 characters.');
     if (pw !== pw2) return setPwErr('The two passwords are not the same.');
     const r = await run('pw', 'set the password', () => api.admin.setPassword(p.id, pw));
     if (r) {
@@ -87,6 +89,16 @@ export default function AdminPerson() {
     const r = await run('role', 'change the role', () => api.admin.updateMember(orgId, p.id, { role }));
     if (r) {
       toast(`${first} is now ${ROLE_LABEL[role]} in ${orgName}.`);
+      u.reload();
+    }
+  }
+  async function addTo() {
+    const o = orgs.find((x) => x.id === addOrg);
+    if (!o) return;
+    const r = await run('add', `add ${first} to ${o.name}`, () => api.admin.addMember(o.id, p.id, addRole));
+    if (r) {
+      toast(`${first} is now in ${o.name} as ${ROLE_LABEL[addRole]}.`);
+      setAddOrg('');
       u.reload();
     }
   }
@@ -183,6 +195,28 @@ export default function AdminPerson() {
                   </tbody>
                 </table>
               )}
+              {(() => {
+                const free = orgs.filter((o) => !p.orgs.some((m) => m.org.id === o.id));
+                if (!free.length) return null;
+                return (
+                  <div className="toolbar" style={{ alignItems: 'flex-end', flexWrap: 'wrap', gap: 10, marginTop: 12 }}>
+                    <label className="field" style={{ flex: '1 1 200px' }}>
+                      <span>Add {first} to</span>
+                      <select className="select" value={addOrg} onChange={(e) => setAddOrg(e.target.value)}>
+                        <option value="">Choose an organization</option>
+                        {free.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
+                      </select>
+                    </label>
+                    <label className="field">
+                      <span>As</span>
+                      <select className="select" value={addRole} onChange={(e) => setAddRole(e.target.value as Role)}>
+                        {ROLES.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
+                      </select>
+                    </label>
+                    <button className="btn" disabled={!addOrg || !!busy} onClick={addTo}>Add</button>
+                  </div>
+                );
+              })()}
               <p className="fine">Guests see only the projects they are invited to. Owners and admins can manage people and projects in their organization.</p>
             </section>
 
@@ -279,7 +313,7 @@ export default function AdminPerson() {
           <label className="field">
             <span>New password</span>
             <input className="input" type="password" autoComplete="new-password" value={pw} onChange={(e) => setPw(e.target.value)} />
-            <small>At least 8 characters.</small>
+            <small>At least 10 characters.</small>
           </label>
           <label className="field">
             <span>New password again</span>

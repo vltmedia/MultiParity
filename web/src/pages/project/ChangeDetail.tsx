@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { api, downloadFile } from '../../api/client';
 import { useAsync } from '../../lib/useAsync';
 import { baseName, dateTime, dirName, firstName, plural, size } from '../../lib/format';
-import { Empty, ErrorNote, Loading, Thumb, Who, useUi } from '../../components/ui';
+import { Empty, ErrorNote, FileThumb, Loading, Who, useUi } from '../../components/ui';
 import { useHref, useProject, ViewHead } from './context';
 
 const OP: Record<string, string> = { add: 'Added', edit: 'Edited', delete: 'Deleted' };
@@ -78,7 +78,7 @@ export default function ChangeDetail() {
             <tbody>
               {files.map((f) => (
                 <tr key={f.path}>
-                  <td className="name" title={f.path}><Thumb seed={f.path} />{baseName(f.path)}</td>
+                  <td className="name" title={f.path}><FileThumb projectId={project.id} hash={f.op === 'delete' ? null : f.file_hash} path={f.path} />{baseName(f.path)}</td>
                   <td className="mute">
                     {dirName(f.path) ? <Link className="rowlink" to={href('files', { prefix: dirName(f.path) })}>{dirName(f.path)}</Link> : 'Top folder'}
                   </td>

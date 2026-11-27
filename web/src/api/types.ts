@@ -36,7 +36,7 @@ export type Me = {
 
 export type LoginResponse = { token: string; user: Me };
 
-export type InviteInfo = { org: Org; role: Role; email?: string; expires_at?: Time };
+export type InviteInfo = { org: Org; role: Role; email?: string; expires_at?: Time; also?: Array<{ org: Org; role: Role }> };
 
 // ---------- Organizations and projects ----------
 
@@ -141,7 +141,7 @@ export type Change = {
   merged_from?: number[];
 };
 
-export type ChangeFile = { path: string; op: 'add' | 'edit' | 'delete'; size: number };
+export type ChangeFile = { path: string; op: 'add' | 'edit' | 'delete'; size: number; file_hash?: string | null };
 
 export type ChangeDetail = Change & { files: ChangeFile[] };
 
@@ -322,6 +322,8 @@ export type Invite = {
   created_by: UserRef;
   url: string;
   accepted_at?: Time;
+  /** Other organizations the same link adds the person to. */
+  also?: Array<{ org_id: Id; role: Role }>;
   /** Just made, and sent by email (when the server sends email). */
   emailed?: boolean;
 };

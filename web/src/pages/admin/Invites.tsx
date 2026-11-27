@@ -28,6 +28,9 @@ export default function AdminInvites() {
   const [role, setRole] = useState<Role>('member');
   const [days, setDays] = useState(7);
   const [made, setMade] = useState<Invite[]>([]);
+  // More organizations the same invite adds the person to: org id -> role.
+  const [also, setAlso] = useState<Record<string, Role>>({});
+  const others = orgs.filter((o) => o.id !== org);
   const [err, setErr] = useState('');
 
   const setOrg = (id: string) => {
@@ -35,6 +38,7 @@ export default function AdminInvites() {
     n.set('org', id);
     setParams(n, { replace: true });
     setMade([]);
+    setAlso({});
   };
 
   async function create() {
@@ -45,7 +49,12 @@ export default function AdminInvites() {
       const bad = list2.filter((e) => !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e));
       if (bad.length) return setErr(`${bad.slice(0, 3).join(', ')} ${bad.length === 1 ? 'does not look like an email address' : 'do not look like email addresses'}. Fix ${bad.length === 1 ? 'it' : 'them'} and try again.`);
     }
-    const r = await run('create', 'make the invites', () => api.admin.createInvites(org, { emails: list2.length ? list2 : undefined, role, expires_in_days: days || undefined }));
+    const r = await run('create', 'make the invites', () => api.admin.createInvites(org, {
+      emails: list2.length ? list2 : undefined,
+      role,
+      expires_in_days: days,
+      also: Object.entries(also).map(([o, r]) => ({ org: o, role: r })),
+    }));
     if (!r) return;
     setMade(r);
     setEmails('');
@@ -109,6 +118,33 @@ export default function AdminInvites() {
               </select>
               <small>{ROLE_HELP[role]}</small>
             </label>
+            {others.length > 0 && (
+              <fieldset className="field also">
+                <legend>Also add them to</legend>
+                {others.map((o) => (
+                  <div className="row" key={o.id} style={{ gap: 10, flexWrap: 'nowrap' }}>
+                    <label className="check" style={{ flex: 1 }}>
+                      <input
+                        type="checkbox"
+                        checked={o.id in also}
+                        onChange={(e) => setAlso((a) => {
+                          const n = { ...a };
+                          if (e.target.checked) n[o.id] = role; else delete n[o.id];
+                          return n;
+                        })}
+                      />
+                      {o.name}
+                    </label>
+                    {o.id in also && (
+                      <select className="select sm" style={{ width: 150, flex: "none" }} aria-label={`Role in ${o.name}`} value={also[o.id]} onChange={(e) => setAlso((a) => ({ ...a, [o.id]: e.target.value as Role }))}>
+                        {ROLES.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
+                      </select>
+                    )}
+                  </div>
+                ))}
+                <small>One link joins every organization ticked here. People who already have an account join with it too.</small>
+              </fieldset>
+            )}
             <label className="field">
               <span>Link stops working after</span>
               <select className="select" value={days} onChange={(e) => setDays(Number(e.target.value))}>
@@ -162,7 +198,12 @@ export default function AdminInvites() {
                         <br />
                         <span className="fine">From {firstName(i.created_by.name)}, {since(i.created_at)}</span>
                       </td>
-                      <td>{ROLE_LABEL[i.role]}</td>
+                      <td>
+                        {ROLE_LABEL[i.role]}
+                        {i.also && i.also.length > 0 && (
+                          <><br /><span className="fine">and {i.also.map((a) => `${orgs.find((o) => o.id === a.org_id)?.name || 'another organization'} (${ROLE_LABEL[a.role]})`).join(', ')}</span></>
+                        )}
+                      </td>
                       <td>{state(i)}</td>
                       <td>{i.accepted_at ? '' : until(i.expires_at)}</td>
                       <td className="r">

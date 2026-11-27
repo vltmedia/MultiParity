@@ -87,7 +87,7 @@ pub fn router() -> Router<AppState> {
         .route("/admin/users/:id/reactivate", post(admin::reactivate_user))
         .route("/admin/users/:id/sign-out", post(admin::sign_out_user))
         .route("/admin/users/:id/password", post(admin::set_password))
-        .route("/admin/orgs/:org/members", get(admin::list_members))
+        .route("/admin/orgs/:org/members", get(admin::list_members).post(admin::add_member))
         .route("/admin/orgs/:org/members/:user", patch(admin::update_member).delete(admin::remove_member))
         .route("/admin/orgs/:org/invites", get(admin::list_invites).post(admin::create_invites))
         .route("/admin/orgs/:org", patch(admin::update_org).delete(admin::delete_org))

@@ -133,7 +133,7 @@ pub async fn revoke_token(State(s): State<AppState>, user: CurrentUser, Path(id)
 
 async fn find_invite(s: &AppState, token: &str) -> ApiResult<sqlx::postgres::PgRow> {
     let row = sqlx::query(
-        "SELECT i.id, i.org_id, i.email, i.role, i.expires_at, i.accepted_at, i.revoked_at, o.id AS o_id, o.slug, o.name, o.created_at
+        "SELECT i.id, i.org_id, i.email, i.role, i.also, i.expires_at, i.accepted_at, i.revoked_at, o.id AS o_id, o.slug, o.name, o.created_at
          FROM invites i JOIN orgs o ON o.id = i.org_id WHERE i.token_hash = $1",
     )
     .bind(hash_token(token))
@@ -150,10 +150,24 @@ async fn find_invite(s: &AppState, token: &str) -> ApiResult<sqlx::postgres::PgR
     Ok(row)
 }
 
+/// The other organizations an invite adds the person to: (org id, role), in the order given.
+fn also_of(r: &sqlx::postgres::PgRow) -> Vec<(Uuid, String)> {
+    r.try_get::<Value, _>("also").ok().and_then(|v| v.as_array().cloned()).unwrap_or_default().iter()
+        .filter_map(|a| Some((a["org_id"].as_str()?.parse().ok()?, a["role"].as_str()?.to_string())))
+        .collect()
+}
+
 pub async fn invite_info(State(s): State<AppState>, Path(token): Path<String>) -> ApiResult<Json<Value>> {
     let r = find_invite(&s, &token).await?;
+    let mut also = Vec::new();
+    for (id, role) in also_of(&r) {
+        if let Some(o) = sqlx::query("SELECT id, slug, name, created_at FROM orgs WHERE id = $1").bind(id).fetch_optional(&s.db).await? {
+            also.push(json!({ "org": { "id": id, "slug": o.get::<String,_>("slug"), "name": o.get::<String,_>("name"), "created_at": o.get::<DateTime<Utc>,_>("created_at") }, "role": role }));
+        }
+    }
     Ok(Json(json!({
         "org": { "id": r.get::<Uuid,_>("o_id"), "slug": r.get::<String,_>("slug"), "name": r.get::<String,_>("name"), "created_at": r.get::<DateTime<Utc>,_>("created_at") },
+        "also": also,
         "role": r.get::<String,_>("role"),
         "email": r.get::<Option<String>,_>("email"),
         "expires_at": r.get::<Option<DateTime<Utc>>,_>("expires_at"),
@@ -197,16 +211,32 @@ pub async fn accept_invite(State(s): State<AppState>, Path(token): Path<String>,
             (uid, Some(()))
         }
     };
-    sqlx::query("INSERT INTO memberships (org_id, user_id, role) VALUES ($1,$2,$3) ON CONFLICT (org_id, user_id) DO UPDATE SET role = EXCLUDED.role, expires_at = NULL")
-        .bind(org_id)
+    // Every organization on the invite. Someone already in one keeps the higher of the two roles,
+    // so an invite never quietly takes rights away.
+    let mut evs = Vec::new();
+    for (org, role) in std::iter::once((org_id, role.clone())).chain(also_of(&inv)) {
+        let gone: bool = sqlx::query_scalar("SELECT NOT EXISTS (SELECT 1 FROM orgs WHERE id = $1)").bind(org).fetch_one(&mut *tx).await?;
+        if gone {
+            continue;
+        }
+        sqlx::query(
+            "INSERT INTO memberships (org_id, user_id, role) VALUES ($1,$2,$3)
+             ON CONFLICT (org_id, user_id) DO UPDATE SET expires_at = NULL,
+               role = CASE WHEN array_position(ARRAY['guest','member','admin','owner'], EXCLUDED.role) > array_position(ARRAY['guest','member','admin','owner'], memberships.role)
+                           THEN EXCLUDED.role ELSE memberships.role END",
+        )
+        .bind(org)
         .bind(uid)
         .bind(&role)
         .execute(&mut *tx)
         .await?;
+        evs.push(events::record(&mut *tx, Some(org), None, Some(uid), "member.added", json!({ "user_id": uid, "role": role, "via": "invite" })).await?);
+    }
     sqlx::query("UPDATE invites SET accepted_at = now(), accepted_by = $2, token = NULL WHERE id = $1").bind(invite_id).bind(uid).execute(&mut *tx).await?;
-    let ev = events::record(&mut *tx, Some(org_id), None, Some(uid), "member.added", json!({ "user_id": uid, "role": role, "via": "invite" })).await?;
     tx.commit().await?;
-    events::publish_saved(&s.db, &s.events, ev).await;
+    for ev in evs {
+        events::publish_saved(&s.db, &s.events, ev).await;
+    }
     let token = match new_token {
         Some(()) => Some(create_session(&s.db, uid, "session", None, None).await?),
         None => None,

@@ -281,6 +281,45 @@ pub async fn delete_user(State(s): State<AppState>, user: CurrentUser, Path(id):
     Ok(Json(json!({})))
 }
 
+#[derive(Deserialize)]
+pub struct AddMember {
+    user: Uuid,
+    role: String,
+}
+
+/// Add someone who already has an account to this organization. Org admins can add people they
+/// can already see (someone in one of their organizations); server admins can add anyone.
+pub async fn add_member(State(s): State<AppState>, user: CurrentUser, Path(org): Path<Uuid>, Json(b): Json<AddMember>) -> ApiResult<Json<Value>> {
+    may_add(&s, &user, org, &b.role).await?;
+    if let Some(mine) = admin_orgs(&s, &user).await? {
+        let known: bool = sqlx::query_scalar("SELECT EXISTS (SELECT 1 FROM memberships WHERE user_id = $1 AND org_id = ANY($2))")
+            .bind(b.user)
+            .bind(&mine)
+            .fetch_one(&s.db)
+            .await?;
+        if !known {
+            return Err(ApiError::not_found("That person"));
+        }
+    }
+    let name: Option<String> = sqlx::query_scalar("SELECT name FROM users WHERE id = $1").bind(b.user).fetch_optional(&s.db).await?;
+    let Some(name) = name else { return Err(ApiError::not_found("That person")) };
+    let mut tx = s.db.begin().await?;
+    let added = sqlx::query("INSERT INTO memberships (org_id, user_id, role) VALUES ($1,$2,$3) ON CONFLICT (org_id, user_id) DO NOTHING")
+        .bind(org)
+        .bind(b.user)
+        .bind(&b.role)
+        .execute(&mut *tx)
+        .await?
+        .rows_affected();
+    if added == 0 {
+        return Err(ApiError::conflict(format!("{name} is already in this organization. Change their role instead.")));
+    }
+    let ev = events::record(&mut *tx, Some(org), None, Some(user.id), "member.added", json!({ "user_id": b.user, "role": b.role, "via": "admin" })).await?;
+    tx.commit().await?;
+    events::publish_saved(&s.db, &s.events, ev).await;
+    Ok(Json(json!({ "user": b.user, "role": b.role })))
+}
+
 pub async fn list_members(State(s): State<AppState>, user: CurrentUser, Path(org): Path<Uuid>) -> ApiResult<Json<Vec<Value>>> {
     access::org_admin(&s, &user, org).await?;
     let rows = sqlx::query(
@@ -390,7 +429,7 @@ fn invite_url(s: &AppState, token: &str) -> String {
 pub async fn list_invites(State(s): State<AppState>, user: CurrentUser, Path(org): Path<Uuid>) -> ApiResult<Json<Vec<Value>>> {
     access::org_admin(&s, &user, org).await?;
     let rows = sqlx::query(
-        "SELECT i.id, i.email, i.role, i.expires_at, i.created_at, i.accepted_at, i.revoked_at, i.token, u.id AS u_id, u.name AS u_name, u.email AS u_email
+        "SELECT i.id, i.email, i.role, i.expires_at, i.created_at, i.accepted_at, i.revoked_at, i.token, i.also, u.id AS u_id, u.name AS u_name, u.email AS u_email
          FROM invites i LEFT JOIN users u ON u.id = i.created_by WHERE i.org_id = $1 AND i.revoked_at IS NULL ORDER BY i.created_at DESC",
     )
     .bind(org)
@@ -405,6 +444,7 @@ fn invite_json(r: &PgRow, url: Option<String>) -> Value {
         "expires_at": r.get::<Option<DateTime<Utc>>,_>("expires_at"), "created_at": r.get::<DateTime<Utc>,_>("created_at"),
         "accepted_at": r.get::<Option<DateTime<Utc>>,_>("accepted_at"),
         "created_by": crate::models::UserRef::from_row(r, "u_"),
+        "also": r.try_get::<Value, _>("also").unwrap_or_else(|_| json!([])),
         "url": url,
     })
 }
@@ -415,19 +455,44 @@ pub struct CreateInvites {
     emails: Vec<String>,
     role: String,
     expires_in_days: Option<i64>,
+    /// More organizations to join with the same link, each with its own role.
+    #[serde(default)]
+    also: Vec<AlsoOrg>,
+}
+
+#[derive(Deserialize)]
+pub struct AlsoOrg {
+    org: Uuid,
+    role: String,
+}
+
+/// Check the caller may add people to `org` as `role`, and say what they may not.
+async fn may_add(s: &AppState, user: &CurrentUser, org: Uuid, role: &str) -> ApiResult<()> {
+    let mine = access::org_admin(s, user, org).await?;
+    if !ROLES.contains(&role) {
+        return Err(ApiError::invalid("Role must be owner, admin, member or guest."));
+    }
+    if role == "owner" && mine != "owner" {
+        return Err(ApiError::forbidden("Only owners can add owners."));
+    }
+    Ok(())
 }
 
 /// Invite by email (one link per address) or create one open link when no emails are given.
 pub async fn create_invites(State(s): State<AppState>, user: CurrentUser, Path(org): Path<Uuid>, Json(b): Json<CreateInvites>) -> ApiResult<Json<Vec<Value>>> {
-    let my_role = access::org_admin(&s, &user, org).await?;
-    if !ROLES.contains(&b.role.as_str()) {
-        return Err(ApiError::invalid("Role must be owner, admin, member or guest."));
+    may_add(&s, &user, org, &b.role).await?;
+    let mut also: Vec<Value> = Vec::new();
+    for a in &b.also {
+        if a.org == org || also.iter().any(|x| x["org_id"] == json!(a.org)) {
+            continue;
+        }
+        may_add(&s, &user, a.org, &a.role).await?;
+        also.push(json!({ "org_id": a.org, "role": a.role }));
     }
-    if b.role == "owner" && my_role != "owner" {
-        return Err(ApiError::forbidden("Only owners can invite owners."));
-    }
-    let days = b.expires_in_days.unwrap_or(14).clamp(1, 365);
-    let expires = Utc::now() + Duration::days(days);
+    let also = Value::Array(also);
+    // 0 means the link never expires.
+    let days = b.expires_in_days.unwrap_or(14);
+    let expires = (days > 0).then(|| Utc::now() + Duration::days(days.clamp(1, 365)));
     let mut emails: Vec<Option<String>> = Vec::new();
     for e in &b.emails {
         for part in e.split([',', ';', '\n', ' ', '\t']) {
@@ -454,8 +519,8 @@ pub async fn create_invites(State(s): State<AppState>, user: CurrentUser, Path(o
     for email in emails {
         let token = new_token();
         let r = sqlx::query(
-            "WITH ins AS (INSERT INTO invites (org_id, email, role, token_hash, expires_at, created_by, token) VALUES ($1,$2,$3,$4,$5,$6,$7)
-               RETURNING id, email, role, expires_at, created_at, accepted_at, revoked_at, created_by)
+            "WITH ins AS (INSERT INTO invites (org_id, email, role, token_hash, expires_at, created_by, token, also) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+               RETURNING id, email, role, expires_at, created_at, accepted_at, revoked_at, created_by, also)
              SELECT ins.*, u.id AS u_id, u.name AS u_name, u.email AS u_email FROM ins LEFT JOIN users u ON u.id = ins.created_by",
         )
         .bind(org)
@@ -465,6 +530,7 @@ pub async fn create_invites(State(s): State<AppState>, user: CurrentUser, Path(o
         .bind(expires)
         .bind(user.id)
         .bind(&token)
+        .bind(&also)
         .fetch_one(&mut *tx)
         .await?;
         let mut j = invite_json(&r, Some(invite_url(&s, &token)));
@@ -472,7 +538,14 @@ pub async fn create_invites(State(s): State<AppState>, user: CurrentUser, Path(o
         out.push((j, email.map(|e| (e, invite_url(&s, &token)))));
     }
     let ev = events::record(&mut *tx, Some(org), None, Some(user.id), "admin.invites_created", json!({ "count": out.len(), "role": b.role })).await?;
-    let org_name: String = sqlx::query_scalar("SELECT name FROM orgs WHERE id = $1").bind(org).fetch_one(&mut *tx).await?;
+    let mut ids = vec![org];
+    ids.extend(b.also.iter().map(|a| a.org).filter(|o| *o != org));
+    let names: Vec<String> = sqlx::query_scalar("SELECT name FROM orgs WHERE id = ANY($1) ORDER BY array_position($1, id)").bind(&ids).fetch_all(&mut *tx).await?;
+    let org_name = match names.as_slice() {
+        [one] => one.clone(),
+        [rest @ .., last] => format!("{} and {last}", rest.join(", ")),
+        [] => String::new(),
+    };
     tx.commit().await?;
     events::publish_saved(&s.db, &s.events, ev).await;
     if let Some(mail) = &s.config.email {
@@ -483,11 +556,12 @@ pub async fn create_invites(State(s): State<AppState>, user: CurrentUser, Path(o
                     format!("{} invited you to {org_name} on MultiParity", user.name),
                     format!("{} invited you to join {org_name} on MultiParity, where the team shares its project files.
 
-Open this link to make your account (it works for {days} days):
+Open this link to make your account{}:
 
 {url}
 
-Then get the desktop app from the account menu to keep projects on your computer.", user.name),
+Then get the desktop app from the account menu to keep projects on your computer.", user.name,
+                        if days > 0 { format!(" (it works for {days} days)") } else { String::new() }),
                 );
             }
         }
