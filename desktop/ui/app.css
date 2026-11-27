@@ -425,3 +425,14 @@ dialog:has(.versions) { width: min(920px, 94vw); }
 .group .band .b-prod { color: var(--ink); font-weight: 600; }
 .group .band .b-sep { opacity: .7; }
 .proj .chip.main { font-size: 11px; padding: 1px 7px; margin-left: 6px; vertical-align: 2px; }
+
+/* Sync a whole production */
+.group .band .b-sync { margin-left: auto; }
+.group .band .b-all { margin-left: auto; font-size: 12px; }
+ul.prod-pick { list-style: none; padding: 0; margin: 12px 0 4px; }
+ul.prod-pick .pick { display: grid; grid-template-columns: 18px 1fr auto; gap: 10px; align-items: center; padding: 9px 4px; border-top: 1px solid var(--line); cursor: pointer; }
+ul.prod-pick .pick.on { opacity: .7; cursor: default; }
+ul.prod-pick .pick strong { display: block; font-weight: 600; font-size: 14px; }
+ul.prod-pick .pick small { color: var(--mute); font-size: 12.5px; }
+ul.prod-pick .st { font-style: normal; font-size: 12.5px; color: var(--mute); text-align: right; max-width: 260px; }
+ul.prod-pick .st.good { color: var(--new, var(--acc)); } ul.prod-pick .st.bad { color: var(--hold); }

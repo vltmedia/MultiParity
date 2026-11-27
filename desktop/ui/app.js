@@ -245,7 +245,11 @@ function renderProjects() {
       if (band.key) {
         const c = band.client ? `<span class="b-client">${icon("briefcase")}${esc(band.client)}</span>` : "";
         const pr = band.production ? `<span class="b-prod">${icon("clapperboard")}${esc(band.production)}</span>` : "";
-        html += `<div class="band">${c}${c && pr ? `<span class="b-sep">›</span>` : ""}${pr}${!c && !pr ? `<span class="b-other">Other projects</span>` : ""}</div>`;
+        const away = band.prodId ? allInProduction(band.accountId, band.prodId).filter((x) => !x.workspaces[0]).length : 0;
+        const act = band.prodId
+          ? (away ? `<button class="btn sm b-sync" data-pact="sync-prod" data-account="${esc(band.accountId)}" data-prod="${esc(band.prodId)}">Sync production…</button>` : `<span class="b-all">All on this computer</span>`)
+          : "";
+        html += `<div class="band">${c}${c && pr ? `<span class="b-sep">›</span>` : ""}${pr}${!c && !pr ? `<span class="b-other">Other projects</span>` : ""}${act}</div>`;
       }
       for (const it of band.items) html += projectRow(it);
     }
@@ -262,7 +266,7 @@ function bandsOf(items) {
   for (const it of items) {
     const pj = it.p.project;
     const key = pj.production ? `pr:${pj.production.id}` : pj.client ? `cl:${pj.client.id}` : "";
-    if (!m.has(key)) m.set(key, { key, client: pj.client?.name, production: pj.production?.name, items: [] });
+    if (!m.has(key)) m.set(key, { key, client: pj.client?.name, production: pj.production?.name, prodId: pj.production?.id, accountId: it.g.account.id, items: [] });
     m.get(key).items.push(it);
   }
   const bands = [...m.values()];
@@ -490,6 +494,71 @@ async function connectDialog(g, p) {
     });
 }
 
+/** Every project of a production this account can see (not only the ones the filter shows). */
+function allInProduction(accountId, prodId) {
+  const g = state.groups.find((x) => x.account.id === accountId);
+  return g ? g.projects.filter((p) => p.project.production?.id === prodId) : [];
+}
+
+/** A project name as a folder name: no characters Windows or macOS refuse. */
+const folderName = (n) => n.replace(/[<>:"/\\|?*\u0000-\u001f]/g, "-").replace(/[. ]+$/, "").trim() || "Project";
+
+/** Sync a whole production: one folder for it, each project in its own subfolder
+ *  (Emberfall\Art, Emberfall\Audio…), choosing which. Each one is an ordinary synced folder. */
+async function productionDialog(accountId, prodId) {
+  const g = state.groups.find((x) => x.account.id === accountId);
+  const items = allInProduction(accountId, prodId).sort((a, b) => Number(!!b.project.is_main) - Number(!!a.project.is_main) || a.project.name.localeCompare(b.project.name));
+  if (!g || !items.length) return;
+  const pr = items[0].project.production;
+  const org = items[0].project.org.name;
+  const synced = items.find((x) => x.workspaces[0]);
+  const root = (await invoke("default_root")) || "";
+  const sep = (synced?.workspaces[0].root || root).includes("\\") ? "\\" : "/";
+  // Next to an already synced project of it, else under the usual place: <root>\<organization>\<production>.
+  const base = synced ? synced.workspaces[0].root.split(sep).slice(0, -1).join(sep) : root ? [root, org, folderName(pr.name)].join(sep) : "";
+  const row = (x) => {
+    const ws = x.workspaces[0];
+    const main = x.project.is_main ? ` <span class="chip main">Main</span>` : "";
+    return ws
+      ? `<li><label class="pick on"><input type="checkbox" checked disabled><span><strong>${esc(x.project.name)}${main}</strong><small>Already at ${esc(ws.root)}</small></span></label></li>`
+      : `<li data-id="${esc(x.project.id)}"><label class="pick"><input type="checkbox" name="pp" value="${esc(x.project.id)}" checked><span><strong>${esc(x.project.name)}${main}</strong><small>${human(x.project.size)}, ${x.project.file_count} files</small></span><em class="st"></em></label></li>`;
+  };
+  dialog(`<h2>Sync ${esc(pr.name)} to this computer</h2>
+    <p class="note">Each project goes in its own folder inside this one. Folders that already have files from a project are kept and matched; nothing is deleted or replaced.</p>
+    <div class="pathrow"><input id="pfolder" value="${esc(base)}" aria-label="Folder for ${esc(pr.name)}"><button class="btn" value="pick">Choose…</button></div>
+    <ul class="prod-pick">${items.map(row).join("")}</ul>
+    <p class="err" id="perr" role="alert"></p>
+    <div class="dlg-acts"><button class="btn" value="cancel">Cancel</button><button class="btn pri" value="go">Sync selected</button></div>`,
+    async (what, body, dlg) => {
+      const input = $("#pfolder", body);
+      if (what === "pick") { const f = await invoke("pick_folder", { start: input.value || null }); if (f) input.value = f; return; }
+      if (what === "done") { dlg.close(); return; }
+      const folder = input.value.trim();
+      const ids = [...body.querySelectorAll('input[name="pp"]:checked')].map((i) => i.value);
+      if (!folder) { $("#perr", body).textContent = "Choose a folder first."; return; }
+      if (!ids.length) { $("#perr", body).textContent = "Tick at least one project."; return; }
+      $("#perr", body).textContent = "";
+      const go = body.querySelector('button[value="go"]');
+      go.disabled = true; go.textContent = "Syncing…";
+      body.querySelectorAll('input[name="pp"], #pfolder, button[value="pick"]').forEach((x) => { x.disabled = true; });
+      let ok = 0;
+      for (const id of ids) {
+        const x = items.find((y) => y.project.id === id);
+        const st = body.querySelector(`li[data-id="${CSS.escape(id)}"] .st`);
+        st.textContent = "Syncing…"; st.className = "st busy";
+        try {
+          await api("/connect", { method: "POST", body: JSON.stringify({ account_id: accountId, project_id: id, folder: `${folder}${sep}${folderName(x.project.name)}`, dry_run: false }) });
+          st.textContent = "Done"; st.className = "st good"; ok++;
+        } catch (e) {
+          st.textContent = e.message; st.className = "st bad";
+        }
+      }
+      go.textContent = "Done"; go.value = "done"; go.disabled = false;
+      toast(ok === ids.length ? `${pr.name}: ${ok} project${ok === 1 ? "" : "s"} now syncing in ${folder}.` : `${pr.name}: ${ok} of ${ids.length} synced. The others say why in the list.`, ok !== ids.length);
+      await load();
+    });
+}
+
 /** Move a synced folder elsewhere on this computer. Same drive: a rename. Another drive: a copy
  *  with times kept, then the old folder is removed. Nothing is downloaded again. */
 async function moveFolderDialog(ws, p) {
@@ -651,6 +720,8 @@ $("#list").addEventListener("click", (e) => {
     renderProjects(); updateSelectionNote(wsId);
     return;
   }
+  const pa = e.target.closest("[data-pact]");
+  if (pa) { e.stopPropagation(); return productionDialog(pa.dataset.account, pa.dataset.prod); }
   const el = e.target.closest("[data-act]");
   if (!el) return;
   e.stopPropagation();
