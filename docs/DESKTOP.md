@@ -46,7 +46,7 @@ operating system trusting the installer: see [SIGNING.md](SIGNING.md).
 
 1. Raise `version` in `desktop/src-tauri/tauri.conf.json` and `desktop/src-tauri/Cargo.toml`,
    commit and push.
-2. Build on each system (`pwsh -File scriptseleaseuild-desktop.ps1` on Windows,
+2. Build on each system (`pwsh -File scripts/release/build-desktop.ps1` on Windows,
    `scripts/release/build-desktop.sh --universal` on a Mac), collecting into one folder with the
    release's address:
 
