@@ -144,3 +144,10 @@ ul.exports .what small.bad { color: var(--warn, #d9534f); }
 ul.exports .acts { display: flex; gap: 8px; align-items: center; flex: none; }
 ul.exports .pbar { display: block; height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; margin: 4px 0 2px; }
 ul.exports .pbar b { display: block; height: 100%; background: var(--acc); transition: width .3s; }
+
+/* Access tokens */
+.tokens-page .body { display: grid; gap: 18px; max-width: 900px; }
+.token-made { margin-top: 14px; display: grid; gap: 8px; }
+.token-made h3 { margin: 8px 0 0; font-size: 15px; }
+.tok-row { display: flex; gap: 8px; align-items: flex-start; }
+.tok-row code, .tok-row pre { flex: 1; min-width: 0; margin: 0; padding: 8px 10px; background: var(--card); border: 1px solid var(--line); font-size: 12.5px; white-space: pre-wrap; word-break: break-all; }

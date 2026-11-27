@@ -9,6 +9,7 @@ use anyhow::{Context, Result};
 use mp_client::accounts::Accounts;
 use mp_client::api::Api;
 use mp_client::workspace::{Registry, Workspace};
+use mp_core::mcp;
 use serde_json::{json, Value};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 
@@ -117,127 +118,36 @@ async fn run_hook(cmd: &str, ev: &Value) {
 }
 
 // ---------------------------------------------------------------------------------------------
-// mp mcp
+// mp mcp (the tools themselves are in mp_core::mcp, shared with the server's /api/mcp)
 
-const PROTOCOL: &str = "2025-06-18";
-
-fn tools() -> Value {
-    let project = json!({ "type": "string", "description": "Project name or id, as list_projects shows it." });
-    let branch = json!({ "type": "string", "description": "Branch name; the main branch when left out." });
-    let paths = json!({ "type": "array", "items": { "type": "string" }, "description": "File paths inside the project, like Art/Hero/hero.blend." });
-    json!([
-        { "name": "list_projects", "description": "The MultiParity projects this account can open, with their organization, size and claims.",
-          "inputSchema": { "type": "object", "properties": {} }, "annotations": { "readOnlyHint": true } },
-        { "name": "list_files", "description": "Files on a branch of a project, with who has each claimed. Filter by folder or by part of the name.",
-          "inputSchema": { "type": "object", "properties": { "project": project, "branch": branch,
-            "folder": { "type": "string", "description": "Only files in this folder, like Art/Hero." },
-            "search": { "type": "string", "description": "Only files whose path contains this." } }, "required": ["project"] },
-          "annotations": { "readOnlyHint": true } },
-        { "name": "recent_changes", "description": "The latest published changes on a branch: number, message, who and when.",
-          "inputSchema": { "type": "object", "properties": { "project": project, "branch": branch,
-            "limit": { "type": "integer", "minimum": 1, "maximum": 100, "description": "How many, newest first (default 20)." } }, "required": ["project"] },
-          "annotations": { "readOnlyHint": true } },
-        { "name": "change_details", "description": "One change: its message, author, and the files it added, edited or deleted.",
-          "inputSchema": { "type": "object", "properties": { "project": project, "number": { "type": "integer" } }, "required": ["project", "number"] },
-          "annotations": { "readOnlyHint": true } },
-        { "name": "file_history", "description": "Every published version of one file, newest first, with who published it and why.",
-          "inputSchema": { "type": "object", "properties": { "project": project, "path": { "type": "string" }, "branch": branch }, "required": ["project", "path"] },
-          "annotations": { "readOnlyHint": true } },
-        { "name": "claims", "description": "Who has which files claimed in a project, and since when.",
-          "inputSchema": { "type": "object", "properties": { "project": project }, "required": ["project"] },
-          "annotations": { "readOnlyHint": true } },
-        { "name": "local_folders", "description": "Project folders synced on this computer, their branch, and their unpublished new, edited and deleted files.",
-          "inputSchema": { "type": "object", "properties": {} }, "annotations": { "readOnlyHint": true } },
-        { "name": "claim_files", "description": "Claim files for this account so nobody else can publish them. Files someone else holds are reported, not taken.",
-          "inputSchema": { "type": "object", "properties": { "project": project, "paths": paths, "branch": branch }, "required": ["project", "paths"] },
-          "annotations": { "readOnlyHint": false, "destructiveHint": false, "idempotentHint": true } },
-        { "name": "release_files", "description": "Release this account's claims on files.",
-          "inputSchema": { "type": "object", "properties": { "project": project, "paths": paths, "branch": branch }, "required": ["project", "paths"] },
-          "annotations": { "readOnlyHint": false, "destructiveHint": false, "idempotentHint": true } },
-        { "name": "ask_to_release", "description": "Tell whoever holds a file that this account is waiting for it (they get a notification, and an email if the server sends email).",
-          "inputSchema": { "type": "object", "properties": { "project": project, "path": { "type": "string" }, "branch": branch }, "required": ["project", "path"] },
-          "annotations": { "readOnlyHint": false, "destructiveHint": false } },
-    ])
+/// What `mp mcp` adds to the shared tools: this computer's synced folders.
+fn local_tools() -> Vec<Value> {
+    vec![json!({ "name": "local_folders", "description": "Project folders synced on this computer, their branch, and their unpublished new, edited and deleted files.",
+      "inputSchema": { "type": "object", "properties": {} }, "annotations": { "readOnlyHint": true } })]
 }
 
-async fn branch_id(api: &Api, project: &str, name: Option<&str>) -> Result<String> {
-    let list = api.branches(project).await?;
-    let b = match name {
-        Some(n) => list.iter().find(|b| b.name.eq_ignore_ascii_case(n) || b.id == n).with_context(|| format!("There is no branch called {n}."))?,
-        None => list.iter().find(|b| b.parent_id.is_none()).context("This project has no main branch.")?,
-    };
-    Ok(b.id.clone())
+fn local_folders() -> Result<Value> {
+    let mut out = vec![];
+    for root in Registry::workspaces()? {
+        let Ok(ws) = Workspace::open(&root) else { continue };
+        let st = mp_client::scan::status(&ws, &[]).ok();
+        let paths = |l: Option<&Vec<mp_client::scan::LocalFile>>| l.map(|v| v.iter().map(|f| f.path.clone()).collect::<Vec<_>>()).unwrap_or_default();
+        out.push(json!({ "folder": ws.root.display().to_string().trim_start_matches(r"\?\").to_string(), "project": ws.config.project_name, "organization": ws.config.org_name, "branch": ws.config.branch_name,
+            "server": ws.config.server, "new": paths(st.as_ref().map(|s| &s.new)), "edited": paths(st.as_ref().map(|s| &s.edited)), "deleted": paths(st.as_ref().map(|s| &s.deleted)) }));
+    }
+    Ok(json!(out))
 }
 
-async fn call_tool(api: &Api, name: &str, a: &Value) -> Result<Value> {
-    let s = |k: &str| a[k].as_str().map(str::to_string);
-    let project = match name {
-        "list_projects" | "local_folders" => String::new(),
-        _ => project_id(api, &s("project").context("Say which project.")?).await?,
-    };
-    let branch = || async { branch_id(api, &project, a["branch"].as_str()).await };
-    let paths: Vec<String> = a["paths"].as_array().map(|x| x.iter().filter_map(|v| v.as_str().map(str::to_string)).collect()).unwrap_or_default();
-    Ok(match name {
-        "list_projects" => {
-            let list: Value = api.get("/projects").await?;
-            json!(list.as_array().into_iter().flatten().map(|p| json!({ "id": p["id"], "name": p["name"], "organization": p["org"]["name"], "size": p["size"], "claims": p["claims"], "last_change": p["last_change"] })).collect::<Vec<_>>())
-        }
-        "list_files" => {
-            let b = branch().await?;
-            let mut q = vec![];
-            if let Some(f) = s("folder") {
-                q.push(format!("prefix={}/", urlenc(f.trim_matches('/'))));
-            }
-            if let Some(x) = s("search") {
-                q.push(format!("q={}", urlenc(&x)));
-            }
-            let files: Value = api.get(&format!("/projects/{project}/branches/{b}/files?{}", q.join("&"))).await?;
-            let all = files.as_array().cloned().unwrap_or_default();
-            let shown: Vec<Value> = all.iter().take(300).map(|f| json!({ "path": f["path"], "size": f["size"], "change": f["change"], "kind": f["kind"],
-                "claimed_by": f["claim"]["user"]["name"], "tags": f["tags"].as_array().map(|t| t.iter().map(|x| x["name"].clone()).collect::<Vec<_>>()) })).collect();
-            json!({ "files": shown, "total": all.len(), "note": if all.len() > 300 { "Only the first 300 are listed; narrow with folder or search." } else { "" } })
-        }
-        "recent_changes" => {
-            let b = branch().await?;
-            let n = a["limit"].as_i64().unwrap_or(20).clamp(1, 100);
-            api.get(&format!("/projects/{project}/changes?branch={b}&limit={n}")).await?
-        }
-        "change_details" => api.get(&format!("/projects/{project}/changes/{}", a["number"].as_i64().context("Say which change number.")?)).await?,
-        "file_history" => {
-            let b = branch().await?;
-            let path = s("path").context("Say which file.")?;
-            api.get(&format!("/projects/{project}/versions?branch={b}&path={}", urlenc(&path))).await?
-        }
-        "claims" => api.get(&format!("/projects/{project}/claims")).await?,
-        "claim_files" => {
-            let b = branch().await?;
-            api.post(&format!("/projects/{project}/claims"), &json!({ "branch": b, "paths": paths, "device": "AI assistant" })).await?
-        }
-        "release_files" => {
-            let b = branch().await?;
-            api.post(&format!("/projects/{project}/claims/release"), &json!({ "branch": b, "paths": paths })).await?
-        }
-        "ask_to_release" => {
-            let b = branch().await?;
-            api.post(&format!("/projects/{project}/claims/nudge"), &json!({ "branch": b, "path": s("path").context("Say which file.")? })).await?
-        }
-        "local_folders" => {
-            let mut out = vec![];
-            for root in Registry::workspaces()? {
-                let Ok(ws) = Workspace::open(&root) else { continue };
-                let st = mp_client::scan::status(&ws, &[]).ok();
-                let paths = |l: Option<&Vec<mp_client::scan::LocalFile>>| l.map(|v| v.iter().map(|f| f.path.clone()).collect::<Vec<_>>()).unwrap_or_default();
-                out.push(json!({ "folder": ws.root.display().to_string(), "project": ws.config.project_name, "organization": ws.config.org_name, "branch": ws.config.branch_name,
-                    "server": ws.config.server, "new": paths(st.as_ref().map(|s| &s.new)), "edited": paths(st.as_ref().map(|s| &s.edited)), "deleted": paths(st.as_ref().map(|s| &s.deleted)) }));
-            }
-            json!(out)
-        }
-        other => anyhow::bail!("There is no tool called {other}."),
-    })
-}
+/// The shared MCP tools call the server through this account's API client.
+struct ApiBackend<'a>(&'a Api);
 
-fn urlenc(s: &str) -> String {
-    s.bytes().map(|b| if b.is_ascii_alphanumeric() || b"-_.~/".contains(&b) { (b as char).to_string() } else { format!("%{b:02X}") }).collect()
+impl mcp::Backend for ApiBackend<'_> {
+    async fn get(&self, path: &str) -> Result<Value> {
+        self.0.get(path).await
+    }
+    async fn post(&self, path: &str, body: &Value) -> Result<Value> {
+        self.0.post(path, body).await
+    }
 }
 
 /// Serve the Model Context Protocol on stdin/stdout, one JSON-RPC message per line.
@@ -261,28 +171,26 @@ pub async fn mcp(account: Option<String>) -> Result<()> {
         let Some(id) = msg.get("id").cloned() else { continue }; // a notification: nothing to answer
         let method = msg["method"].as_str().unwrap_or_default();
         let result: std::result::Result<Value, (i64, String)> = match method {
-            "initialize" => Ok(json!({
-                "protocolVersion": msg["params"]["protocolVersion"].as_str().unwrap_or(PROTOCOL),
-                "capabilities": { "tools": { "listChanged": false } },
-                "serverInfo": { "name": "multiparity", "title": "MultiParity", "version": env!("CARGO_PKG_VERSION") },
-                "instructions": format!("MultiParity version control on {}. Projects hold big art and game files; people claim a file before editing it so two people never change the same file. Look up projects with list_projects first; tools take the project's name.", api.server),
-            })),
+            "initialize" => Ok(mcp::initialize(&msg, &api.server, env!("CARGO_PKG_VERSION"))),
             "ping" => Ok(json!({})),
-            "tools/list" => Ok(json!({ "tools": tools() })),
+            "tools/list" => Ok(json!({ "tools": mcp::tools().into_iter().chain(local_tools()).collect::<Vec<_>>() })),
             "tools/call" => {
                 let name = msg["params"]["name"].as_str().unwrap_or_default();
                 let args = msg["params"]["arguments"].clone();
-                Ok(match call_tool(&api, name, &args).await {
-                    Ok(v) => json!({ "content": [{ "type": "text", "text": serde_json::to_string_pretty(&v).unwrap_or_default() }], "structuredContent": if v.is_object() { v.clone() } else { json!({ "items": v }) }, "isError": false }),
-                    Err(e) => json!({ "content": [{ "type": "text", "text": format!("{e:#}") }], "isError": true }),
-                })
+                let r = if name == "local_folders" {
+                    local_folders()
+                } else {
+                    match mcp::call_tool(&ApiBackend(&api), name, &args).await {
+                        Ok(Some(v)) => Ok(v),
+                        Ok(None) => Err(anyhow::anyhow!("There is no tool called {name}.")),
+                        Err(e) => Err(e),
+                    }
+                };
+                Ok(mcp::tool_result(r))
             }
             other => Err((-32601, format!("Unknown method {other}"))),
         };
-        let r = match result {
-            Ok(v) => json!({ "jsonrpc": "2.0", "id": id, "result": v }),
-            Err((code, m)) => json!({ "jsonrpc": "2.0", "id": id, "error": { "code": code, "message": m } }),
-        };
+        let r = mcp::reply(id, result);
         out.write_all(format!("{r}\n").as_bytes()).await?;
         out.flush().await?;
     }
@@ -300,8 +208,8 @@ mod tests {
     }
 
     #[test]
-    fn tools_have_schemas() {
-        for t in super::tools().as_array().unwrap() {
+    fn local_tools_have_schemas() {
+        for t in super::local_tools() {
             assert!(t["name"].is_string() && t["description"].is_string() && t["inputSchema"]["type"] == "object", "{t}");
         }
     }

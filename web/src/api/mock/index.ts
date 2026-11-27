@@ -389,6 +389,18 @@ on('POST', '/api/auth/logout', ({ headers }) => {
   return {};
 });
 on('GET', '/api/me', ({ headers }) => meOf(who(headers)));
+const mockTokens: Array<{ id: string; kind: 'token'; label: string; created_at: string; last_used_at?: string }> = [
+  { id: 'tk000001-0000-4000-8000-000000000001', kind: 'token', label: 'Render farm script', created_at: new Date(Date.now() - 40 * DAY).toISOString(), last_used_at: new Date(Date.now() - 2 * 3600e3).toISOString() },
+];
+on('GET', '/api/me/tokens', ({ headers }) => { who(headers); return mockTokens; });
+on('POST', '/api/me/tokens', ({ headers, body }) => {
+  who(headers);
+  const label = String(body?.label || '').trim();
+  if (!label) throw new Fail(422, 'invalid', 'Give the token a name so you can recognise it later.');
+  mockTokens.unshift({ id: uid('tk000009'), kind: 'token', label, created_at: new Date().toISOString() });
+  return { token: 'mp_mock_' + Math.random().toString(36).slice(2, 14), label };
+});
+on('DELETE', '/api/me/tokens/:id', ({ headers, m }) => { who(headers); const i = mockTokens.findIndex((t) => t.id === m[1]); if (i >= 0) mockTokens.splice(i, 1); return {}; });
 on('GET', '/api/server', () => ({ email: true }));
 on('POST', '/api/auth/forgot', () => ({ sent: true }));
 on('POST', '/api/auth/reset', ({ body }) => {

@@ -52,11 +52,27 @@ Example: get the latest and start a build whenever someone publishes.
     mp watch --project Emberfall --event change.published \
       --exec 'cd ~/build/Emberfall && mp get-latest && ./build.sh'
 
-## AI assistants: `mp mcp`
+## AI assistants (MCP)
 
-`mp mcp` serves MultiParity over the Model Context Protocol, so an assistant such as Claude can
-look things up and claim files with your account. Sign in with `mp login` first, then add it to
-the assistant as a command. For Claude Code:
+MultiParity speaks the Model Context Protocol, so an assistant such as Claude can look things up,
+claim files and, for admins, check access and start exports, as you and with exactly your access
+(your policies included). There are two ways to connect it.
+
+**From the server (nothing to install).** In the web app, open your account menu > **Access
+tokens**, make a token, and copy the setup it shows. For Claude Code:
+
+    claude mcp add --transport http multiparity https://mp.example.com/api/mcp \
+      --header "Authorization: Bearer <token>"
+
+Assistants that take an MCP server address (Claude Desktop, Cursor, VS Code…):
+
+    { "mcpServers": { "multiparity": { "type": "http", "url": "https://mp.example.com/api/mcp",
+        "headers": { "Authorization": "Bearer <token>" } } } }
+
+The token works until you revoke it on the same page. Treat it like a password.
+
+**From your computer: `mp mcp`.** Sign in with `mp login`, then add it as a command. It also
+sees the folders synced on that computer (`local_folders`). For Claude Code:
 
     claude mcp add multiparity -- mp mcp
 
@@ -64,19 +80,25 @@ For Claude Desktop, in `claude_desktop_config.json`:
 
     { "mcpServers": { "multiparity": { "command": "mp", "args": ["mcp"] } } }
 
-With several accounts, add `--account <name or email>`. Tools:
+With several accounts, add `--account <name or email>`.
+
+Tools (both ways, except where noted):
 
 | Tool | Does |
 |---|---|
-| `list_projects` | Projects this account can open |
+| `list_projects` | Projects this account can open, with client, production and main project (filter by client or production) |
 | `list_files` | Files on a branch, with who has each claimed (filter by folder or name) |
 | `recent_changes`, `change_details` | The history, and what a change touched |
 | `file_history` | Every version of one file |
 | `claims` | Who has what claimed |
-| `local_folders` | Folders synced on this computer and their unpublished files |
 | `claim_files`, `release_files`, `ask_to_release` | Claims, as this account |
+| `organization_structure` | Admins: clients and productions, and each production's main project |
+| `who_can_see` | Admins: who can change, look at or not see a project, and which role or policy decides it |
+| `list_policies` | Admins: access policies, their rules and who has each |
+| `list_exports`, `start_export` | Admins: a project's exports, and start one (to the server or a place set up for exports; never archives) |
+| `local_folders` | `mp mcp` only: folders synced on this computer and their unpublished files |
 
-It does not publish, discard or delete: those stay with people.
+It does not publish, discard, delete or change access: those stay with people.
 
 ## Plugins: Blender
 

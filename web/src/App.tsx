@@ -28,6 +28,7 @@ import AdminPolicies from './pages/admin/Policies';
 import AdminAudit from './pages/admin/Audit';
 import NotFound from './pages/NotFound';
 import Look from './pages/Look';
+import Tokens from './pages/Tokens';
 import GetApp from './pages/GetApp';
 import { ForgotPassword, ResetPassword } from './pages/auth/ResetPassword';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -62,6 +63,7 @@ export default function App() {
             <Route path="/invite/:token" element={<AcceptInvite />} />
             <Route path="/" element={<RequireAuth><ProjectsPage /></RequireAuth>} />
             <Route path="/look" element={<RequireAuth><Look /></RequireAuth>} />
+            <Route path="/access-tokens" element={<RequireAuth><Tokens /></RequireAuth>} />
             <Route path="/get-app" element={<RequireAuth><GetApp /></RequireAuth>} />
             <Route path="/p/:projectId" element={<RequireAuth><ProjectLayout /></RequireAuth>}>
               <Route index element={<Navigate to="today" replace />} />

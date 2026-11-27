@@ -2,6 +2,11 @@
 
 All endpoints are JSON under `/api`. Authentication is a bearer token:
 `Authorization: Bearer <token>`. The web UI stores the token in `localStorage` under `mp.token`.
+For scripts and AI assistants, make a personal access token (below, or on your account page in
+the web app): it acts as you, with exactly your access, until you revoke it.
+
+Every endpoint applies the caller's access (see [Access and policies](#access-and-policies)):
+a project someone cannot see answers `404`, one they can only look at answers `403` to changes.
 
 Errors: non-2xx with `{"error": {"code": "snake_case", "message": "Human readable."}}`.
 Common codes: `unauthorized` (401), `forbidden` (403), `not_found` (404), `conflict` (409),
@@ -18,6 +23,9 @@ Ids are UUID strings. Times are RFC 3339 strings. Sizes are bytes (numbers).
 | GET | `/api/me` | | `Me` |
 | POST | `/api/invites/{token}/accept` | `{name, password}` (new account) or `{}` (signed in) | `{token, user: Me}` |
 | GET | `/api/invites/{token}` | | `{org: Org, role, email?, expires_at?}` (no auth) |
+| GET | `/api/me/tokens` | | `Session[]`: your sign-ins and access tokens |
+| POST | `/api/me/tokens` | `{label}` | `{token, label}`: a personal access token, shown once |
+| DELETE | `/api/me/tokens/{id}` | | `{}`: revoke a token or sign-in |
 
 ```ts
 type Me = { id, email, name, is_server_admin: boolean, status: 'active'|'suspended',
@@ -33,18 +41,98 @@ type Org = { id, slug, name, created_at, member_count?: number, project_count?: 
 | GET | `/api/orgs` | | `Org[]` (ones I belong to; all for server admins) |
 | POST | `/api/orgs` | `{name, slug?}` | `Org` (server admin) |
 | GET | `/api/projects` | | `ProjectSummary[]` (all I can see, every org) |
-| POST | `/api/orgs/{org}/projects` | `{name, slug?}` | `Project` (org admin) |
+| POST | `/api/orgs/{org}/projects` | `{name, slug?, storage?, client?, production?}` | `Project` (org admin); `production` decides the client |
 | GET | `/api/projects/{project}` | | `Project` |
 
 ```ts
 type ProjectSummary = { id, slug, name, org: Org, archived: boolean, head_change: number,
   size: number, file_count: number, my_claims: number, claims: number,
-  last_change?: { number, message, author: UserRef, created_at }, branches: number }
-type Project = ProjectSummary & { branches_list: Branch[], my_role: Role }
+  last_change?: { number, message, author: UserRef, created_at }, branches: number,
+  // where it is filed: Organization > Client > Production > Project (both optional)
+  client: { id, name } | null,
+  production: { id, name, main_project_id: string | null } | null,
+  is_main: boolean }  // the main project of its production: listed first
+type Project = ProjectSummary & { branches_list: Branch[], my_role: Role,
+  can_write: boolean, can_admin: boolean }
 type UserRef = { id, name, email }
 ```
 
-`{project}` accepts the id.
+`{project}` accepts the id. Lists are ordered by organization, client, production (main project
+first) and name.
+
+## Clients and productions
+
+An organization can file its projects under clients (who the work is for) and productions (a
+show, game or campaign); both are optional. Each project keeps its own history, branches, claims
+and access. Removing a client or production never removes projects: what was in it moves up a
+level. Org admins only.
+
+| Method | Path | Body | Returns |
+|---|---|---|---|
+| GET | `/api/admin/orgs/{org}/structure` | | `{clients: Client[], productions: Production[]}` |
+| POST | `/api/admin/orgs/{org}/clients` | `{name}` | `{id, name}` |
+| PATCH | `/api/admin/clients/{id}` | `{name}` | `{id, name}` |
+| DELETE | `/api/admin/clients/{id}` | | `{ok}` |
+| POST | `/api/admin/orgs/{org}/productions` | `{name, client?}` | `{id, name, client_id}` |
+| PATCH | `/api/admin/productions/{id}` | `{name?, client?: id \| null, main_project?: id \| null}` | `{ok}`; its projects follow a new client |
+| DELETE | `/api/admin/productions/{id}` | | `{ok}` |
+| PATCH | `/api/admin/projects/{p}` | `{client?: id \| null, production?: id \| null}` | `Project`: files it (a production decides the client) |
+
+```ts
+type Client = { id, name, created_at, productions: number, projects: number }
+type Production = { id, name, client_id: string | null, main_project_id: string | null,
+                    created_at, projects: number }
+```
+
+## Access and policies
+
+Owners and admins of an organization can do everything in it. Everyone else gets what their
+**policies** give: named sets of rules, each giving `none`, `read` or `write` on the whole
+organization, a client, a production or one project. Members (not guests) also have the
+organization's default policy, *All members* (`write` on everything until an admin changes it).
+For each project the most specific rules win (project, then production, then client, then
+organization), and among those the highest level. Access given on a project itself
+(`/api/admin/projects/{p}/access`) counts as a project rule.
+
+| Method | Path | Body | Returns |
+|---|---|---|---|
+| GET | `/api/admin/orgs/{org}/policies` | | `Policy[]` (the default first) |
+| POST | `/api/admin/orgs/{org}/policies` | `{name, description?, rules: Rule[]}` | `{id, name}` |
+| PATCH | `/api/admin/policies/{id}` | `{name?, description?, rules?: Rule[]}` (rules replace all) | `{ok}` |
+| DELETE | `/api/admin/policies/{id}` | | `{ok}` (not the default policy) |
+| PUT | `/api/admin/policies/{id}/people` | `{users: id[]}` (exactly who has it; people in the org) | `{ok}` |
+| GET | `/api/admin/projects/{p}/who` | | `WhoCanSee[]`: everyone in the org, their access and why |
+
+```ts
+type Rule = { scope_kind: 'org'|'client'|'production'|'project', scope_id, level: 'none'|'read'|'write' }
+type Policy = { id, name, description, is_default: boolean, created_at,
+  rules: Array<Rule & { scope_name }>, people: Array<UserRef & { role }>,
+  member_count: number | null }  // for the default policy
+type WhoCanSee = { user: UserRef, role: Role, level: 'none'|'read'|'write'|'admin', because: string }
+```
+
+Changes apply straight away. Invites can give policies on joining (`policies` below).
+
+## Exports
+
+Write one branch, as it is now, as plain files or one `.zip`: to the server's exports folder
+(the `.zip` can then be downloaded) or to a place set up in `MP_EXPORT_TARGETS` (a folder, NAS
+or S3 bucket). People can keep working; later changes are not included. Org admins.
+
+| Method | Path | Body | Returns |
+|---|---|---|---|
+| GET | `/api/admin/export-targets` | | `Array<{name, kind: 'local'\|'mount'\|'s3', description}>` (`server` is always there) |
+| GET | `/api/admin/projects/{p}/exports` | | `Export[]`, newest first |
+| POST | `/api/admin/projects/{p}/exports` | `{target, format: 'zip'\|'files', branch?, archive_after?}` | `Export` (runs in the background; `409` while one is running) |
+| POST | `/api/admin/exports/{id}/link` | | `{url}`: downloads a finished `.zip` on the server once, within ten minutes |
+| GET | `/api/exports/{id}/zip?token=` | | the `.zip` (the link above; no other auth) |
+
+```ts
+type Export = { id, project_id, branch_id, branch_name, change, target, format, name,
+  archive_after: boolean, status: 'queued'|'running'|'done'|'failed',
+  files_total, files_done, bytes_total, bytes_done, error?, created_at, finished_at?,
+  created_by?: UserRef, downloadable: boolean }
+```
 
 ## Branches
 
@@ -200,10 +288,14 @@ type Event = { id: number, kind: string, org_id?, project_id?, actor?: UserRef,
                data: object, created_at }
 ```
 
+Each person only receives events of projects they can see (their policies as they are when they
+connect).
+
 Kinds: `change.published`, `change.merged`, `claim.added`, `claim.released`, `claim.nudged`,
 `tag.applied`, `tag.removed`, `branch.created`, `branch.archived`, `draft.saved`,
 `member.added`, `member.suspended`, `member.reactivated`, `member.removed`, `project.created`,
-`project.archived`, `project.restored`, `admin.*`.
+`project.archived`, `project.restored`, `project.exported`, `admin.*` (including
+`admin.client_*`, `admin.production_*` and `admin.policy_*`).
 
 ## Admin
 
@@ -212,7 +304,7 @@ body field required for them).
 
 | Method | Path | Body / query | Returns |
 |---|---|---|---|
-| GET | `/api/admin/overview` | | `{users, orgs, projects, storage_bytes, chunks, active_claims, stale_claims, suspended}` |
+| GET | `/api/admin/overview` | `org?` | `{users, orgs, projects, storage_bytes, chunks, active_claims, stale_claims, suspended}` (`storage_bytes` and `chunks` are `null` unless a server admin looks at the whole server) |
 | GET | `/api/admin/users` | `q?`, `org?`, `status?` | `AdminUser[]` |
 | GET | `/api/admin/users/{id}` | | `AdminUser` with `claims: Claim[]` (with project) in place of the count, plus `claim_count` and `sessions: Session[]` |
 | POST | `/api/admin/users/{id}/suspend` | `{reason?}` | `AdminUser` |
@@ -225,10 +317,10 @@ body field required for them).
 | PATCH | `/api/admin/orgs/{org}/members/{user}` | `{role?, expires_at?}` | `Member` |
 | DELETE | `/api/admin/orgs/{org}/members/{user}` | | `{}` (revoke from org) |
 | GET | `/api/admin/orgs/{org}/invites` | | `Invite[]` |
-| POST | `/api/admin/orgs/{org}/invites` | `{emails?: string[], role, expires_in_days?}` | `Invite[]` (with `url`) |
+| POST | `/api/admin/orgs/{org}/invites` | `{emails?: string[], role, expires_in_days?, also?: Array<{org, role}>, policies?: id[]}` | `Invite[]` (with `url`); `also` joins more organizations with the same link, `policies` are given on joining |
 | DELETE | `/api/admin/invites/{id}` | | `{}` |
 | GET | `/api/admin/projects` | `org?` | `ProjectSummary[]` incl. archived |
-| PATCH | `/api/admin/projects/{p}` | `{name?, org?, checkpoints?: 'auto'\|'server'\|'local', auto_checkpoints?: boolean, theme_light?, theme_dark?}` (theme ids; `""` follows the organization) | `Project`, whose `theme` is `{light, dark, own_light, own_dark}` |
+| PATCH | `/api/admin/projects/{p}` | `{name?, org?, client?, production?, checkpoints?: 'auto'\|'server'\|'local', auto_checkpoints?: boolean, theme_light?, theme_dark?}` (theme ids; `""` follows the organization) | `Project`, whose `theme` is `{light, dark, own_light, own_dark}` |
 | POST | `/api/admin/projects/{p}/archive` / `restore` | | `Project` |
 | GET | `/api/admin/claims` | `older_than_hours?`, `org?` | `Array<Claim & {project: {id,name}}>` |
 | POST | `/api/admin/claims/release` | `{claims: Array<{project, branch, path}>}` | `{released}` |
@@ -244,9 +336,19 @@ type AdminUser = { id, email, name, status: 'active'|'suspended', is_server_admi
   created_at, last_seen_at?, suspended_reason?, orgs: Array<{org: Org, role: Role}>,
   claims: number, sessions: number }
 type Member = { user: UserRef & {status, last_seen_at?}, role: Role, expires_at?, created_at }
-type Invite = { id, email?, role, expires_at?, created_at, created_by: UserRef, url, accepted_at? }
+type Invite = { id, email?, role, expires_at?, created_at, created_by: UserRef, url, accepted_at?,
+  also: Array<{org_id, role}>, policies: string[] }
 type Session = { id, kind: 'session'|'token', label?, device?, created_at, last_used_at? }
 ```
+
+## AI assistants (MCP)
+
+`POST /api/mcp` serves the Model Context Protocol (Streamable HTTP, protocol 2025-06-18 and
+earlier) with a personal access token in `Authorization: Bearer <token>`. Each POST carries one
+JSON-RPC message or a batch and is answered with JSON (`202` for notifications); there is no
+server-sent stream and no session, so `GET` and `DELETE` answer `405`. Methods: `initialize`,
+`ping`, `tools/list`, `tools/call`. The tools call the endpoints above as the token's person, so
+they get the same answers and the same `403`/`404`s; they are listed in docs/AUTOMATION.md.
 
 ## Local daemon API
 

@@ -3,6 +3,7 @@ import type {
   AdminOverview,
   ExportTarget,
   OrgStructure,
+  Session,
   Policy,
   PolicyRule,
   WhoCanSee,
@@ -210,6 +211,9 @@ export const api = {
   login: (email: string, password: string) =>
     request<LoginResponse>('POST', '/auth/login', { email, password, device: 'Web browser' }),
   logout: () => request<object>('POST', '/auth/logout'),
+  myTokens: () => request<Session[]>('GET', '/me/tokens'),
+  createToken: (label: string) => request<{ token: string; label: string }>('POST', '/me/tokens', { label }),
+  revokeToken: (id: string) => request<object>('DELETE', `/me/tokens/${enc(id)}`),
   me: () => request<Me>('GET', '/me'),
   serverInfo: () => request<{ email: boolean }>('GET', '/server'),
   forgotPassword: (email: string) => request<{ sent: boolean }>('POST', '/auth/forgot', { email }),

@@ -18,6 +18,7 @@ mod projects;
 pub mod storage;
 mod structure;
 mod policies;
+mod mcp;
 mod sync;
 mod tags;
 mod thumbs;
@@ -38,6 +39,8 @@ pub fn router() -> Router<AppState> {
         .route("/auth/reset", post(account::reset))
         .route("/server", get(account::server_info))
         .route("/me", get(account::me))
+        // AI assistants (Model Context Protocol), signed in with a personal access token
+        .route("/mcp", post(mcp::post).get(mcp::get).delete(mcp::delete))
         .route("/me/tokens", get(account::list_tokens).post(account::create_token))
         .route("/me/tokens/:id", delete(account::revoke_token))
         .route("/invites/:token", get(account::invite_info))

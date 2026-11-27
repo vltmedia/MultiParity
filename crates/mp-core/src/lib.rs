@@ -14,6 +14,7 @@ pub mod kind;
 pub mod manifest;
 pub mod merge;
 pub mod paths;
+pub mod mcp;
 pub mod thumbs;
 
 pub use chunk::{compress, decompress, hash_bytes, ChunkParams};
