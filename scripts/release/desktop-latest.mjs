@@ -4,7 +4,10 @@
 // folder; platforms already there are kept.
 //
 //   node scripts/release/desktop-latest.mjs --out <folder> [--bundle desktop/src-tauri/target/release/bundle]
-//        [--notes "What changed"] [--arch x86_64|aarch64]
+//        [--notes "What changed"] [--arch x86_64|aarch64] [--base-url <url>]
+//
+// --base-url makes the addresses in latest.json absolute, for files hosted elsewhere, e.g. a
+// GitHub release: --base-url https://github.com/vltmedia/MultiParity/releases/download/v0.2.0
 //
 // The build must be signed for updates: set TAURI_SIGNING_PRIVATE_KEY (or _PATH) when running
 // `pnpm tauri build` so each update bundle gets a .sig next to it (docs/DESKTOP.md).
@@ -56,6 +59,9 @@ latest.notes = args.notes || latest.notes || `MultiParity ${version}`;
 latest.pub_date = new Date().toISOString();
 latest.platforms ||= {};
 latest.downloads ||= {};
+latest.sizes ||= {};
+const base = typeof args['base-url'] === 'string' ? args['base-url'].replace(/\/+$/, '') : '';
+const at = (name) => (base ? `${base}/${name}` : name);
 
 const copy = (from, name) => { fs.copyFileSync(from, path.join(out, name)); return name; };
 for (const [platform, upd, dl] of found) {
@@ -66,12 +72,17 @@ for (const [platform, upd, dl] of found) {
   }
   // macOS names the update bundle without the version: give it one, and the architecture.
   const name = path.basename(upd).endsWith('.app.tar.gz') ? `MultiParity_${version}_${arch}.app.tar.gz` : path.basename(upd);
-  latest.platforms[platform] = { url: copy(upd, name), signature: fs.readFileSync(sigFile, 'utf8').trim() };
-  if (dl) latest.downloads[platform] = dl === upd ? name : copy(dl, path.basename(dl));
+  latest.platforms[platform] = { url: at(copy(upd, name)), signature: fs.readFileSync(sigFile, 'utf8').trim() };
+  latest.sizes[name] = fs.statSync(upd).size;
+  if (dl) {
+    const dlName = dl === upd ? name : copy(dl, path.basename(dl));
+    latest.downloads[platform] = at(dlName);
+    latest.sizes[dlName] = fs.statSync(dl).size;
+  }
   console.log(`${platform}: ${name}${dl && dl !== upd ? ` (download ${path.basename(dl)})` : ''}`);
 }
 fs.writeFileSync(latestPath, JSON.stringify(latest, null, 2) + '\n');
 // Files of older versions are no longer named; remove them.
-const keep = new Set(['latest.json', ...Object.values(latest.platforms).map((p) => p.url), ...Object.values(latest.downloads)]);
+const keep = new Set(['latest.json', ...[...Object.values(latest.platforms).map((p) => p.url), ...Object.values(latest.downloads)].map((u) => u.split('/').pop())]);
 for (const f of fs.readdirSync(out)) if (!keep.has(f) && fs.statSync(path.join(out, f)).isFile()) fs.unlinkSync(path.join(out, f));
 console.log(`Wrote ${latestPath} for ${version}: ${Object.keys(latest.platforms).join(', ')}`);

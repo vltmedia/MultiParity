@@ -15,6 +15,8 @@ use tauri_plugin_notification::NotificationExt;
 use tauri_plugin_updater::UpdaterExt;
 
 const DAEMON: &str = "127.0.0.1:18519";
+/// The latest public release, for when no server can be asked about updates.
+const GITHUB_LATEST: &str = "https://github.com/vltmedia/MultiParity/releases/latest/download/latest.json";
 
 /// Folder picker for "Sync to this computer".
 #[tauri::command]
@@ -180,8 +182,17 @@ async fn check_for_update(app: &AppHandle) -> Result<Option<String>, String> {
         let mut servers: Vec<String> = accounts.accounts.iter().map(|a| a.server.trim_end_matches('/').to_string()).collect();
         servers.dedup();
         let mut last_err = None;
-        for server in servers {
-            let url = format!("{server}/api/desktop/update/{{{{target}}}}/{{{{arch}}}}/{{{{current_version}}}}");
+        // Each server answers from its own build, or the latest GitHub release when it has none.
+        // GitHub directly only when no server could be asked.
+        let mut endpoints: Vec<String> = servers.iter().map(|s| format!("{s}/api/desktop/update/{{{{target}}}}/{{{{arch}}}}/{{{{current_version}}}}")).collect();
+        endpoints.push(GITHUB_LATEST.to_string());
+        let mut asked_a_server = false;
+        for (i, url) in endpoints.into_iter().enumerate() {
+            let github = i == servers.len();
+            if github && asked_a_server {
+                break;
+            }
+            let server = if github { "GitHub".to_string() } else { servers[i].clone() };
             let Ok(url) = url.parse::<tauri::Url>() else { continue };
             let updater = match app.updater_builder().endpoints(vec![url]).and_then(|b| b.build()) {
                 Ok(x) => x,
@@ -194,13 +205,13 @@ async fn check_for_update(app: &AppHandle) -> Result<Option<String>, String> {
                     *u.ready.lock().await = Some((update, bytes));
                     return Ok(Some(v));
                 }
-                Ok(None) => {}
+                Ok(None) => asked_a_server |= !github,
                 Err(e) => last_err = Some(format!("{server}: {e}")),
             }
         }
         match last_err {
-            Some(e) => Err(e),
-            None => Ok(None),
+            Some(e) if !asked_a_server => Err(e),
+            _ => Ok(None),
         }
     }
     .await;

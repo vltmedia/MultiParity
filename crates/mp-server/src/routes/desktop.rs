@@ -6,6 +6,9 @@
 //! optional `downloads: {"windows-x86_64": "MultiParity_0.2.0_x64-setup.exe", ...}` for first
 //! installs) and the files it names. `scripts/release/desktop-latest.mjs` writes it from a build.
 //! A `url` that is just a file name is served from that folder.
+//!
+//! With no `latest.json` there, the server hands out the latest public release instead
+//! (`MP_DESKTOP_RELEASES`, default the MultiParity GitHub releases; `off` to hand out nothing).
 
 use std::path::PathBuf;
 
@@ -24,9 +27,38 @@ pub fn desktop_dir() -> PathBuf {
     std::env::var("MP_DESKTOP_DIR").map(PathBuf::from).unwrap_or_else(|_| PathBuf::from("/data/desktop"))
 }
 
-fn latest() -> Option<Value> {
-    let bytes = std::fs::read(desktop_dir().join("latest.json")).ok()?;
-    serde_json::from_slice(&bytes).ok()
+const RELEASES: &str = "https://github.com/vltmedia/MultiParity/releases/latest/download/latest.json";
+
+/// This server's own build, else the latest public release (fetched at most every 15 minutes).
+async fn latest() -> Option<Value> {
+    if let Ok(bytes) = std::fs::read(desktop_dir().join("latest.json")) {
+        return serde_json::from_slice(&bytes).ok();
+    }
+    let url = std::env::var("MP_DESKTOP_RELEASES").unwrap_or_else(|_| RELEASES.to_string());
+    if url.trim().eq_ignore_ascii_case("off") || url.trim().is_empty() {
+        return None;
+    }
+    static CACHE: tokio::sync::Mutex<Option<(std::time::Instant, Option<Value>)>> = tokio::sync::Mutex::const_new(None);
+    let mut c = CACHE.lock().await;
+    if let Some((at, v)) = c.as_ref() {
+        if at.elapsed() < std::time::Duration::from_secs(15 * 60) {
+            return v.clone();
+        }
+    }
+    let fetched = async {
+        let http = reqwest::Client::builder().timeout(std::time::Duration::from_secs(15)).build().ok()?;
+        let r = http.get(url.trim()).send().await.ok()?;
+        if !r.status().is_success() {
+            return None;
+        }
+        r.json::<Value>().await.ok()
+    }
+    .await;
+    if fetched.is_none() {
+        tracing::info!(url = %url, "no desktop release to hand out");
+    }
+    *c = Some((std::time::Instant::now(), fetched.clone()));
+    fetched
 }
 
 /// `1.2.3` (a leading `v` and anything after `-` or `+` ignored) as comparable numbers.
@@ -52,13 +84,13 @@ fn file_url(s: &AppState, url: &str) -> String {
 
 /// What is published: the version and a download per platform. Public, like the sign-in page.
 pub async fn info(State(s): State<AppState>) -> Json<Value> {
-    let Some(l) = latest() else { return Json(json!({ "version": null, "downloads": [] })) };
+    let Some(l) = latest().await else { return Json(json!({ "version": null, "downloads": [] })) };
     let mut downloads = Vec::new();
     if let Some(map) = l["downloads"].as_object() {
         for (platform, name) in map {
             if let Some(name) = name.as_str() {
-                let size = std::fs::metadata(desktop_dir().join(name)).map(|m| m.len()).ok();
-                downloads.push(json!({ "platform": platform, "name": name, "url": file_url(&s, name), "size": size }));
+                let size = std::fs::metadata(desktop_dir().join(name)).map(|m| m.len()).ok().or_else(|| l["sizes"][name.rsplit('/').next().unwrap_or(name)].as_u64());
+                downloads.push(json!({ "platform": platform, "name": name.rsplit('/').next().unwrap_or(name), "url": file_url(&s, name), "size": size }));
             }
         }
     }
@@ -69,7 +101,7 @@ pub async fn info(State(s): State<AppState>) -> Json<Value> {
 /// The Tauri updater's question: is there something newer than `current` for this platform?
 /// 204 when not.
 pub async fn update(State(s): State<AppState>, Path((target, arch, current)): Path<(String, String, String)>) -> Response {
-    let Some(l) = latest() else { return StatusCode::NO_CONTENT.into_response() };
+    let Some(l) = latest().await else { return StatusCode::NO_CONTENT.into_response() };
     let version = l["version"].as_str().unwrap_or_default();
     if version.is_empty() || !newer(version, &current) {
         return StatusCode::NO_CONTENT.into_response();
